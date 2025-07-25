@@ -207,7 +207,7 @@ header p {
     flex-direction: row;
     align-items: center;
     gap: 20px;
-    min-height: auto;
+    min-height: 60px;
     width: 100%;
 }
 
@@ -233,6 +233,7 @@ header p {
     align-items: center;
     gap: 12px;
     min-width: 150px;
+    max-width: 200px;
     flex-shrink: 0;
 }
 
@@ -241,6 +242,10 @@ header p {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }
 
 .video-meta {
