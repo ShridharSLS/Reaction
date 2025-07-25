@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Topic Review System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌊 Video Topic Review System</h1>
+            <p>Manage video submissions through review stages</p>
+        </header>
+
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="add-topic">➕ Add Topic</button>
+            <button class="tab-btn" data-tab="pending">🟡 Pending</button>
+            <button class="tab-btn" data-tab="accepted">✅ Accepted</button>
+            <button class="tab-btn" data-tab="rejected">🟥 Rejected</button>
+            <button class="tab-btn" data-tab="assigned">🆔 ID Assigned</button>
+            <button class="tab-btn" data-tab="manage-people">👥 Manage People</button>
+        </nav>
+
+        <!-- Add Topic Tab -->
+        <div id="add-topic" class="tab-content active">
+            <div class="form-container">
+                <h2>Add Video Topic</h2>
+                <form id="add-video-form">
+                    <div class="form-group">
+                        <label for="person-select">Name:</label>
+                        <select id="person-select" required>
+                            <option value="">Select a person...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="video-link">Video Link:</label>
+                        <input type="url" id="video-link" required placeholder="https://...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="video-type">Type of Video:</label>
+                        <select id="video-type" required>
+                            <option value="">Select type...</option>
+                            <option value="Trending">Trending</option>
+                            <option value="General">General</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="likes-count">Likes Count:</label>
+                        <input type="number" id="likes-count" required min="0" placeholder="0">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Add Video Topic</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pending Tab -->
+        <div id="pending" class="tab-content">
+            <div class="view-header">
+                <h2>🟡 Pending Videos</h2>
+                <button class="btn btn-secondary" onclick="exportCSV('pending')">📤 Export CSV</button>
+            </div>
+            <div id="pending-videos" class="videos-grid"></div>
+        </div>
+
+        <!-- Accepted Tab -->
+        <div id="accepted" class="tab-content">
+            <div class="view-header">
+                <h2>✅ Accepted Videos</h2>
+                <button class="btn btn-secondary" onclick="exportCSV('accepted')">📤 Export CSV</button>
+            </div>
+            <div id="accepted-videos" class="videos-grid"></div>
+        </div>
+
+        <!-- Rejected Tab -->
+        <div id="rejected" class="tab-content">
+            <div class="view-header">
+                <h2>🟥 Rejected Videos</h2>
+                <button class="btn btn-secondary" onclick="exportCSV('rejected')">📤 Export CSV</button>
+            </div>
+            <div id="rejected-videos" class="videos-grid"></div>
+        </div>
+
+        <!-- ID Assigned Tab -->
+        <div id="assigned" class="tab-content">
+            <div class="view-header">
+                <h2>🆔 ID Assigned Videos</h2>
+                <button class="btn btn-secondary" onclick="exportCSV('assigned')">📤 Export CSV</button>
+            </div>
+            <div id="assigned-videos" class="videos-grid"></div>
+        </div>
+
+        <!-- Manage People Tab -->
+        <div id="manage-people" class="tab-content">
+            <div class="form-container">
+                <h2>👥 Manage People</h2>
+                <form id="add-person-form">
+                    <div class="form-group">
+                        <label for="person-name">Person Name:</label>
+                        <input type="text" id="person-name" required placeholder="Enter name...">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Person</button>
+                </form>
+                <div id="people-list" class="people-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title">Confirm Action</h3>
+            <p id="modal-message">Are you sure you want to proceed?</p>
+            <div class="modal-actions">
+                <button id="modal-confirm" class="btn btn-primary">Confirm</button>
+                <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video ID Input Modal -->
+    <div id="video-id-modal" class="modal">
+        <div class="modal-content">
+            <h3>Enter Video ID</h3>
+            <div class="form-group">
+                <label for="video-id-input">Video ID:</label>
+                <input type="text" id="video-id-input" placeholder="Enter video ID...">
+            </div>
+            <div class="modal-actions">
+                <button id="video-id-confirm" class="btn btn-primary">Assign ID</button>
+                <button id="video-id-cancel" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=8"></script>
+</body>
+</html>
