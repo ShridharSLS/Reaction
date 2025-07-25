@@ -171,12 +171,12 @@ function createVideoCard(video, status) {
                     </a>
                 </div>
                 
-                <div class="detail-item">
+                <div class="detail-item likes-item">
                     <span class="detail-label">Likes</span>
                     <span class="detail-value">${video.likes_count || 0}</span>
                 </div>
                 
-                <div class="detail-item">
+                <div class="detail-item relevance-item">
                     <span class="detail-label">Relevance</span>
                     <span class="detail-value">
                         ${status === 'pending' || status === 'accepted' ? 
@@ -192,7 +192,7 @@ function createVideoCard(video, status) {
                     </span>
                 </div>
                 
-                <div class="detail-item">
+                <div class="detail-item score-item">
                     <span class="detail-label">Score</span>
                     <span class="detail-value score">${score}</span>
                 </div>

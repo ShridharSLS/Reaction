@@ -207,8 +207,9 @@ header p {
     flex-direction: row;
     align-items: center;
     gap: 20px;
-    min-height: 60px;
+    height: 60px;
     width: 100%;
+    overflow: hidden;
 }
 
 .video-card:hover {
@@ -275,22 +276,36 @@ header p {
 .video-details {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 0;
     flex-grow: 1;
+    justify-content: space-between;
 }
 
 .detail-item {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    min-width: 80px;
     text-align: center;
+    flex-shrink: 0;
 }
 
 .detail-item.link-item {
-    min-width: 40px;
-    align-items: center;
+    width: 60px;
 }
+
+.detail-item.likes-item {
+    width: 80px;
+}
+
+.detail-item.relevance-item {
+    width: 120px;
+}
+
+.detail-item.score-item {
+    width: 80px;
+}
+
+
 
 .link-icon {
     font-size: 18px;
