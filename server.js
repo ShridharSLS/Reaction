@@ -20,6 +20,11 @@ initializeDatabase().then(() => {
     console.error('Database initialization failed:', err);
 });
 
+// Public Routes
+app.get('/submit', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'submit.html'));
+});
+
 // API Routes
 
 // Get all people
@@ -157,15 +162,51 @@ app.get('/api/videos/:status', async (req, res) => {
 // Add new video
 app.post('/api/videos', async (req, res) => {
     try {
-        const { added_by, link, type, likes_count } = req.body;
+        const { added_by, added_by_name, link, type, likes_count, video_id_text } = req.body;
+        
+        let personId = added_by;
+        
+        // If added_by_name is provided (public submission), find or create person
+        if (added_by_name && !added_by) {
+            // First, try to find existing person with this name
+            const { data: existingPerson } = await supabase
+                .from('people')
+                .select('id')
+                .eq('name', added_by_name)
+                .single();
+                
+            if (existingPerson) {
+                personId = existingPerson.id;
+            } else {
+                // Create new person
+                const { data: newPerson, error: personError } = await supabase
+                    .from('people')
+                    .insert([{ name: added_by_name }])
+                    .select()
+                    .single();
+                    
+                if (personError) {
+                    res.status(500).json({ error: 'Failed to create person: ' + personError.message });
+                    return;
+                }
+                
+                personId = newPerson.id;
+            }
+        }
+        
+        if (!personId) {
+            res.status(400).json({ error: 'Either added_by or added_by_name is required' });
+            return;
+        }
         
         const { data, error } = await supabase
             .from('videos')
             .insert([{
-                added_by,
+                added_by: personId,
                 link,
                 type,
-                likes_count
+                likes_count: likes_count || 0,
+                video_id_text
             }])
             .select()
             .single();
