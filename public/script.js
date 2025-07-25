@@ -157,9 +157,12 @@ function createVideoCard(video, status) {
         <div class="video-card ${typeClass}">
             <div class="video-header">
                 <div class="video-info">
-                    <h3>${escapeHtml(video.added_by_name)}</h3>
+                    <h3 title="${escapeHtml(video.added_by_name)}">${truncateName(video.added_by_name)}</h3>
                     <div class="video-meta">${formatDate(video.link_added_on)}</div>
                 </div>
+            </div>
+            
+            <div class="video-type-column">
                 <span class="video-type ${typeClass}">${video.type}</span>
             </div>
             
@@ -650,6 +653,13 @@ function escapeHtml(text) {
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}
+
+function truncateName(name) {
+    if (name.length <= 10) {
+        return escapeHtml(name);
+    }
+    return escapeHtml(name.substring(0, 10)) + '...';
 }
 
 function truncateUrl(url, maxLength = 50) {

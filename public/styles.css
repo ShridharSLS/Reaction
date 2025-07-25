@@ -232,10 +232,17 @@ header p {
 .video-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-width: 150px;
-    max-width: 200px;
+    gap: 8px;
+    width: 150px;
     flex-shrink: 0;
+}
+
+.video-type-column {
+    width: 80px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .video-info h3 {
@@ -246,7 +253,8 @@ header p {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
+    max-width: 120px;
+    cursor: help;
 }
 
 .video-meta {
@@ -276,9 +284,8 @@ header p {
 .video-details {
     display: flex;
     align-items: center;
-    gap: 0;
+    gap: 15px;
     flex-grow: 1;
-    justify-content: space-between;
 }
 
 .detail-item {
@@ -290,19 +297,19 @@ header p {
 }
 
 .detail-item.link-item {
-    width: 60px;
+    width: 50px;
 }
 
 .detail-item.likes-item {
-    width: 80px;
+    width: 70px;
 }
 
 .detail-item.relevance-item {
-    width: 120px;
+    width: 100px;
 }
 
 .detail-item.score-item {
-    width: 80px;
+    width: 70px;
 }
 
 
