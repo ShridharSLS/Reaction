@@ -185,14 +185,30 @@
         <div id="manage-people" class="tab-content">
             <div class="form-container">
                 <h2>👥 Manage People</h2>
-                <form id="add-person-form">
-                    <div class="form-group">
-                        <label for="person-name">Person Name:</label>
-                        <input type="text" id="person-name" required placeholder="Enter name...">
-                    </div>
-                    <button type="submit" class="btn btn-primary">Add Person</button>
-                </form>
-                <div id="people-list" class="people-list"></div>
+                
+                <!-- People Management Tabs -->
+                <div class="people-tabs">
+                    <button class="people-tab-btn active" data-people-tab="active">👤 Active People</button>
+                    <button class="people-tab-btn" data-people-tab="archived">📦 Archived People</button>
+                </div>
+                
+                <!-- Active People Section -->
+                <div id="active-people-section" class="people-section active">
+                    <form id="add-person-form">
+                        <div class="form-group">
+                            <label for="person-name">Person Name:</label>
+                            <input type="text" id="person-name" required placeholder="Enter name...">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Person</button>
+                    </form>
+                    <div id="people-list" class="people-list"></div>
+                </div>
+                
+                <!-- Archived People Section -->
+                <div id="archived-people-section" class="people-section">
+                    <p class="archived-info">These people are archived and won't appear in submission forms. You can unarchive them to make them active again.</p>
+                    <div id="archived-people-list" class="people-list"></div>
+                </div>
             </div>
         </div>
 

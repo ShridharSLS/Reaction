@@ -502,6 +502,55 @@ header p {
     box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25) !important;
 }
 
+/* People management tabs */
+.people-tabs {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.people-tab-btn {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.people-tab-btn:hover {
+    color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.people-tab-btn.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.people-section {
+    display: none;
+    margin-top: 20px;
+}
+
+.people-section.active {
+    display: block;
+}
+
+.archived-info {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 20px;
+    color: #856404;
+    font-size: 14px;
+}
+
 .video-header {
     display: flex;
     align-items: center;

@@ -71,10 +71,21 @@ app.get('/submit', (req, res) => {
 // Get all people
 app.get('/api/people', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { archived } = req.query;
+        
+        let query = supabase
             .from('people')
-            .select('*')
-            .order('name');
+            .select('*');
+            
+        // Filter by archived status
+        if (archived === 'true') {
+            query = query.eq('archived', true);
+        } else {
+            // Default: only show non-archived people
+            query = query.eq('archived', false);
+        }
+        
+        const { data, error } = await query.order('name');
             
         if (error) {
             res.status(500).json({ error: error.message });
@@ -148,6 +159,52 @@ app.delete('/api/people/:id', async (req, res) => {
         }
         
         res.json({ message: 'Person deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Archive a person
+app.put('/api/people/:id/archive', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const { data, error } = await supabase
+            .from('people')
+            .update({ archived: true })
+            .eq('id', id)
+            .select()
+            .single();
+            
+        if (error) {
+            res.status(500).json({ error: error.message });
+            return;
+        }
+        
+        res.json({ message: 'Person archived successfully', person: data });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Unarchive a person
+app.put('/api/people/:id/unarchive', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const { data, error } = await supabase
+            .from('people')
+            .update({ archived: false })
+            .eq('id', id)
+            .select()
+            .single();
+            
+        if (error) {
+            res.status(500).json({ error: error.message });
+            return;
+        }
+        
+        res.json({ message: 'Person unarchived successfully', person: data });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -144,6 +144,7 @@ function switchTab(tabId) {
     // Load data for the new tab
     if (tabId === 'manage-people') {
         loadPeople();
+        setupPeopleTabs(); // Setup people management tabs
     } else if (tabId === 'manage-admins') {
         initializeAdminManagement();
     } else if (tabId !== 'add-topic' && tabId !== 'bulk-import') {
@@ -183,11 +184,27 @@ async function apiCall(url, options = {}) {
 // Load People
 async function loadPeople() {
     try {
+        // Load active people for forms and main list
         people = await apiCall('/api/people');
         updatePersonSelect();
         updatePeopleList();
+        
+        // Also load archived people if we're on the archived tab
+        const currentPeopleTab = document.querySelector('.people-tab-btn.active')?.dataset.peopleTab;
+        if (currentPeopleTab === 'archived') {
+            await loadArchivedPeople();
+        }
     } catch (error) {
         console.error('Failed to load people:', error);
+    }
+}
+
+async function loadArchivedPeople() {
+    try {
+        const archivedPeople = await apiCall('/api/people?archived=true');
+        updateArchivedPeopleList(archivedPeople);
+    } catch (error) {
+        console.error('Failed to load archived people:', error);
     }
 }
 
@@ -207,7 +224,7 @@ function updatePeopleList() {
     const container = document.getElementById('people-list');
     
     if (people.length === 0) {
-        container.innerHTML = '<div class="empty-state"><h3>No people added yet</h3><p>Add people who can submit video topics.</p></div>';
+        container.innerHTML = '<div class="empty-state"><h3>No active people</h3><p>Add people who can submit video topics.</p></div>';
         return;
     }
     
@@ -216,9 +233,39 @@ function updatePeopleList() {
             <input type="text" value="${escapeHtml(person.name)}" 
                    onchange="updatePersonName(${person.id}, this.value)" 
                    class="person-name-input">
+            <button onclick="archivePerson(${person.id})" 
+                    class="btn btn-warning btn-small" 
+                    title="Archive person (hide from forms)">
+                📦 Archive
+            </button>
             <button onclick="deletePerson(${person.id})" 
                     class="btn btn-danger btn-small" 
-                    title="Delete person">
+                    title="Permanently delete person">
+                🗑️ Delete
+            </button>
+        </div>
+    `).join('');
+}
+
+function updateArchivedPeopleList(archivedPeople) {
+    const container = document.getElementById('archived-people-list');
+    
+    if (archivedPeople.length === 0) {
+        container.innerHTML = '<div class="empty-state"><h3>No archived people</h3><p>Archived people will appear here.</p></div>';
+        return;
+    }
+    
+    container.innerHTML = archivedPeople.map(person => `
+        <div class="person-item">
+            <span class="person-name-display">${escapeHtml(person.name)}</span>
+            <button onclick="unarchivePerson(${person.id})" 
+                    class="btn btn-success btn-small" 
+                    title="Unarchive person (make active again)">
+                📤 Unarchive
+            </button>
+            <button onclick="deletePerson(${person.id})" 
+                    class="btn btn-danger btn-small" 
+                    title="Permanently delete person">
                 🗑️ Delete
             </button>
         </div>
@@ -537,6 +584,69 @@ async function performDelete(personId) {
         
         // Show user-friendly error message
         showTemporaryMessage('Failed to delete person: ' + (error.message || 'Unknown error'), 'error');
+    }
+}
+
+// Setup people management tabs
+function setupPeopleTabs() {
+    const peopleTabButtons = document.querySelectorAll('.people-tab-btn');
+    
+    peopleTabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tabType = this.dataset.peopleTab;
+            
+            // Update tab buttons
+            peopleTabButtons.forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Update sections
+            document.querySelectorAll('.people-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            if (tabType === 'active') {
+                document.getElementById('active-people-section').classList.add('active');
+                loadPeople(); // Load active people
+            } else if (tabType === 'archived') {
+                document.getElementById('archived-people-section').classList.add('active');
+                loadArchivedPeople(); // Load archived people
+            }
+        });
+    });
+}
+
+// Archive person
+async function archivePerson(personId) {
+    if (!confirm('Are you sure you want to archive this person? They will be hidden from all forms but remain in the database.')) {
+        return;
+    }
+    
+    try {
+        await apiCall(`/api/people/${personId}/archive`, {
+            method: 'PUT'
+        });
+        
+        showSuccessNotification('Person archived successfully!');
+        await loadPeople();
+    } catch (error) {
+        console.error('Failed to archive person:', error);
+        alert('Failed to archive person. Please try again.');
+    }
+}
+
+// Unarchive person
+async function unarchivePerson(personId) {
+    try {
+        await apiCall(`/api/people/${personId}/unarchive`, {
+            method: 'PUT'
+        });
+        
+        showSuccessNotification('Person unarchived successfully!');
+        await loadPeople();
+        await loadArchivedPeople();
+    } catch (error) {
+        console.error('Failed to unarchive person:', error);
+        alert('Failed to unarchive person. Please try again.');
     }
 }
 
