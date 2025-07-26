@@ -44,6 +44,7 @@
             <button class="tab-btn" data-tab="accepted">✅ Accepted</button>
             <button class="tab-btn" data-tab="rejected">🟥 Rejected</button>
             <button class="tab-btn" data-tab="assigned">👨‍💼 Shridhar</button>
+            <button class="tab-btn" data-tab="team">👥 Team</button>
         </nav>
 
         <!-- Add Topic Tab -->
@@ -162,6 +163,15 @@
                 <button class="btn btn-secondary" onclick="exportCSV('assigned')">📤 Export CSV</button>
             </div>
             <div id="assigned-videos" class="videos-grid"></div>
+        </div>
+
+        <!-- Team Tab -->
+        <div id="team" class="tab-content">
+            <div class="view-header">
+                <h2>👥 Team Videos</h2>
+                <button class="btn btn-secondary" onclick="exportCSV('team')">📤 Export CSV</button>
+            </div>
+            <div id="team-videos" class="videos-grid"></div>
         </div>
 
         <!-- Manage People Tab -->

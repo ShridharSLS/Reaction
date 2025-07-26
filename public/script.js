@@ -316,6 +316,7 @@ function getVideoActions(video, status) {
         case 'accepted':
             return `
                 <button class="btn btn-primary" onclick="assignVideoId(${video.id})">👨‍💼 Shridhar</button>
+                <button class="btn btn-primary" onclick="assignVideoToTeam(${video.id})">👥 Team</button>
                 <button class="btn btn-reject" onclick="rejectVideo(${video.id})">❌ Reject</button>
                 <button class="btn btn-warning" onclick="revertToPending(${video.id})">↩️ Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
@@ -327,6 +328,10 @@ function getVideoActions(video, status) {
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
             `;
         case 'assigned':
+            return `
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
+            `;
+        case 'team':
             return `
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
             `;
@@ -659,6 +664,23 @@ function assignVideoId(videoId) {
             loadVideos(currentTab);
         } catch (error) {
             console.error('Failed to assign video ID:', error);
+        }
+    });
+}
+
+function assignVideoToTeam(videoId) {
+    showVideoIdInput(async (videoIdText) => {
+        try {
+            await apiCall(`/api/videos/${videoId}/status`, {
+                method: 'PUT',
+                body: JSON.stringify({ 
+                    status: 'team',
+                    video_id_text: videoIdText
+                })
+            });
+            loadVideos(currentTab);
+        } catch (error) {
+            console.error('Failed to assign video to team:', error);
         }
     });
 }
