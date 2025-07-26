@@ -158,12 +158,12 @@ header p {
 }
 
 .btn-danger {
-    background: #dc3545;
+    background: #000000;
     color: white;
 }
 
 .btn-danger:hover {
-    background: #c82333;
+    background: #333333;
 }
 
 .btn-warning {
@@ -173,6 +173,47 @@ header p {
 
 .btn-warning:hover {
     background: #e0a800;
+}
+
+/* Success notification styles */
+.success-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #28a745;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    z-index: 1000;
+    font-weight: 500;
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.success-notification.fade-out {
+    animation: fadeOut 0.3s ease-out forwards;
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
 }
 
 /* View Header */

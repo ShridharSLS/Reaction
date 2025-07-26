@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS videos (
     likes_count INTEGER,
     relevance_rating INTEGER,
     score INTEGER,
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'assigned')),
+    status TEXT DEFAULT 'relevance' CHECK (status IN ('relevance', 'pending', 'accepted', 'rejected', 'assigned')),
     video_id_text VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

@@ -4,6 +4,24 @@ let people = [];
 let confirmationCallback = null;
 let videoIdCallback = null;
 
+// Helper function for success notifications
+function showSuccessNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'success-notification';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300); // Wait for fade-out animation
+    }, 3000);
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
     initializeTabs();
@@ -277,7 +295,7 @@ function setupForms() {
             
             // Reset form
             this.reset();
-            alert('Video topic added successfully!');
+            showSuccessNotification('Video topic added successfully!');
             
             // Refresh pending videos if that tab is active
             if (currentTab === 'pending') {
@@ -303,7 +321,7 @@ function setupForms() {
             // Reset form and reload people
             this.reset();
             await loadPeople();
-            alert('Person added successfully!');
+            showSuccessNotification('Person added successfully!');
         } catch (error) {
             console.error('Failed to add person:', error);
         }
