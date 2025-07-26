@@ -213,13 +213,10 @@ app.put('/api/people/:id/unarchive', async (req, res) => {
 // Get all database entries for All view
 app.get('/api/videos/all/entries', async (req, res) => {
     try {
-        // Get all videos with people names joined
+        // Get all videos without JOIN since we removed the foreign key constraint
         const { data: videos, error: videosError } = await supabase
             .from('videos')
-            .select(`
-                *,
-                people!videos_added_by_fkey(name)
-            `)
+            .select('*')
             .order('created_at', { ascending: false });
             
         if (videosError) {
@@ -227,10 +224,27 @@ app.get('/api/videos/all/entries', async (req, res) => {
             return;
         }
         
+        // Get all people to map names
+        const { data: people, error: peopleError } = await supabase
+            .from('people')
+            .select('*')
+            .eq('archived', false);
+            
+        if (peopleError) {
+            res.status(500).json({ error: peopleError.message });
+            return;
+        }
+        
+        // Create a map of people by ID
+        const peopleMap = {};
+        people.forEach(person => {
+            peopleMap[person.id] = person.name;
+        });
+        
         // Transform data to include person name directly
         const transformedVideos = videos.map(video => ({
             ...video,
-            person_name: video.people?.name || 'Unknown'
+            person_name: peopleMap[video.added_by] || 'Unknown'
         }));
         
         res.json(transformedVideos);
@@ -635,19 +649,33 @@ app.get('/api/videos/:status/export', async (req, res) => {
 // Export all database entries as CSV
 app.get('/api/export/all', async (req, res) => {
     try {
-        // Get all videos with people names joined
+        // Get all videos without JOIN since we removed the foreign key constraint
         const { data: videos, error: videosError } = await supabase
             .from('videos')
-            .select(`
-                *,
-                people!videos_added_by_fkey(name)
-            `)
+            .select('*')
             .order('created_at', { ascending: false });
             
         if (videosError) {
             res.status(500).json({ error: videosError.message });
             return;
         }
+        
+        // Get all people to map names
+        const { data: people, error: peopleError } = await supabase
+            .from('people')
+            .select('*')
+            .eq('archived', false);
+            
+        if (peopleError) {
+            res.status(500).json({ error: peopleError.message });
+            return;
+        }
+        
+        // Create a map of people by ID
+        const peopleMap = {};
+        people.forEach(person => {
+            peopleMap[person.id] = person.name;
+        });
         
         // Create CSV content
         const csvRows = [];
@@ -672,7 +700,7 @@ app.get('/api/export/all', async (req, res) => {
         videos.forEach(video => {
             const csvRow = [
                 `"${video.id || ''}"`,
-                `"${video.people?.name || 'Unknown'}"`,
+                `"${peopleMap[video.added_by] || 'Unknown'}"`,
                 `"${video.link || ''}"`,
                 `"${video.type || ''}"`,
                 `"${video.status || ''}"`,
