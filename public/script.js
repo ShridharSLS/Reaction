@@ -150,7 +150,7 @@ function updateVideosDisplay(status, videos) {
 
 function createVideoCard(video, status) {
     const typeClass = video.type.toLowerCase();
-    const score = video.score || 0;
+    const score = video.score !== null ? video.score : '-';
     const relevanceRating = video.relevance_rating || '';
     
     return `

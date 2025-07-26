@@ -219,7 +219,8 @@ app.post('/api/videos', async (req, res) => {
                 link,
                 type,
                 likes_count: likes_count || 0,
-                video_id_text
+                video_id_text,
+                relevance_rating: null  // Explicitly set to null instead of defaulting to 0
             }])
             .select()
             .single();

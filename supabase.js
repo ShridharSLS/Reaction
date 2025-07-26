@@ -112,7 +112,11 @@ async function updateScore(videoId) {
             return;
         }
         
-        const score = (video.likes_count || 0) * (video.relevance_rating || 0);
+        // If relevance_rating is null (not rated yet), score should be null
+        // If relevance_rating is 0 or higher, calculate score normally
+        const score = video.relevance_rating !== null ? 
+            (video.likes_count || 0) * video.relevance_rating : 
+            null;
         
         const { error: updateError } = await supabase
             .from('videos')
