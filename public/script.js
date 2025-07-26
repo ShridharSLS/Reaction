@@ -261,18 +261,13 @@ function createVideoCard(video, status) {
             </div>
             
             <div class="video-type-column">
-                <div class="video-type-dropdown">
-                    <button class="video-type-btn ${typeClass}" onclick="toggleTypeDropdown(${video.id})">
-                        ${video.type} ▼
+                <div class="video-type-pill">
+                    <button class="video-type-btn ${typeClass}" onclick="toggleTypePill(${video.id})">
+                        ${video.type}
                     </button>
-                    <div class="video-type-options" id="type-dropdown-${video.id}">
-                        <button class="type-option" onclick="updateVideoType(${video.id}, 'Trending')">
-                            <span class="type-indicator trending"></span> Trending
-                        </button>
-                        <button class="type-option" onclick="updateVideoType(${video.id}, 'General')">
-                            <span class="type-indicator general"></span> General
-                        </button>
-                    </div>
+                    <button class="type-alternative" id="type-alt-${video.id}" onclick="updateVideoType(${video.id}, '${video.type === 'Trending' ? 'General' : 'Trending'}')">
+                        ${video.type === 'Trending' ? 'General' : 'Trending'}
+                    </button>
                 </div>
             </div>
             
@@ -1243,26 +1238,26 @@ function initializeAdminManagement() {
     loadAdmins();
 }
 
-// Video Type Dropdown Functions
-function toggleTypeDropdown(videoId) {
-    const dropdown = document.getElementById(`type-dropdown-${videoId}`);
-    const allDropdowns = document.querySelectorAll('.video-type-options');
+// Video Type Pill Functions
+function toggleTypePill(videoId) {
+    const alternative = document.getElementById(`type-alt-${videoId}`);
+    const allAlternatives = document.querySelectorAll('.type-alternative');
     
-    // Close all other dropdowns
-    allDropdowns.forEach(dd => {
-        if (dd !== dropdown) {
-            dd.classList.remove('active');
+    // Close all other alternatives
+    allAlternatives.forEach(alt => {
+        if (alt !== alternative) {
+            alt.classList.remove('active');
         }
     });
     
-    // Toggle current dropdown
-    dropdown.classList.toggle('active');
+    // Toggle current alternative
+    alternative.classList.toggle('active');
     
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function closeDropdown(e) {
-        if (!e.target.closest('.video-type-dropdown')) {
-            dropdown.classList.remove('active');
-            document.removeEventListener('click', closeDropdown);
+    // Close alternative when clicking outside
+    document.addEventListener('click', function closeAlternative(e) {
+        if (!e.target.closest('.video-type-pill')) {
+            alternative.classList.remove('active');
+            document.removeEventListener('click', closeAlternative);
         }
     });
 }
@@ -1274,9 +1269,9 @@ async function updateVideoType(videoId, newType) {
             body: JSON.stringify({ type: newType })
         });
         
-        // Close the dropdown
-        const dropdown = document.getElementById(`type-dropdown-${videoId}`);
-        dropdown.classList.remove('active');
+        // Close the alternative
+        const alternative = document.getElementById(`type-alt-${videoId}`);
+        alternative.classList.remove('active');
         
         // Reload the current view to show updated type
         loadVideos(currentTab);
