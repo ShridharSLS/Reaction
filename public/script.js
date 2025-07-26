@@ -410,6 +410,15 @@ function setupForms() {
         }
     });
     
+    // Setup real-time duplicate detection for video URL input
+    const videoLinkInput = document.getElementById('video-link');
+    if (videoLinkInput) {
+        videoLinkInput.addEventListener('input', function(e) {
+            const url = e.target.value.trim();
+            checkForDuplicates(url, e.target);
+        });
+    }
+    
     // Add Person Form
     document.getElementById('add-person-form').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -1285,4 +1294,105 @@ async function updateVideoType(videoId, newType) {
         console.error('Failed to update video type:', error);
         showNotification('Failed to update video type', 'error');
     }
+}
+
+// Video code extraction function (frontend version)
+function extractVideoCode(url) {
+    if (!url || typeof url !== 'string') {
+        return null;
+    }
+    
+    // YouTube patterns
+    const youtubePatterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,  // Regular and short URLs
+        /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,                    // YouTube Shorts
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,                     // Embedded videos
+        /m\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/                 // Mobile URLs
+    ];
+    
+    // Instagram patterns
+    const instagramPatterns = [
+        /instagram\.com\/reel\/([a-zA-Z0-9_-]{11})/,                    // Instagram Reels
+        /instagram\.com\/p\/([a-zA-Z0-9_-]{11})/,                       // Instagram Posts
+        /instagram\.com\/stories\/[^\/]+\/([a-zA-Z0-9_-]{11})/          // Instagram Stories
+    ];
+    
+    // Try YouTube patterns first
+    for (const pattern of youtubePatterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    
+    // Try Instagram patterns
+    for (const pattern of instagramPatterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    
+    // No pattern matched
+    return null;
+}
+
+// Real-time duplicate detection for video URL input
+let duplicateCheckTimeout;
+async function checkForDuplicates(url, inputElement) {
+    // Clear previous timeout
+    if (duplicateCheckTimeout) {
+        clearTimeout(duplicateCheckTimeout);
+    }
+    
+    // Remove existing duplicate warning
+    const existingWarning = inputElement.parentNode.querySelector('.duplicate-warning');
+    if (existingWarning) {
+        existingWarning.remove();
+    }
+    
+    // Reset input styling
+    inputElement.classList.remove('duplicate-input');
+    
+    if (!url || url.length < 10) {
+        return; // Too short to be a valid URL
+    }
+    
+    // Debounce the check
+    duplicateCheckTimeout = setTimeout(async () => {
+        try {
+            const videoCode = extractVideoCode(url);
+            
+            // Check for duplicates via API
+            let checkUrl;
+            if (videoCode) {
+                checkUrl = `/api/videos/check-duplicate?video_code=${encodeURIComponent(videoCode)}`;
+            } else {
+                checkUrl = `/api/videos/check-duplicate?url=${encodeURIComponent(url)}`;
+            }
+            
+            const response = await fetch(checkUrl);
+            const result = await response.json();
+            
+            if (result.isDuplicate) {
+                // Show duplicate warning
+                const warning = document.createElement('div');
+                warning.className = 'duplicate-warning';
+                warning.innerHTML = `
+                    <span class="warning-icon">⚠️</span>
+                    <span class="warning-text">
+                        ${videoCode ? 
+                            `This video already exists (ID: ${videoCode}). Existing URL: <a href="${result.existingUrl}" target="_blank">${result.existingUrl}</a>` :
+                            'This URL already exists in the system'
+                        }
+                    </span>
+                `;
+                
+                inputElement.parentNode.appendChild(warning);
+                inputElement.classList.add('duplicate-input');
+            }
+        } catch (error) {
+            console.error('Duplicate check failed:', error);
+        }
+    }, 500); // 500ms debounce
 }

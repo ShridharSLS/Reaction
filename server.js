@@ -13,6 +13,47 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// Video code extraction function for duplicate detection
+function extractVideoCode(url) {
+    if (!url || typeof url !== 'string') {
+        return null;
+    }
+    
+    // YouTube patterns
+    const youtubePatterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,  // Regular and short URLs
+        /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,                    // YouTube Shorts
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,                     // Embedded videos
+        /m\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/                 // Mobile URLs
+    ];
+    
+    // Instagram patterns
+    const instagramPatterns = [
+        /instagram\.com\/reel\/([a-zA-Z0-9_-]{11})/,                    // Instagram Reels
+        /instagram\.com\/p\/([a-zA-Z0-9_-]{11})/,                       // Instagram Posts
+        /instagram\.com\/stories\/[^\/]+\/([a-zA-Z0-9_-]{11})/          // Instagram Stories
+    ];
+    
+    // Try YouTube patterns first
+    for (const pattern of youtubePatterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    
+    // Try Instagram patterns
+    for (const pattern of instagramPatterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    
+    // No pattern matched
+    return null;
+}
+
 // Initialize database
 initializeDatabase().then(() => {
     console.log('Database initialized successfully');
@@ -212,15 +253,34 @@ app.post('/api/videos', async (req, res) => {
             return;
         }
         
-        // Check for duplicate URL
-        const { data: existingVideo, error: duplicateCheckError } = await supabase
-            .from('videos')
-            .select('id')
-            .eq('link', link)
-            .single();
+        // Extract video code for smart duplicate detection
+        const videoCode = extractVideoCode(link);
+        
+        // Check for duplicate using video code (if extractable) or fallback to URL
+        let duplicateCheckQuery;
+        if (videoCode) {
+            // Check by video code first (smart duplicate detection)
+            duplicateCheckQuery = supabase
+                .from('videos')
+                .select('id, link')
+                .eq('video_code', videoCode)
+                .single();
+        } else {
+            // Fallback to URL check for unsupported platforms
+            duplicateCheckQuery = supabase
+                .from('videos')
+                .select('id, link')
+                .eq('link', link)
+                .single();
+        }
+        
+        const { data: existingVideo, error: duplicateCheckError } = await duplicateCheckQuery;
             
         if (existingVideo) {
-            res.status(409).json({ error: 'A video with this URL already exists in the system' });
+            const errorMessage = videoCode 
+                ? `This video already exists in the system (found via video ID: ${videoCode}). Existing URL: ${existingVideo.link}`
+                : 'A video with this URL already exists in the system';
+            res.status(409).json({ error: errorMessage });
             return;
         }
         
@@ -232,6 +292,7 @@ app.post('/api/videos', async (req, res) => {
                 type,
                 likes_count: likes_count || 0,
                 video_id_text,
+                video_code: videoCode,  // Store extracted video code
                 relevance_rating: relevance_rating !== undefined ? relevance_rating : -1,  // Use provided or default to -1
                 status: status || 'relevance'    // Use provided status or default to 'relevance'
             }])
@@ -247,6 +308,47 @@ app.post('/api/videos', async (req, res) => {
         await updateScore(data.id);
         
         res.json({ id: data.id, message: 'Video added successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Check for duplicate videos (for real-time validation)
+app.get('/api/videos/check-duplicate', async (req, res) => {
+    try {
+        const { video_code, url } = req.query;
+        
+        let duplicateCheckQuery;
+        if (video_code) {
+            // Check by video code (smart duplicate detection)
+            duplicateCheckQuery = supabase
+                .from('videos')
+                .select('id, link')
+                .eq('video_code', video_code)
+                .single();
+        } else if (url) {
+            // Fallback to URL check for unsupported platforms
+            duplicateCheckQuery = supabase
+                .from('videos')
+                .select('id, link')
+                .eq('link', url)
+                .single();
+        } else {
+            res.status(400).json({ error: 'Either video_code or url parameter is required' });
+            return;
+        }
+        
+        const { data: existingVideo, error } = await duplicateCheckQuery;
+        
+        if (existingVideo) {
+            res.json({ 
+                isDuplicate: true, 
+                existingUrl: existingVideo.link,
+                videoId: existingVideo.id
+            });
+        } else {
+            res.json({ isDuplicate: false });
+        }
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

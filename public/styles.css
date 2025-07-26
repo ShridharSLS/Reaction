@@ -470,6 +470,38 @@ header p {
     width: 100%;
 }
 
+/* Duplicate detection styles */
+.duplicate-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    color: #856404;
+    font-size: 14px;
+}
+
+.duplicate-warning .warning-icon {
+    font-size: 16px;
+}
+
+.duplicate-warning .warning-text {
+    flex: 1;
+}
+
+.duplicate-warning a {
+    color: #0066cc;
+    text-decoration: underline;
+}
+
+.duplicate-input {
+    border-color: #ffc107 !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25) !important;
+}
+
 .video-header {
     display: flex;
     align-items: center;
