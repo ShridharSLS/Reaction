@@ -162,7 +162,7 @@ app.get('/api/videos/:status', async (req, res) => {
 // Add new video
 app.post('/api/videos', async (req, res) => {
     try {
-        const { added_by, added_by_name, link, type, likes_count, video_id_text } = req.body;
+        const { added_by, added_by_name, link, type, likes_count, video_id_text, relevance_rating, status } = req.body;
         
         let personId = added_by;
         
@@ -220,8 +220,8 @@ app.post('/api/videos', async (req, res) => {
                 type,
                 likes_count: likes_count || 0,
                 video_id_text,
-                relevance_rating: -1,  // Default to -1 for new submissions (needs relevance rating)
-                status: 'relevance'    // All new videos start in relevance section
+                relevance_rating: relevance_rating !== undefined ? relevance_rating : -1,  // Use provided or default to -1
+                status: status || 'relevance'    // Use provided status or default to 'relevance'
             }])
             .select()
             .single();

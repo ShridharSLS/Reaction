@@ -709,11 +709,11 @@ function previewBulkData() {
         const rowNum = index + 1;
         
         if (columns.length < 4) {
-            errors.push(`Row ${rowNum}: Expected 4 columns (Name, Link, Type, Likes), found ${columns.length}`);
+            errors.push(`Row ${rowNum}: Expected 4-5 columns (Name, Link, Type, Likes, Relevance), found ${columns.length}`);
             return;
         }
         
-        const [name, link, type, likes] = columns.map(col => col.trim());
+        const [name, link, type, likes, relevance] = columns.map(col => col.trim());
         
         // Validation
         if (!name) {
@@ -734,12 +734,16 @@ function previewBulkData() {
         if (likes && isNaN(parseInt(likes))) {
             errors.push(`Row ${rowNum}: Likes count must be a number`);
         }
+        if (relevance && relevance !== '' && (isNaN(parseInt(relevance)) || parseInt(relevance) < 0 || parseInt(relevance) > 3)) {
+            errors.push(`Row ${rowNum}: Relevance must be empty or a number between 0-3`);
+        }
         
         parsedBulkData.push({
             name,
             link,
             type,
             likes: likes ? parseInt(likes) : 0,
+            relevance: relevance && relevance !== '' ? parseInt(relevance) : null,
             rowNum
         });
     });
@@ -755,12 +759,16 @@ function previewBulkData() {
                         <th>Link</th>
                         <th>Type</th>
                         <th>Likes</th>
+                        <th>Relevance</th>
+                        <th>Destination</th>
                     </tr>
                 </thead>
                 <tbody>
         `;
         
         parsedBulkData.forEach(row => {
+            const relevanceDisplay = row.relevance !== null ? row.relevance : '-';
+            const destination = row.relevance !== null ? '🟡 Pending' : '🎯 Relevance';
             tableHTML += `
                 <tr>
                     <td>${row.rowNum}</td>
@@ -768,6 +776,8 @@ function previewBulkData() {
                     <td><a href="${escapeHtml(row.link)}" target="_blank">${truncateUrl(row.link, 40)}</a></td>
                     <td>${escapeHtml(row.type)}</td>
                     <td>${row.likes}</td>
+                    <td>${relevanceDisplay}</td>
+                    <td>${destination}</td>
                 </tr>
             `;
         });
@@ -826,7 +836,9 @@ async function submitBulkData() {
                 added_by: person.id,
                 link: row.link,
                 type: row.type,
-                likes_count: row.likes
+                likes_count: row.likes,
+                relevance_rating: row.relevance !== null ? row.relevance : -1,
+                status: row.relevance !== null ? 'pending' : 'relevance'
             };
             
             const response = await fetch('/api/videos', {

@@ -65,13 +65,15 @@
             <div class="form-container">
                 <h2>📋 Bulk Import Video Topics</h2>
                 <p class="bulk-import-instructions">
-                    Copy and paste multiple video topics from Google Sheets. Expected column order:
-                    <strong>Name | Link | Type | Likes Count</strong>
+                <p>
+                    <strong>Format:</strong> Copy and paste data from Google Sheets with columns: <code>Name | Link | Type | Likes Count | Relevance (optional)</code>
+                    <br><strong>Relevance Logic:</strong> If relevance column is empty → goes to Relevance section (-1). If relevance has value (0-3) → goes directly to Pending.
+                    <br><strong>Note:</strong> Make sure all names exist in the "Manage People" section before importing.
                 </p>
                 
                 <div class="form-group">
                     <label for="bulk-data">Paste Data from Google Sheets:</label>
-                    <textarea id="bulk-data" placeholder="Paste your copied data here...\nExample:\nJohn Doe\thttps://youtube.com/watch?v=123\tTrending\t500\nJane Smith\thttps://youtube.com/watch?v=456\tGeneral\t200" rows="10"></textarea>
+                    <textarea id="bulk-data" placeholder="Paste your copied data here...\nExample:\nJohn Doe\thttps://youtube.com/watch?v=123\tTrending\t500\t2\nJane Smith\thttps://youtube.com/watch?v=456\tGeneral\t200\t\nBob Wilson\thttps://youtube.com/watch?v=789\tTrending\t300\t1" rows="10"></textarea>
                 </div>
                 
                 <div class="bulk-actions">
