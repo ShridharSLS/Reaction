@@ -309,13 +309,13 @@ function getVideoActions(video, status) {
         case 'pending':
             return `
                 <button class="btn btn-success" onclick="acceptVideo(${video.id})">✅ Accept</button>
-                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">👨‍💼 Assign to Shridhar</button>
+                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">👨‍💼 Shridhar</button>
                 <button class="btn btn-reject" onclick="rejectVideo(${video.id})">❌ Reject</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
             `;
         case 'accepted':
             return `
-                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">👨‍💼 Assign to Shridhar</button>
+                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">👨‍💼 Shridhar</button>
                 <button class="btn btn-reject" onclick="rejectVideo(${video.id})">❌ Reject</button>
                 <button class="btn btn-warning" onclick="revertToPending(${video.id})">↩️ Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
