@@ -261,7 +261,19 @@ function createVideoCard(video, status) {
             </div>
             
             <div class="video-type-column">
-                <span class="video-type ${typeClass}">${video.type}</span>
+                <div class="video-type-dropdown">
+                    <button class="video-type-btn ${typeClass}" onclick="toggleTypeDropdown(${video.id})">
+                        ${video.type} ▼
+                    </button>
+                    <div class="video-type-options" id="type-dropdown-${video.id}">
+                        <button class="type-option" onclick="updateVideoType(${video.id}, 'Trending')">
+                            <span class="type-indicator trending"></span> Trending
+                        </button>
+                        <button class="type-option" onclick="updateVideoType(${video.id}, 'General')">
+                            <span class="type-indicator general"></span> General
+                        </button>
+                    </div>
+                </div>
             </div>
             
             <div class="video-details">
@@ -1229,4 +1241,49 @@ function initializeAdminManagement() {
     }
     
     loadAdmins();
+}
+
+// Video Type Dropdown Functions
+function toggleTypeDropdown(videoId) {
+    const dropdown = document.getElementById(`type-dropdown-${videoId}`);
+    const allDropdowns = document.querySelectorAll('.video-type-options');
+    
+    // Close all other dropdowns
+    allDropdowns.forEach(dd => {
+        if (dd !== dropdown) {
+            dd.classList.remove('active');
+        }
+    });
+    
+    // Toggle current dropdown
+    dropdown.classList.toggle('active');
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function closeDropdown(e) {
+        if (!e.target.closest('.video-type-dropdown')) {
+            dropdown.classList.remove('active');
+            document.removeEventListener('click', closeDropdown);
+        }
+    });
+}
+
+async function updateVideoType(videoId, newType) {
+    try {
+        const response = await apiCall(`/api/videos/${videoId}/type`, {
+            method: 'PUT',
+            body: JSON.stringify({ type: newType })
+        });
+        
+        // Close the dropdown
+        const dropdown = document.getElementById(`type-dropdown-${videoId}`);
+        dropdown.classList.remove('active');
+        
+        // Reload the current view to show updated type
+        loadVideos(currentTab);
+        
+        showNotification(`Video type updated to ${newType}`, 'success');
+    } catch (error) {
+        console.error('Failed to update video type:', error);
+        showNotification('Failed to update video type', 'error');
+    }
 }

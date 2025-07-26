@@ -342,6 +342,34 @@ app.delete('/api/videos/:id', async (req, res) => {
     }
 });
 
+// Update video type
+app.put('/api/videos/:id/type', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { type } = req.body;
+        
+        // Validate type
+        if (!['Trending', 'General'].includes(type)) {
+            res.status(400).json({ error: 'Invalid video type. Must be Trending or General.' });
+            return;
+        }
+        
+        const { error } = await supabase
+            .from('videos')
+            .update({ type })
+            .eq('id', id);
+            
+        if (error) {
+            res.status(500).json({ error: error.message });
+            return;
+        }
+        
+        res.json({ message: 'Video type updated successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Export videos to CSV
 app.get('/api/videos/:status/export', async (req, res) => {
     try {
