@@ -212,6 +212,18 @@ app.post('/api/videos', async (req, res) => {
             return;
         }
         
+        // Check for duplicate URL
+        const { data: existingVideo, error: duplicateCheckError } = await supabase
+            .from('videos')
+            .select('id')
+            .eq('link', link)
+            .single();
+            
+        if (existingVideo) {
+            res.status(409).json({ error: 'A video with this URL already exists in the system' });
+            return;
+        }
+        
         const { data, error } = await supabase
             .from('videos')
             .insert([{

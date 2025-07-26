@@ -303,6 +303,13 @@ function setupForms() {
             }
         } catch (error) {
             console.error('Failed to add video:', error);
+            
+            // Show user-friendly error message for duplicate URLs
+            if (error.message && error.message.includes('already exists')) {
+                alert('This video URL already exists in the system. Please check if it has been previously added.');
+            } else {
+                alert('Failed to add video. Please try again.');
+            }
         }
     });
     
@@ -815,6 +822,7 @@ async function submitBulkData() {
     const results = [];
     let successCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
     
     // Submit each video
     for (const row of parsedBulkData) {
@@ -883,12 +891,23 @@ async function submitBulkData() {
                 successCount++;
             } else {
                 const errorData = await response.json();
-                results.push({
-                    row: row.rowNum,
-                    status: 'error',
-                    message: errorData.error || 'Failed to add video'
-                });
-                errorCount++;
+                
+                // Handle duplicate URLs as "skipped" rather than "error"
+                if (response.status === 409 && errorData.error && errorData.error.includes('already exists')) {
+                    results.push({
+                        row: row.rowNum,
+                        status: 'skipped',
+                        message: `Skipped: URL already exists in system`
+                    });
+                    skippedCount++;
+                } else {
+                    results.push({
+                        row: row.rowNum,
+                        status: 'error',
+                        message: errorData.error || 'Failed to add video'
+                    });
+                    errorCount++;
+                }
             }
         } catch (error) {
             results.push({
@@ -903,12 +922,17 @@ async function submitBulkData() {
     // Display results
     let resultsHTML = `
         <div style="margin-bottom: 15px;">
-            <strong>Import Complete:</strong> ${successCount} successful, ${errorCount} errors
+            <strong>Import Complete:</strong> ${successCount} successful, ${skippedCount} skipped, ${errorCount} errors
         </div>
     `;
     
     results.forEach(result => {
-        const className = result.status === 'success' ? 'success-item' : 'error-item';
+        let className = 'error-item'; // default
+        if (result.status === 'success') {
+            className = 'success-item';
+        } else if (result.status === 'skipped') {
+            className = 'skipped-item';
+        }
         resultsHTML += `<div class="${className}">Row ${result.row}: ${escapeHtml(result.message)}</div>`;
     });
     
