@@ -182,14 +182,14 @@ header p {
 .video-type-options {
     display: none;
     position: absolute;
-    top: 100%;
-    left: 0;
+    top: 0;
+    left: 100%;
     background: white;
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.15);
     z-index: 1000;
     min-width: 120px;
-    margin-top: 2px;
+    margin-left: 5px;
     overflow: hidden;
     border: 1px solid #e0e0e0;
 }
@@ -202,11 +202,11 @@ header p {
 @keyframes fadeInDown {
     from {
         opacity: 0;
-        transform: translateY(-5px);
+        transform: translateX(-10px);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateX(0);
     }
 }
 
