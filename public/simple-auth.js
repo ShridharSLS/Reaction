@@ -82,12 +82,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (session) {
         try {
             const sessionData = JSON.parse(session);
-            // Check if session is still valid (less than 24 hours old)
+            // Check if session is still valid (less than 7 days old)
             const loginTime = new Date(sessionData.loginTime);
             const now = new Date();
-            const hoursSinceLogin = (now - loginTime) / (1000 * 60 * 60);
+            const daysSinceLogin = (now - loginTime) / (1000 * 60 * 60 * 24);
             
-            if (hoursSinceLogin < 24) {
+            if (daysSinceLogin < 7) {
                 // Session is still valid, redirect to dashboard
                 window.location.href = '/';
                 return;

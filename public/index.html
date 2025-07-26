@@ -277,12 +277,12 @@
                     return;
                 }
                 
-                // Check if session is still valid (less than 24 hours old)
+                // Check if session is still valid (less than 7 days old)
                 const loginTime = new Date(sessionData.loginTime);
                 const now = new Date();
-                const hoursSinceLogin = (now - loginTime) / (1000 * 60 * 60);
+                const daysSinceLogin = (now - loginTime) / (1000 * 60 * 60 * 24);
                 
-                if (hoursSinceLogin >= 24) {
+                if (daysSinceLogin >= 7) {
                     // Session expired
                     localStorage.removeItem('adminSession');
                     redirectToLogin();
