@@ -156,8 +156,9 @@
         <form id="submitForm">
             <div class="form-group">
                 <label for="submitterName">Your Name <span class="required">*</span></label>
-                <input type="text" id="submitterName" name="submitterName" required 
-                       placeholder="Enter your name">
+                <select id="submitterName" name="submitterName" required>
+                    <option value="">Select your name</option>
+                </select>
             </div>
 
             <div class="form-group">
@@ -181,11 +182,7 @@
                 </select>
             </div>
 
-            <div class="form-group">
-                <label for="videoId">Video ID (optional)</label>
-                <input type="text" id="videoId" name="videoId" 
-                       placeholder="Custom video identifier">
-            </div>
+
 
             <button type="submit" class="submit-btn" id="submitBtn">
                 Submit Video Topic
@@ -201,6 +198,32 @@
         const form = document.getElementById('submitForm');
         const submitBtn = document.getElementById('submitBtn');
         const messageDiv = document.getElementById('message');
+        const nameSelect = document.getElementById('submitterName');
+
+        // Load people list when page loads
+        async function loadPeople() {
+            try {
+                const response = await fetch('/api/people');
+                const people = await response.json();
+                
+                // Clear existing options except the default
+                nameSelect.innerHTML = '<option value="">Select your name</option>';
+                
+                // Add people to dropdown
+                people.forEach(person => {
+                    const option = document.createElement('option');
+                    option.value = person.id;
+                    option.textContent = person.name;
+                    nameSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load people:', error);
+                showMessage('Failed to load names. Please refresh the page.', 'error');
+            }
+        }
+
+        // Load people when page loads
+        loadPeople();
 
         function showMessage(text, type) {
             messageDiv.textContent = text;
@@ -248,16 +271,15 @@
             try {
                 const formData = new FormData(form);
                 const videoData = {
-                    added_by_name: formData.get('submitterName').trim(),
+                    added_by: formData.get('submitterName'), // This is now the person ID
                     link: formData.get('videoLink').trim(),
                     likes_count: formData.get('likesCount') ? parseInt(formData.get('likesCount')) : 0,
-                    type: formData.get('videoType'),
-                    video_id_text: formData.get('videoId')?.trim() || null
+                    type: formData.get('videoType')
                 };
 
                 // Basic validation
-                if (!videoData.added_by_name) {
-                    throw new Error('Name is required');
+                if (!videoData.added_by) {
+                    throw new Error('Please select your name');
                 }
                 if (!videoData.link) {
                     throw new Error('Video link is required');

@@ -166,7 +166,7 @@ app.post('/api/videos', async (req, res) => {
         
         let personId = added_by;
         
-        // If added_by_name is provided (public submission), find or create person
+        // If added_by_name is provided (legacy admin form), find or create person
         if (added_by_name && !added_by) {
             // First, try to find existing person with this name
             const { data: existingPerson } = await supabase
@@ -178,7 +178,7 @@ app.post('/api/videos', async (req, res) => {
             if (existingPerson) {
                 personId = existingPerson.id;
             } else {
-                // Create new person
+                // Create new person (only for admin form)
                 const { data: newPerson, error: personError } = await supabase
                     .from('people')
                     .insert([{ name: added_by_name }])
@@ -194,8 +194,21 @@ app.post('/api/videos', async (req, res) => {
             }
         }
         
+        // For public form submissions, added_by should be provided directly
         if (!personId) {
-            res.status(400).json({ error: 'Either added_by or added_by_name is required' });
+            res.status(400).json({ error: 'Person selection is required' });
+            return;
+        }
+        
+        // Verify the person exists
+        const { data: person, error: personCheckError } = await supabase
+            .from('people')
+            .select('id')
+            .eq('id', personId)
+            .single();
+            
+        if (personCheckError || !person) {
+            res.status(400).json({ error: 'Selected person does not exist' });
             return;
         }
         
