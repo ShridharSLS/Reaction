@@ -16,6 +16,7 @@
         <nav class="tab-nav">
             <button class="tab-btn active" data-tab="add-topic">➕ Add Topic</button>
             <button class="tab-btn" data-tab="bulk-import">📋 Bulk Import</button>
+            <button class="tab-btn" data-tab="relevance">🎯 Relevance</button>
             <button class="tab-btn" data-tab="pending">🟡 Pending</button>
             <button class="tab-btn" data-tab="accepted">✅ Accepted</button>
             <button class="tab-btn" data-tab="rejected">🟥 Rejected</button>
@@ -89,6 +90,18 @@
                     <div id="bulk-results-content"></div>
                 </div>
             </div>
+        </div>
+
+        <!-- Relevance Tab -->
+        <div id="relevance" class="tab-content">
+            <div class="view-header">
+                <h2>🎯 Relevance Rating</h2>
+                <p style="margin: 10px 0; color: #666; font-size: 14px;">
+                    Rate the relevance of new video submissions (0-3). Videos move to Pending automatically after rating.
+                </p>
+                <button class="btn btn-secondary" onclick="exportCSV('relevance')">📤 Export CSV</button>
+            </div>
+            <div id="relevance-videos" class="videos-grid"></div>
         </div>
 
         <!-- Pending Tab -->

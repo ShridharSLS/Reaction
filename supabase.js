@@ -112,9 +112,9 @@ async function updateScore(videoId) {
             return;
         }
         
-        // If relevance_rating is null (not rated yet), score should be null
+        // If relevance_rating is -1 (not rated yet), score should be null
         // If relevance_rating is 0 or higher, calculate score normally
-        const score = video.relevance_rating !== null ? 
+        const score = video.relevance_rating >= 0 ? 
             (video.likes_count || 0) * video.relevance_rating : 
             null;
         

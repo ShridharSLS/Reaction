@@ -220,7 +220,8 @@ app.post('/api/videos', async (req, res) => {
                 type,
                 likes_count: likes_count || 0,
                 video_id_text,
-                relevance_rating: null  // Explicitly set to null instead of defaulting to 0
+                relevance_rating: -1,  // Default to -1 for new submissions (needs relevance rating)
+                status: 'relevance'    // All new videos start in relevance section
             }])
             .select()
             .single();
@@ -245,9 +246,26 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
         const { id } = req.params;
         const { relevance_rating } = req.body;
         
+        // Prepare update data
+        const updateData = { relevance_rating };
+        
+        // If relevance rating is 0-3, move from 'relevance' to 'pending' status
+        if (relevance_rating >= 0 && relevance_rating <= 3) {
+            // Check if video is currently in relevance status
+            const { data: video } = await supabase
+                .from('videos')
+                .select('status')
+                .eq('id', id)
+                .single();
+                
+            if (video && video.status === 'relevance') {
+                updateData.status = 'pending';
+            }
+        }
+        
         const { error } = await supabase
             .from('videos')
-            .update({ relevance_rating })
+            .update(updateData)
             .eq('id', id);
             
         if (error) {

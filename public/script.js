@@ -151,7 +151,7 @@ function updateVideosDisplay(status, videos) {
 function createVideoCard(video, status) {
     const typeClass = video.type.toLowerCase();
     const score = video.score !== null ? video.score : '-';
-    const relevanceRating = video.relevance_rating || '';
+    const relevanceRating = video.relevance_rating >= 0 ? video.relevance_rating : '';
     
     return `
         <div class="video-card ${typeClass}">
@@ -182,7 +182,7 @@ function createVideoCard(video, status) {
                 <div class="detail-item relevance-item">
                     <span class="detail-label">Relevance</span>
                     <span class="detail-value">
-                        ${status === 'pending' || status === 'accepted' ? 
+                        ${status === 'relevance' || status === 'pending' || status === 'accepted' ? 
                             `<select onchange="updateRelevance(${video.id}, this.value)" style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
                                 <option value="" ${relevanceRating === '' ? 'selected' : ''}>-</option>
                                 <option value="0" ${relevanceRating == 0 ? 'selected' : ''}>0</option>
@@ -489,6 +489,17 @@ async function updateRelevance(videoId, relevanceRating) {
         
         // Refresh current view
         loadVideos(currentTab);
+        
+        // If we're in relevance view and rating is 0-3, also refresh pending view
+        // since the video may have moved there
+        if (currentTab === 'relevance' && relevanceRating >= 0 && relevanceRating <= 3) {
+            // Small delay to ensure backend processing is complete
+            setTimeout(() => {
+                if (currentTab === 'pending') {
+                    loadVideos('pending');
+                }
+            }, 500);
+        }
     } catch (error) {
         console.error('Failed to update relevance:', error);
     }
