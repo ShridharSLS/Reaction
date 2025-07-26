@@ -15,6 +15,7 @@
 
         <nav class="tab-nav">
             <button class="tab-btn active" data-tab="add-topic">➕ Add Topic</button>
+            <button class="tab-btn" data-tab="bulk-import">📋 Bulk Import</button>
             <button class="tab-btn" data-tab="pending">🟡 Pending</button>
             <button class="tab-btn" data-tab="accepted">✅ Accepted</button>
             <button class="tab-btn" data-tab="rejected">🟥 Rejected</button>
@@ -55,6 +56,38 @@
                     
                     <button type="submit" class="btn btn-primary">Add Video Topic</button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Bulk Import Tab -->
+        <div id="bulk-import" class="tab-content">
+            <div class="form-container">
+                <h2>📋 Bulk Import Video Topics</h2>
+                <p class="bulk-import-instructions">
+                    Copy and paste multiple video topics from Google Sheets. Expected column order:
+                    <strong>Name | Link | Type | Likes Count</strong>
+                </p>
+                
+                <div class="form-group">
+                    <label for="bulk-data">Paste Data from Google Sheets:</label>
+                    <textarea id="bulk-data" placeholder="Paste your copied data here...\nExample:\nJohn Doe\thttps://youtube.com/watch?v=123\tTrending\t500\nJane Smith\thttps://youtube.com/watch?v=456\tGeneral\t200" rows="10"></textarea>
+                </div>
+                
+                <div class="bulk-actions">
+                    <button type="button" class="btn btn-secondary" onclick="previewBulkData()">👁️ Preview Data</button>
+                    <button type="button" class="btn btn-primary" onclick="submitBulkData()" id="bulk-submit-btn" disabled>📤 Submit All Topics</button>
+                </div>
+                
+                <div id="bulk-preview" class="bulk-preview" style="display: none;">
+                    <h3>Preview of Parsed Data:</h3>
+                    <div id="bulk-preview-table"></div>
+                    <div id="bulk-validation-errors"></div>
+                </div>
+                
+                <div id="bulk-results" class="bulk-results" style="display: none;">
+                    <h3>Import Results:</h3>
+                    <div id="bulk-results-content"></div>
+                </div>
             </div>
         </div>
 

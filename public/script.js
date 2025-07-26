@@ -465,19 +465,10 @@ function setupModals() {
         if (videoId && videoIdCallback) {
             videoIdCallback(videoId);
         }
-        document.getElementById('video-id-modal').style.display = 'none';
-        document.getElementById('video-id-input').value = '';
-        videoIdCallback = null;
-    });
-    
-    // Close modals when clicking outside
-    window.addEventListener('click', function(event) {
-        const confirmModal = document.getElementById('confirmation-modal');
-        const videoIdModal = document.getElementById('video-id-modal');
         
-        if (event.target === confirmModal) {
-            confirmModal.style.display = 'none';
-            confirmationCallback = null;
+        // Refresh the pending videos view
+        if (currentView === 'pending') {
+            loadVideos('pending');
         }
         
         if (event.target === videoIdModal) {
@@ -665,4 +656,214 @@ function truncateName(name) {
 function truncateUrl(url, maxLength = 50) {
     if (url.length <= maxLength) return url;
     return url.substring(0, maxLength) + '...';
+}
+
+// Bulk Import Functions
+let parsedBulkData = [];
+
+function previewBulkData() {
+    const bulkData = document.getElementById('bulk-data').value.trim();
+    const previewDiv = document.getElementById('bulk-preview');
+    const tableDiv = document.getElementById('bulk-preview-table');
+    const errorsDiv = document.getElementById('bulk-validation-errors');
+    const submitBtn = document.getElementById('bulk-submit-btn');
+    
+    if (!bulkData) {
+        alert('Please paste some data first');
+        return;
+    }
+    
+    // Parse the data (tab-separated values from Google Sheets)
+    const lines = bulkData.split('\n').filter(line => line.trim());
+    parsedBulkData = [];
+    const errors = [];
+    
+    lines.forEach((line, index) => {
+        const columns = line.split('\t');
+        const rowNum = index + 1;
+        
+        if (columns.length < 4) {
+            errors.push(`Row ${rowNum}: Expected 4 columns (Name, Link, Type, Likes), found ${columns.length}`);
+            return;
+        }
+        
+        const [name, link, type, likes] = columns.map(col => col.trim());
+        
+        // Validation
+        if (!name) {
+            errors.push(`Row ${rowNum}: Name is required`);
+        }
+        if (!link) {
+            errors.push(`Row ${rowNum}: Link is required`);
+        } else {
+            try {
+                new URL(link);
+            } catch {
+                errors.push(`Row ${rowNum}: Invalid URL format`);
+            }
+        }
+        if (!type || !['Trending', 'General'].includes(type)) {
+            errors.push(`Row ${rowNum}: Type must be 'Trending' or 'General'`);
+        }
+        if (likes && isNaN(parseInt(likes))) {
+            errors.push(`Row ${rowNum}: Likes count must be a number`);
+        }
+        
+        parsedBulkData.push({
+            name,
+            link,
+            type,
+            likes: likes ? parseInt(likes) : 0,
+            rowNum
+        });
+    });
+    
+    // Display preview table
+    if (parsedBulkData.length > 0) {
+        let tableHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Row</th>
+                        <th>Name</th>
+                        <th>Link</th>
+                        <th>Type</th>
+                        <th>Likes</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        parsedBulkData.forEach(row => {
+            tableHTML += `
+                <tr>
+                    <td>${row.rowNum}</td>
+                    <td>${escapeHtml(row.name)}</td>
+                    <td><a href="${escapeHtml(row.link)}" target="_blank">${truncateUrl(row.link, 40)}</a></td>
+                    <td>${escapeHtml(row.type)}</td>
+                    <td>${row.likes}</td>
+                </tr>
+            `;
+        });
+        
+        tableHTML += '</tbody></table>';
+        tableDiv.innerHTML = tableHTML;
+    }
+    
+    // Display errors
+    if (errors.length > 0) {
+        errorsDiv.innerHTML = '<h4>Validation Errors:</h4>' + 
+            errors.map(error => `<div class="error-item">${escapeHtml(error)}</div>`).join('');
+        submitBtn.disabled = true;
+    } else {
+        errorsDiv.innerHTML = '<div style="color: #28a745; font-weight: 600;">✅ All data looks good!</div>';
+        submitBtn.disabled = false;
+    }
+    
+    previewDiv.style.display = 'block';
+}
+
+async function submitBulkData() {
+    if (parsedBulkData.length === 0) {
+        alert('Please preview the data first');
+        return;
+    }
+    
+    const submitBtn = document.getElementById('bulk-submit-btn');
+    const resultsDiv = document.getElementById('bulk-results');
+    const resultsContent = document.getElementById('bulk-results-content');
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+    
+    const results = [];
+    let successCount = 0;
+    let errorCount = 0;
+    
+    // Submit each video
+    for (const row of parsedBulkData) {
+        try {
+            // Find person by name
+            const person = people.find(p => p.name.toLowerCase() === row.name.toLowerCase());
+            
+            if (!person) {
+                results.push({
+                    row: row.rowNum,
+                    status: 'error',
+                    message: `Person '${row.name}' not found. Please add them to Manage People first.`
+                });
+                errorCount++;
+                continue;
+            }
+            
+            const videoData = {
+                added_by: person.id,
+                link: row.link,
+                type: row.type,
+                likes_count: row.likes
+            };
+            
+            const response = await fetch('/api/videos', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(videoData)
+            });
+            
+            if (response.ok) {
+                results.push({
+                    row: row.rowNum,
+                    status: 'success',
+                    message: `Successfully added video for ${row.name}`
+                });
+                successCount++;
+            } else {
+                const errorData = await response.json();
+                results.push({
+                    row: row.rowNum,
+                    status: 'error',
+                    message: errorData.error || 'Failed to add video'
+                });
+                errorCount++;
+            }
+        } catch (error) {
+            results.push({
+                row: row.rowNum,
+                status: 'error',
+                message: `Network error: ${error.message}`
+            });
+            errorCount++;
+        }
+    }
+    
+    // Display results
+    let resultsHTML = `
+        <div style="margin-bottom: 15px;">
+            <strong>Import Complete:</strong> ${successCount} successful, ${errorCount} errors
+        </div>
+    `;
+    
+    results.forEach(result => {
+        const className = result.status === 'success' ? 'success-item' : 'error-item';
+        resultsHTML += `<div class="${className}">Row ${result.row}: ${escapeHtml(result.message)}</div>`;
+    });
+    
+    resultsContent.innerHTML = resultsHTML;
+    resultsDiv.style.display = 'block';
+    
+    // Reset form if all successful
+    if (errorCount === 0) {
+        document.getElementById('bulk-data').value = '';
+        document.getElementById('bulk-preview').style.display = 'none';
+        parsedBulkData = [];
+        
+        // Refresh the pending videos view
+        if (currentTab === 'pending') {
+            loadVideos('pending');
+        }
+    }
+    
+    submitBtn.disabled = false;
+    submitBtn.textContent = '📤 Submit All Topics';
 }

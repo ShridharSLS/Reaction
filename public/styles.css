@@ -329,16 +329,123 @@ header p {
 }
 
 .link-icon:hover {
-    background-color: rgba(102, 126, 234, 0.1);
-    text-decoration: none;
+    background-color: #f0f0f0;
 }
 
-.detail-label {
+/* Bulk Import Styles */
+.bulk-import-instructions {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 20px;
+    color: #495057;
+    font-size: 14px;
+}
+
+#bulk-data {
+    width: 100%;
+    min-height: 200px;
+    padding: 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    resize: vertical;
+    background: #fafafa;
+}
+
+#bulk-data:focus {
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.bulk-actions {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.bulk-preview {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.bulk-preview h3 {
+    margin-top: 0;
+    color: #333;
+}
+
+.bulk-preview-table {
+    overflow-x: auto;
+    margin: 15px 0;
+}
+
+.bulk-preview-table table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.bulk-preview-table th,
+.bulk-preview-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.bulk-preview-table th {
+    background: #667eea;
+    color: white;
     font-weight: 600;
-    color: #555;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+}
+
+.bulk-preview-table tr:hover {
+    background: #f8f9fa;
+}
+
+.bulk-validation-errors {
+    margin-top: 15px;
+}
+
+.error-item {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 8px 12px;
+    margin: 5px 0;
+    border-radius: 4px;
+    border: 1px solid #f5c6cb;
+    font-size: 14px;
+}
+
+.bulk-results {
+    margin-top: 20px;
+    padding: 20px;
+    background: #d4edda;
+    border-radius: 8px;
+    border: 1px solid #c3e6cb;
+}
+
+.bulk-results h3 {
+    margin-top: 0;
+    color: #155724;
+}
+
+.success-item {
+    background: #d1ecf1;
+    color: #0c5460;
+    padding: 8px 12px;
+    margin: 5px 0;
+    border-radius: 4px;
+    border: 1px solid #bee5eb;
+    font-size: 14px;
 }
 
 .detail-value {
