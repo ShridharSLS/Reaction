@@ -362,6 +362,10 @@ function getVideoActions(video, status) {
             return `
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
             `;
+        case 'relevance':
+            return `
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
+            `;
         default:
             return '';
     }
