@@ -30,15 +30,20 @@
         </header>
 
         <nav class="tab-nav">
-            <button class="tab-btn active" data-tab="add-topic">➕ Add Topic</button>
-            <button class="tab-btn" data-tab="bulk-import">📋 Bulk Import</button>
+            <div class="dropdown">
+                <button class="dropdown-btn">📋 Tasks ▼</button>
+                <div class="dropdown-content">
+                    <button class="dropdown-item" data-tab="add-topic">➕ Add Topic</button>
+                    <button class="dropdown-item" data-tab="bulk-import">📋 Bulk Import</button>
+                    <button class="dropdown-item" data-tab="manage-people">👥 Manage People</button>
+                    <button class="dropdown-item" data-tab="manage-admins">🔐 Manage Admins</button>
+                </div>
+            </div>
             <button class="tab-btn" data-tab="relevance">🎯 Relevance</button>
             <button class="tab-btn" data-tab="pending">🟡 Pending</button>
             <button class="tab-btn" data-tab="accepted">✅ Accepted</button>
             <button class="tab-btn" data-tab="rejected">🟥 Rejected</button>
             <button class="tab-btn" data-tab="assigned">🆔 ID Assigned</button>
-            <button class="tab-btn" data-tab="manage-people">👥 Manage People</button>
-            <button class="tab-btn" data-tab="manage-admins">🔐 Manage Admins</button>
         </nav>
 
         <!-- Add Topic Tab -->

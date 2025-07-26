@@ -38,22 +38,81 @@ document.addEventListener('DOMContentLoaded', function() {
 // Tab Management
 function initializeTabs() {
     const tabButtons = document.querySelectorAll('.tab-btn');
-    const tabContents = document.querySelectorAll('.tab-content');
+    const dropdownItems = document.querySelectorAll('.dropdown-item');
+    const dropdownBtn = document.querySelector('.dropdown-btn');
+    const dropdown = document.querySelector('.dropdown');
     
+    // Handle regular tab buttons
     tabButtons.forEach(button => {
         button.addEventListener('click', function() {
             const tabId = this.getAttribute('data-tab');
             switchTab(tabId);
         });
     });
+    
+    // Handle dropdown items
+    dropdownItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const tabId = this.getAttribute('data-tab');
+            switchTab(tabId);
+            // Close dropdown after selection
+            dropdown.classList.remove('active');
+        });
+    });
+    
+    // Handle dropdown toggle
+    if (dropdownBtn) {
+        dropdownBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('active');
+        });
+    }
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!dropdown.contains(e.target)) {
+            dropdown.classList.remove('active');
+        }
+    });
 }
 
 function switchTab(tabId) {
-    // Update buttons
+    // Update regular tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+    
+    // Update dropdown items
+    document.querySelectorAll('.dropdown-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Update dropdown button state
+    const dropdownBtn = document.querySelector('.dropdown-btn');
+    const isDropdownTab = ['add-topic', 'bulk-import', 'manage-people', 'manage-admins'].includes(tabId);
+    
+    if (isDropdownTab) {
+        // Highlight the dropdown button and the specific item
+        if (dropdownBtn) {
+            dropdownBtn.style.background = 'white';
+            dropdownBtn.style.color = '#667eea';
+        }
+        const activeDropdownItem = document.querySelector(`.dropdown-item[data-tab="${tabId}"]`);
+        if (activeDropdownItem) {
+            activeDropdownItem.classList.add('active');
+        }
+    } else {
+        // Reset dropdown button style for non-dropdown tabs
+        if (dropdownBtn) {
+            dropdownBtn.style.background = 'rgba(255,255,255,0.2)';
+            dropdownBtn.style.color = 'white';
+        }
+        // Highlight the regular tab button
+        const activeTabBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+        if (activeTabBtn) {
+            activeTabBtn.classList.add('active');
+        }
+    }
     
     // Update content
     document.querySelectorAll('.tab-content').forEach(content => {
@@ -68,7 +127,7 @@ function switchTab(tabId) {
         loadPeople();
     } else if (tabId === 'manage-admins') {
         initializeAdminManagement();
-    } else if (tabId !== 'add-topic') {
+    } else if (tabId !== 'add-topic' && tabId !== 'bulk-import') {
         loadVideos(tabId);
     }
 }
