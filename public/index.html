@@ -40,7 +40,7 @@
                 </div>
             </div>
             <button class="tab-btn" data-tab="relevance">🎯 Relevance</button>
-            <button class="tab-btn" data-tab="pending">🟡 Pending</button>
+            <button class="tab-btn active" data-tab="pending">🟡 Pending</button>
             <button class="tab-btn" data-tab="accepted">✅ Accepted</button>
             
             <!-- Closed Dropdown -->
@@ -55,7 +55,7 @@
         </nav>
 
         <!-- Add Topic Tab -->
-        <div id="add-topic" class="tab-content active">
+        <div id="add-topic" class="tab-content">
             <div class="form-container">
                 <h2>Add Video Topic</h2>
                 <form id="add-video-form">
@@ -137,7 +137,7 @@
         </div>
 
         <!-- Pending Tab -->
-        <div id="pending" class="tab-content">
+        <div id="pending" class="tab-content active">
             <div class="view-header">
                 <h2>🟡 Pending Videos</h2>
                 <button class="btn btn-secondary" onclick="exportCSV('pending')">📤 Export CSV</button>

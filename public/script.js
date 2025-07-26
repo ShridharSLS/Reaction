@@ -1,5 +1,5 @@
 // Global state
-let currentTab = 'add-topic';
+let currentTab = 'pending';
 let people = [];
 let confirmationCallback = null;
 let videoIdCallback = null;
