@@ -39,8 +39,8 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeTabs() {
     const tabButtons = document.querySelectorAll('.tab-btn');
     const dropdownItems = document.querySelectorAll('.dropdown-item');
-    const dropdownBtn = document.querySelector('.dropdown-btn');
-    const dropdown = document.querySelector('.dropdown');
+    const dropdownBtns = document.querySelectorAll('.dropdown-btn');
+    const dropdowns = document.querySelectorAll('.dropdown');
     
     // Handle regular tab buttons
     tabButtons.forEach(button => {
@@ -55,24 +55,38 @@ function initializeTabs() {
         item.addEventListener('click', function() {
             const tabId = this.getAttribute('data-tab');
             switchTab(tabId);
-            // Close dropdown after selection
-            dropdown.classList.remove('active');
+            // Close all dropdowns after selection
+            dropdowns.forEach(dropdown => {
+                dropdown.classList.remove('active');
+            });
         });
     });
     
-    // Handle dropdown toggle
-    if (dropdownBtn) {
-        dropdownBtn.addEventListener('click', function(e) {
+    // Handle dropdown toggles
+    dropdownBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            dropdown.classList.toggle('active');
+            const parentDropdown = this.closest('.dropdown');
+            
+            // Close all other dropdowns
+            dropdowns.forEach(dropdown => {
+                if (dropdown !== parentDropdown) {
+                    dropdown.classList.remove('active');
+                }
+            });
+            
+            // Toggle current dropdown
+            parentDropdown.classList.toggle('active');
         });
-    }
+    });
     
-    // Close dropdown when clicking outside
+    // Close dropdowns when clicking outside
     document.addEventListener('click', function(e) {
-        if (!dropdown.contains(e.target)) {
-            dropdown.classList.remove('active');
-        }
+        dropdowns.forEach(dropdown => {
+            if (!dropdown.contains(e.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
     });
 }
 
@@ -87,26 +101,31 @@ function switchTab(tabId) {
         item.classList.remove('active');
     });
     
-    // Update dropdown button state
-    const dropdownBtn = document.querySelector('.dropdown-btn');
-    const isDropdownTab = ['add-topic', 'bulk-import', 'manage-people', 'manage-admins'].includes(tabId);
+    // Update dropdown button states
+    const dropdownBtns = document.querySelectorAll('.dropdown-btn');
+    const isTasksDropdownTab = ['add-topic', 'bulk-import', 'manage-people', 'manage-admins'].includes(tabId);
+    const isClosedDropdownTab = ['rejected', 'assigned', 'team'].includes(tabId);
     
-    if (isDropdownTab) {
-        // Highlight the dropdown button and the specific item
-        if (dropdownBtn) {
-            dropdownBtn.style.background = 'white';
-            dropdownBtn.style.color = '#667eea';
-        }
+    // Reset all dropdown button styles first
+    dropdownBtns.forEach(btn => {
+        btn.style.background = 'rgba(255,255,255,0.2)';
+        btn.style.color = 'white';
+    });
+    
+    if (isTasksDropdownTab || isClosedDropdownTab) {
+        // Find the correct dropdown button and highlight it
         const activeDropdownItem = document.querySelector(`.dropdown-item[data-tab="${tabId}"]`);
         if (activeDropdownItem) {
             activeDropdownItem.classList.add('active');
+            // Find the parent dropdown button and highlight it
+            const parentDropdown = activeDropdownItem.closest('.dropdown');
+            const parentDropdownBtn = parentDropdown.querySelector('.dropdown-btn');
+            if (parentDropdownBtn) {
+                parentDropdownBtn.style.background = 'white';
+                parentDropdownBtn.style.color = '#667eea';
+            }
         }
     } else {
-        // Reset dropdown button style for non-dropdown tabs
-        if (dropdownBtn) {
-            dropdownBtn.style.background = 'rgba(255,255,255,0.2)';
-            dropdownBtn.style.color = 'white';
-        }
         // Highlight the regular tab button
         const activeTabBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
         if (activeTabBtn) {
