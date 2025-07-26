@@ -151,7 +151,7 @@ function updateVideosDisplay(status, videos) {
 function createVideoCard(video, status) {
     const typeClass = video.type.toLowerCase();
     const score = video.score !== null ? video.score : '-';
-    const relevanceRating = video.relevance_rating >= 0 ? video.relevance_rating : '';
+    const relevanceRating = video.relevance_rating >= 0 ? video.relevance_rating : (status === 'relevance' ? '-1' : '');
     
     return `
         <div class="video-card ${typeClass}">
@@ -184,7 +184,10 @@ function createVideoCard(video, status) {
                     <span class="detail-value">
                         ${status === 'relevance' || status === 'pending' || status === 'accepted' ? 
                             `<select onchange="updateRelevance(${video.id}, this.value)" style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
-                                <option value="" ${relevanceRating === '' ? 'selected' : ''}>-</option>
+                                ${status === 'relevance' ? 
+                                    `<option value="-1" ${relevanceRating === '-1' ? 'selected' : ''}>-1</option>` : 
+                                    `<option value="" ${relevanceRating === '' ? 'selected' : ''}>-</option>`
+                                }
                                 <option value="0" ${relevanceRating == 0 ? 'selected' : ''}>0</option>
                                 <option value="1" ${relevanceRating == 1 ? 'selected' : ''}>1</option>
                                 <option value="2" ${relevanceRating == 2 ? 'selected' : ''}>2</option>
