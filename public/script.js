@@ -147,6 +147,8 @@ function switchTab(tabId) {
         setupPeopleTabs(); // Setup people management tabs
     } else if (tabId === 'manage-admins') {
         initializeAdminManagement();
+    } else if (tabId === 'all') {
+        loadAllEntries();
     } else if (tabId !== 'add-topic' && tabId !== 'bulk-import') {
         loadVideos(tabId);
     }
@@ -893,8 +895,17 @@ function showVideoIdInput(callback) {
 // Export Functions
 function exportCSV(status) {
     const link = document.createElement('a');
-    link.href = `/api/export/${status}`;
-    link.download = `${status}_videos.csv`;
+    
+    if (status === 'all') {
+        // For All view, export all entries
+        link.href = '/api/export/all';
+        link.download = 'all_database_entries.csv';
+    } else {
+        // For specific status views
+        link.href = `/api/export/${status}`;
+        link.download = `${status}_videos.csv`;
+    }
+    
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1505,4 +1516,131 @@ async function checkForDuplicates(url, inputElement) {
             console.error('Duplicate check failed:', error);
         }
     }, 500); // 500ms debounce
+}
+
+// All View Functions
+let allEntriesData = [];
+let currentSortColumn = null;
+let currentSortDirection = 'asc';
+
+async function loadAllEntries() {
+    try {
+        allEntriesData = await apiCall('/api/videos/all/entries');
+        renderAllEntriesTable(allEntriesData);
+        setupAllViewSearch();
+    } catch (error) {
+        console.error('Failed to load all entries:', error);
+        document.getElementById('all-table-body').innerHTML = '<tr><td colspan="100%" class="error-message">Failed to load data. Please try again.</td></tr>';
+    }
+}
+
+function renderAllEntriesTable(data) {
+    const headerContainer = document.getElementById('all-table-header');
+    const bodyContainer = document.getElementById('all-table-body');
+    
+    if (data.length === 0) {
+        headerContainer.innerHTML = '';
+        bodyContainer.innerHTML = '<tr><td colspan="100%" class="empty-state">No entries found</td></tr>';
+        return;
+    }
+    
+    // Define column order and display names
+    const columns = [
+        { key: 'id', label: 'ID', sortable: true },
+        { key: 'person_name', label: 'Person', sortable: true },
+        { key: 'link', label: 'Video Link', sortable: false },
+        { key: 'type', label: 'Type', sortable: true },
+        { key: 'status', label: 'Status', sortable: true },
+        { key: 'likes_count', label: 'Likes', sortable: true },
+        { key: 'relevance_rating', label: 'Relevance', sortable: true },
+        { key: 'score', label: 'Score', sortable: true },
+        { key: 'video_id_text', label: 'Video ID', sortable: true },
+        { key: 'video_code', label: 'Code', sortable: true },
+        { key: 'created_at', label: 'Created', sortable: true }
+    ];
+    
+    // Render header
+    headerContainer.innerHTML = columns.map(col => `
+        <th class="${col.sortable ? 'sortable' : ''} ${currentSortColumn === col.key ? 'sort-' + currentSortDirection : ''}" 
+            ${col.sortable ? `onclick="sortAllEntries('${col.key}')"` : ''}>
+            ${col.label}
+        </th>
+    `).join('');
+    
+    // Render body
+    bodyContainer.innerHTML = data.map(entry => `
+        <tr>
+            <td>${entry.id || ''}</td>
+            <td>${escapeHtml(entry.person_name || '')}</td>
+            <td class="link-cell">
+                ${entry.link ? `<a href="${escapeHtml(entry.link)}" target="_blank" title="${escapeHtml(entry.link)}">${escapeHtml(entry.link)}</a>` : ''}
+            </td>
+            <td class="type-cell">${entry.type || ''}</td>
+            <td class="status-cell">${entry.status || ''}</td>
+            <td>${entry.likes_count || 0}</td>
+            <td>${entry.relevance_rating !== null ? entry.relevance_rating : ''}</td>
+            <td>${entry.score !== null ? entry.score.toFixed(2) : ''}</td>
+            <td>${escapeHtml(entry.video_id_text || '')}</td>
+            <td>${escapeHtml(entry.video_code || '')}</td>
+            <td>${entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}</td>
+        </tr>
+    `).join('');
+}
+
+function sortAllEntries(column) {
+    if (currentSortColumn === column) {
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortColumn = column;
+        currentSortDirection = 'asc';
+    }
+    
+    const sortedData = [...allEntriesData].sort((a, b) => {
+        let aVal = a[column];
+        let bVal = b[column];
+        
+        // Handle null/undefined values
+        if (aVal === null || aVal === undefined) aVal = '';
+        if (bVal === null || bVal === undefined) bVal = '';
+        
+        // Convert to appropriate types for comparison
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
+        }
+        
+        if (aVal < bVal) return currentSortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return currentSortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+    
+    renderAllEntriesTable(sortedData);
+}
+
+function setupAllViewSearch() {
+    const searchInput = document.getElementById('all-search');
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            filterAllEntries(this.value.toLowerCase());
+        }, 300);
+    });
+}
+
+function filterAllEntries(searchTerm) {
+    if (!searchTerm) {
+        renderAllEntriesTable(allEntriesData);
+        return;
+    }
+    
+    const filteredData = allEntriesData.filter(entry => {
+        return Object.values(entry).some(value => {
+            if (value === null || value === undefined) return false;
+            return String(value).toLowerCase().includes(searchTerm);
+        });
+    });
+    
+    renderAllEntriesTable(filteredData);
 }

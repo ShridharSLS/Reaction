@@ -50,6 +50,7 @@
                     <button class="dropdown-item" data-tab="rejected">🟥 Rejected</button>
                     <button class="dropdown-item" data-tab="assigned">👨‍💼 Shridhar</button>
                     <button class="dropdown-item" data-tab="team">👥 Team</button>
+                    <button class="dropdown-item" data-tab="all">📈 All</button>
                 </div>
             </div>
         </nav>
@@ -179,6 +180,23 @@
                 <button class="btn btn-secondary" onclick="exportCSV('team')">📤 Export CSV</button>
             </div>
             <div id="team-videos" class="videos-grid"></div>
+        </div>
+
+        <!-- All Tab -->
+        <div id="all" class="tab-content">
+            <div class="view-header">
+                <h2>📈 All Database Entries</h2>
+                <div class="all-view-controls">
+                    <input type="text" id="all-search" placeholder="Search all columns..." class="search-input">
+                    <button class="btn btn-secondary" onclick="exportCSV('all')">📤 Export CSV</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table id="all-table" class="sortable-table">
+                    <thead id="all-table-header"></thead>
+                    <tbody id="all-table-body"></tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Manage People Tab -->

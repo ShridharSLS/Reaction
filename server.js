@@ -210,6 +210,35 @@ app.put('/api/people/:id/unarchive', async (req, res) => {
     }
 });
 
+// Get all database entries for All view
+app.get('/api/videos/all/entries', async (req, res) => {
+    try {
+        // Get all videos with people names joined
+        const { data: videos, error: videosError } = await supabase
+            .from('videos')
+            .select(`
+                *,
+                people!videos_added_by_fkey(name)
+            `)
+            .order('created_at', { ascending: false });
+            
+        if (videosError) {
+            res.status(500).json({ error: videosError.message });
+            return;
+        }
+        
+        // Transform data to include person name directly
+        const transformedVideos = videos.map(video => ({
+            ...video,
+            person_name: video.people?.name || 'Unknown'
+        }));
+        
+        res.json(transformedVideos);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Get videos by status
 app.get('/api/videos/:status', async (req, res) => {
     try {
@@ -597,6 +626,71 @@ app.get('/api/videos/:status/export', async (req, res) => {
         
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename="${status}_videos.csv"`);
+        res.send(csvContent);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Export all database entries as CSV
+app.get('/api/export/all', async (req, res) => {
+    try {
+        // Get all videos with people names joined
+        const { data: videos, error: videosError } = await supabase
+            .from('videos')
+            .select(`
+                *,
+                people!videos_added_by_fkey(name)
+            `)
+            .order('created_at', { ascending: false });
+            
+        if (videosError) {
+            res.status(500).json({ error: videosError.message });
+            return;
+        }
+        
+        // Create CSV content
+        const csvRows = [];
+        
+        // Header row
+        csvRows.push([
+            'ID',
+            'Person Name',
+            'Video Link',
+            'Type',
+            'Status',
+            'Likes Count',
+            'Relevance Rating',
+            'Score',
+            'Video ID Text',
+            'Video Code',
+            'Created At',
+            'Updated At'
+        ].map(header => `"${header}"`).join(','));
+        
+        // Data rows
+        videos.forEach(video => {
+            const csvRow = [
+                `"${video.id || ''}"`,
+                `"${video.people?.name || 'Unknown'}"`,
+                `"${video.link || ''}"`,
+                `"${video.type || ''}"`,
+                `"${video.status || ''}"`,
+                `"${video.likes_count || 0}"`,
+                `"${video.relevance_rating !== null ? video.relevance_rating : ''}"`,
+                `"${video.score !== null ? video.score.toFixed(2) : ''}"`,
+                `"${video.video_id_text || ''}"`,
+                `"${video.video_code || ''}"`,
+                `"${video.created_at || ''}"`,
+                `"${video.updated_at || ''}"`
+            ];
+            csvRows.push(csvRow.join(','));
+        });
+        
+        const csvContent = csvRows.join('\n');
+        
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="all_database_entries.csv"');
         res.send(csvContent);
     } catch (err) {
         res.status(500).json({ error: err.message });
