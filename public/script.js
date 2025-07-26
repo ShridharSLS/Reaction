@@ -267,7 +267,6 @@ function getVideoActions(video, status) {
             `;
         case 'assigned':
             return `
-                <button class="btn btn-warning" onclick="revertToAccepted(${video.id})">↩️ Accepted</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
             `;
         default:
@@ -488,16 +487,10 @@ function setupModals() {
             videoIdCallback(videoId);
         }
         
-        // Refresh the pending videos view
-        if (currentView === 'pending') {
-            loadVideos('pending');
-        }
-        
-        if (event.target === videoIdModal) {
-            videoIdModal.style.display = 'none';
-            document.getElementById('video-id-input').value = '';
-            videoIdCallback = null;
-        }
+        // Close the modal after submission
+        document.getElementById('video-id-modal').style.display = 'none';
+        document.getElementById('video-id-input').value = '';
+        videoIdCallback = null;
     });
 }
 
