@@ -7,10 +7,26 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
+    <!-- Loading screen -->
+    <div id="auth-loading" style="display: flex; justify-content: center; align-items: center; height: 100vh; font-size: 18px; color: #666;">
+        <div class="loading"></div>
+        <span style="margin-left: 10px;">Checking authentication...</span>
+    </div>
+    
+    <div id="main-app" class="container" style="display: none;">
         <header>
-            <h1>🌊 Video Topic Review System</h1>
-            <p>Manage video submissions through review stages</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                    <h1>🌊 Video Topic Review System</h1>
+                    <p>Manage video submissions through review stages</p>
+                </div>
+                <div id="user-info" style="text-align: right;">
+                    <div id="user-email" style="font-weight: 600; color: #333;"></div>
+                    <button id="logout-btn" class="btn btn-secondary" style="margin-top: 5px; font-size: 12px; padding: 4px 8px;">
+                        🚪 Logout
+                    </button>
+                </div>
+            </div>
         </header>
 
         <nav class="tab-nav">
@@ -22,6 +38,7 @@
             <button class="tab-btn" data-tab="rejected">🟥 Rejected</button>
             <button class="tab-btn" data-tab="assigned">🆔 ID Assigned</button>
             <button class="tab-btn" data-tab="manage-people">👥 Manage People</button>
+            <button class="tab-btn" data-tab="manage-admins">🔐 Manage Admins</button>
         </nav>
 
         <!-- Add Topic Tab -->
@@ -156,6 +173,37 @@
                 <div id="people-list" class="people-list"></div>
             </div>
         </div>
+
+        <!-- Manage Admins Tab -->
+        <div id="manage-admins" class="tab-content">
+            <div class="form-container">
+                <h2>🔐 Manage Admins</h2>
+                <p class="admin-instructions">
+                    Only users with emails listed below can access this admin dashboard via Google Sign-In.
+                </p>
+                
+                <form id="add-admin-form">
+                    <div class="form-group">
+                        <label for="admin-email">Admin Email:</label>
+                        <input type="email" id="admin-email" required placeholder="Enter email address...">
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-name">Admin Name (optional):</label>
+                        <input type="text" id="admin-name" placeholder="Enter display name...">
+                    </div>
+                    <div class="form-group">
+                        <label for="admin-password">Password:</label>
+                        <input type="password" id="admin-password" required placeholder="Enter password...">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Admin</button>
+                </form>
+                
+                <div class="admin-list-container">
+                    <h3>Current Admins</h3>
+                    <div id="admin-list" class="admin-list"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Confirmation Modal -->
@@ -186,5 +234,64 @@
     </div>
 
     <script src="script.js?v=8"></script>
+    <script>
+        // Simple authentication protection for main app
+        function initializeAuth() {
+            try {
+                // Check if user has valid session
+                const session = localStorage.getItem('adminSession');
+                
+                if (!session) {
+                    redirectToLogin();
+                    return;
+                }
+                
+                let sessionData;
+                try {
+                    sessionData = JSON.parse(session);
+                } catch (e) {
+                    localStorage.removeItem('adminSession');
+                    redirectToLogin();
+                    return;
+                }
+                
+                // Check if session is still valid (less than 24 hours old)
+                const loginTime = new Date(sessionData.loginTime);
+                const now = new Date();
+                const hoursSinceLogin = (now - loginTime) / (1000 * 60 * 60);
+                
+                if (hoursSinceLogin >= 24) {
+                    // Session expired
+                    localStorage.removeItem('adminSession');
+                    redirectToLogin();
+                    return;
+                }
+                
+                // Session is valid, show main app
+                document.getElementById('auth-loading').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+                
+                // Update user info
+                document.getElementById('user-email').textContent = sessionData.email;
+                
+                // Setup logout handler
+                document.getElementById('logout-btn').addEventListener('click', function() {
+                    localStorage.removeItem('adminSession');
+                    redirectToLogin();
+                });
+                
+            } catch (error) {
+                console.error('Authentication initialization failed:', error);
+                redirectToLogin();
+            }
+        }
+        
+        function redirectToLogin() {
+            window.location.href = '/login';
+        }
+        
+        // Initialize authentication on page load
+        document.addEventListener('DOMContentLoaded', initializeAuth);
+    </script>
 </body>
 </html>

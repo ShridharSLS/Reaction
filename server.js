@@ -413,9 +413,160 @@ app.get('/api/videos/:status/export', async (req, res) => {
     }
 });
 
-// Serve main page
+// Simple Authentication endpoints
+
+// Login with email and password
+app.post('/api/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
+        
+        // Check if email and password match in admins table
+        const { data: admin, error } = await supabase
+            .from('admins')
+            .select('id, email, name, password')
+            .eq('email', email.toLowerCase())
+            .eq('password', password)
+            .single();
+            
+        if (error || !admin) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
+        
+        // Update last login
+        await supabase
+            .from('admins')
+            .update({ last_login: new Date().toISOString() })
+            .eq('id', admin.id);
+        
+        res.json({ 
+            success: true, 
+            admin: { 
+                id: admin.id, 
+                email: admin.email, 
+                name: admin.name 
+            } 
+        });
+    } catch (err) {
+        console.error('Login failed:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Get all admins (for admin management)
+app.get('/api/admins', async (req, res) => {
+    try {
+        const { data: admins, error } = await supabase
+            .from('admins')
+            .select('id, email, name, created_at, last_login')
+            .order('created_at', { ascending: false });
+            
+        if (error) {
+            console.error('Get admins error:', error);
+            return res.status(500).json({ error: 'Failed to fetch admins' });
+        }
+        
+        res.json(admins);
+    } catch (err) {
+        console.error('Get admins failed:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Add new admin
+app.post('/api/admins', async (req, res) => {
+    try {
+        const { email, name, password } = req.body;
+        
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
+        
+        const { data: admin, error } = await supabase
+            .from('admins')
+            .insert([{
+                email: email.toLowerCase(),
+                name: name || null,
+                password: password
+            }])
+            .select('id, email, name')
+            .single();
+            
+        if (error) {
+            if (error.code === '23505') { // Unique constraint violation
+                return res.status(409).json({ error: 'Admin with this email already exists' });
+            }
+            console.error('Add admin error:', error);
+            return res.status(500).json({ error: 'Failed to add admin' });
+        }
+        
+        res.json({ id: admin.id, message: 'Admin added successfully' });
+    } catch (err) {
+        console.error('Add admin failed:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Remove admin
+app.delete('/api/admins/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const { error } = await supabase
+            .from('admins')
+            .delete()
+            .eq('id', id);
+            
+        if (error) {
+            console.error('Remove admin error:', error);
+            return res.status(500).json({ error: 'Failed to remove admin' });
+        }
+        
+        res.json({ message: 'Admin removed successfully' });
+    } catch (err) {
+        console.error('Remove admin failed:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Change admin password
+app.put('/api/admins/:id/password', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { password } = req.body;
+        
+        if (!password) {
+            return res.status(400).json({ error: 'Password is required' });
+        }
+        
+        const { error } = await supabase
+            .from('admins')
+            .update({ password: password })
+            .eq('id', id);
+            
+        if (error) {
+            console.error('Change password error:', error);
+            return res.status(500).json({ error: 'Failed to change password' });
+        }
+        
+        res.json({ message: 'Password changed successfully' });
+    } catch (err) {
+        console.error('Change password failed:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Serve main page (protected)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Serve login page
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 app.listen(PORT, () => {

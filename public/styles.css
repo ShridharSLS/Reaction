@@ -740,3 +740,100 @@ header p {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Admin Management Styles */
+.admin-instructions {
+    background: #f0f8ff;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 4px solid #007bff;
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 14px;
+}
+
+.admin-list-container {
+    margin-top: 30px;
+}
+
+.admin-list-container h3 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.admin-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.admin-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.admin-item:hover {
+    background: #e9ecef;
+    border-color: #dee2e6;
+}
+
+.admin-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.admin-email {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.admin-name {
+    color: #666;
+    font-size: 13px;
+    margin-top: 2px;
+}
+
+.admin-meta {
+    color: #888;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-remove-admin {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-remove-admin:hover {
+    background: #c82333;
+}
+
+.admin-empty {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px dashed #dee2e6;
+}

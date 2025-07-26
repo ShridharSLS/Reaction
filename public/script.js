@@ -66,6 +66,8 @@ function switchTab(tabId) {
     // Load data for the new tab
     if (tabId === 'manage-people') {
         loadPeople();
+    } else if (tabId === 'manage-admins') {
+        initializeAdminManagement();
     } else if (tabId !== 'add-topic') {
         loadVideos(tabId);
     }
@@ -953,4 +955,177 @@ async function submitBulkData() {
     
     submitBtn.disabled = false;
     submitBtn.textContent = '📤 Submit All Topics';
+}
+
+// Admin Management Functions
+
+// Load and display admins
+async function loadAdmins() {
+    try {
+        const response = await fetch('/api/admins');
+        const admins = await response.json();
+        
+        const adminList = document.getElementById('admin-list');
+        
+        if (admins.length === 0) {
+            adminList.innerHTML = '<div class="admin-empty">No admins configured yet. Add the first admin above.</div>';
+            return;
+        }
+        
+        adminList.innerHTML = admins.map(admin => {
+            const addedDate = new Date(admin.created_at).toLocaleDateString();
+            const lastLogin = admin.last_login ? new Date(admin.last_login).toLocaleDateString() : 'Never';
+            
+            return `
+                <div class="admin-item">
+                    <div class="admin-info">
+                        <div class="admin-email">${admin.email}</div>
+                        ${admin.name ? `<div class="admin-name">${admin.name}</div>` : ''}
+                        <div class="admin-meta">
+                            Added: ${addedDate} | Last login: ${lastLogin}
+                        </div>
+                    </div>
+                    <div class="admin-actions">
+                        <button class="btn btn-secondary" onclick="changePassword(${admin.id}, '${admin.email}')" style="font-size: 12px; padding: 4px 8px; margin-right: 5px;">
+                            🔑 Change Password
+                        </button>
+                        <button class="btn-remove-admin" onclick="removeAdmin(${admin.id}, '${admin.email}')">
+                            🗑️ Remove
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Error loading admins:', error);
+        showNotification('Failed to load admins', 'error');
+    }
+}
+
+// Add new admin
+async function addAdmin(email, name, password) {
+    try {
+        const response = await fetch('/api/admins', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, name, password })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            if (response.status === 409) {
+                showNotification('Admin with this email already exists', 'error');
+            } else {
+                showNotification(result.error || 'Failed to add admin', 'error');
+            }
+            return false;
+        }
+        
+        showNotification('Admin added successfully', 'success');
+        loadAdmins();
+        return true;
+    } catch (error) {
+        console.error('Error adding admin:', error);
+        showNotification('Failed to add admin', 'error');
+        return false;
+    }
+}
+
+// Change admin password
+async function changePassword(adminId, email) {
+    const newPassword = prompt(`Enter new password for ${email}:`);
+    
+    if (!newPassword) return;
+    
+    if (newPassword.length < 4) {
+        showNotification('Password must be at least 4 characters long', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admins/${adminId}/password`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password: newPassword })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            showNotification(result.error || 'Failed to change password', 'error');
+            return;
+        }
+        
+        showNotification('Password changed successfully', 'success');
+    } catch (error) {
+        console.error('Error changing password:', error);
+        showNotification('Failed to change password', 'error');
+    }
+}
+
+// Remove admin with confirmation
+async function removeAdmin(adminId, email) {
+    const confirmed = await showConfirmation(
+        'Remove Admin',
+        `Are you sure you want to remove admin access for "${email}"? This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`/api/admins/${adminId}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            showNotification(result.error || 'Failed to remove admin', 'error');
+            return;
+        }
+        
+        showNotification('Admin removed successfully', 'success');
+        loadAdmins();
+    } catch (error) {
+        console.error('Error removing admin:', error);
+        showNotification('Failed to remove admin', 'error');
+    }
+}
+
+// Initialize admin management when tab is loaded
+function initializeAdminManagement() {
+    const addAdminForm = document.getElementById('add-admin-form');
+    if (addAdminForm) {
+        addAdminForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('admin-email').value.trim();
+            const name = document.getElementById('admin-name').value.trim();
+            const password = document.getElementById('admin-password').value;
+            
+            if (!email || !password) {
+                showNotification('Email and password are required', 'error');
+                return;
+            }
+            
+            if (password.length < 4) {
+                showNotification('Password must be at least 4 characters long', 'error');
+                return;
+            }
+            
+            const success = await addAdmin(email, name || null, password);
+            if (success) {
+                document.getElementById('admin-email').value = '';
+                document.getElementById('admin-name').value = '';
+                document.getElementById('admin-password').value = '';
+            }
+        });
+    }
+    
+    loadAdmins();
 }
