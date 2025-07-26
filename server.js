@@ -284,18 +284,21 @@ app.post('/api/videos', async (req, res) => {
             return;
         }
         
+        // Prepare video data with video_code for smart duplicate detection
+        const videoData = {
+            added_by: personId,
+            link,
+            type,
+            likes_count: likes_count || 0,
+            video_id_text,
+            video_code: videoCode,  // Store extracted video code
+            relevance_rating: relevance_rating !== undefined ? relevance_rating : -1,  // Use provided or default to -1
+            status: status || 'relevance'    // Use provided status or default to 'relevance'
+        };
+        
         const { data, error } = await supabase
             .from('videos')
-            .insert([{
-                added_by: personId,
-                link,
-                type,
-                likes_count: likes_count || 0,
-                video_id_text,
-                video_code: videoCode,  // Store extracted video code
-                relevance_rating: relevance_rating !== undefined ? relevance_rating : -1,  // Use provided or default to -1
-                status: status || 'relevance'    // Use provided status or default to 'relevance'
-            }])
+            .insert([videoData])
             .select()
             .single();
             
