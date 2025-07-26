@@ -819,17 +819,42 @@ async function submitBulkData() {
     // Submit each video
     for (const row of parsedBulkData) {
         try {
-            // Find person by name
-            const person = people.find(p => p.name.toLowerCase() === row.name.toLowerCase());
+            // Find person by name or create if doesn't exist
+            let person = people.find(p => p.name.toLowerCase() === row.name.toLowerCase());
             
             if (!person) {
-                results.push({
-                    row: row.rowNum,
-                    status: 'error',
-                    message: `Person '${row.name}' not found. Please add them to Manage People first.`
-                });
-                errorCount++;
-                continue;
+                // Create new person automatically
+                try {
+                    const response = await fetch('/api/people', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ name: row.name })
+                    });
+                    
+                    if (response.ok) {
+                        const newPerson = await response.json();
+                        person = { id: newPerson.id, name: row.name };
+                        people.push(person); // Add to local people array for subsequent rows
+                    } else {
+                        results.push({
+                            row: row.rowNum,
+                            status: 'error',
+                            message: `Failed to create person '${row.name}': ${await response.text()}`
+                        });
+                        errorCount++;
+                        continue;
+                    }
+                } catch (createError) {
+                    results.push({
+                        row: row.rowNum,
+                        status: 'error',
+                        message: `Failed to create person '${row.name}': ${createError.message}`
+                    });
+                    errorCount++;
+                    continue;
+                }
             }
             
             const videoData = {
