@@ -305,6 +305,18 @@ header p {
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
+/* Team button with slightly different color */
+.btn-team {
+    background: #7c3aed;
+    color: white;
+}
+
+.btn-team:hover {
+    background: #6d28d9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+}
+
 .btn-secondary {
     background: #6c757d;
     color: white;
