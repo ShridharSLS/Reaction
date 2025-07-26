@@ -124,7 +124,7 @@ app.get('/api/videos/:status', async (req, res) => {
             .eq('status', status)
             .order('type', { ascending: false }) // Trending first
             .order('score', { ascending: false, nullsFirst: false })
-            .order('link_added_on', { ascending: false });
+            .order('likes_count', { ascending: false, nullsFirst: false });
             
         if (videosError) {
             res.status(500).json({ error: videosError.message });
@@ -323,7 +323,7 @@ app.get('/api/videos/:status/export', async (req, res) => {
             .eq('status', status)
             .order('type', { ascending: false }) // Trending first
             .order('score', { ascending: false, nullsFirst: false })
-            .order('link_added_on', { ascending: false });
+            .order('likes_count', { ascending: false, nullsFirst: false });
             
         if (videosError) {
             res.status(500).json({ error: videosError.message });
