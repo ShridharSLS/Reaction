@@ -82,8 +82,8 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="likes-count">Likes Count:</label>
-                        <input type="number" id="likes-count" required min="0" placeholder="0">
+                        <label for="likes-count">Likes count (in thousands):</label>
+                        <input type="number" id="likes-count" required min="0" placeholder="Number of likes in thousands">
                     </div>
                     
                     <button type="submit" class="btn btn-primary">Add Video Topic</button>
@@ -97,7 +97,7 @@
                 <h2>📋 Bulk Import Video Topics</h2>
                 <p class="bulk-import-instructions">
                 <p>
-                    <strong>Format:</strong> Copy and paste data from Google Sheets with columns: <code>Name | Link | Type | Likes Count | Relevance (optional)</code>
+                    <strong>Format:</strong> Copy and paste data from Google Sheets with columns: <code>Name | Link | Type | Likes count (in thousands) | Relevance (optional)</code>
                     <br><strong>Relevance Logic:</strong> If relevance column is empty → goes to Relevance section (-1). If relevance has value (0-3) → goes directly to Pending.
                     <br><strong>Auto-Create People:</strong> New names will be automatically added to the people database - no need to pre-create them!
                 </p>
