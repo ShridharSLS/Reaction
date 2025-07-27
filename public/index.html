@@ -262,14 +262,27 @@
         </div>
     </div>
 
-    <!-- Confirmation Modal -->
-    <div id="confirmation-modal" class="modal">
+    <!-- Custom Confirmation Modal -->
+    <div id="confirmModal" class="modal" style="display: none;">
         <div class="modal-content">
-            <h3 id="modal-title">Confirm Action</h3>
-            <p id="modal-message">Are you sure you want to proceed?</p>
+            <h3 id="confirmTitle">Confirm Action</h3>
+            <p id="confirmMessage">Are you sure you want to proceed?</p>
             <div class="modal-actions">
-                <button id="modal-confirm" class="btn btn-primary">Confirm</button>
-                <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
+                <button id="confirmYes" class="btn btn-danger">Yes</button>
+                <button id="confirmNo" class="btn btn-secondary">No</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Note Modal -->
+    <div id="noteModal" class="note-modal" style="display: none;">
+        <div class="note-modal-content">
+            <h3 id="noteModalTitle">Add Note</h3>
+            <textarea id="noteTextarea" class="note-textarea" placeholder="Add your thoughts about this decision..."></textarea>
+            <div class="note-modal-actions">
+                <button id="noteSaveBtn" class="btn-note-save">Save</button>
+                <button id="noteDeleteBtn" class="btn-note-delete" style="display: none;">Delete</button>
+                <button id="noteCancelBtn" class="btn-note-cancel">Cancel</button>
             </div>
         </div>
     </div>

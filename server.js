@@ -503,11 +503,14 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
 app.put('/api/videos/:id/status', async (req, res) => {
     try {
         const { id } = req.params;
-        const { status, video_id_text } = req.body;
+        const { status, video_id_text, note } = req.body;
         
         const updateData = { status };
         if (video_id_text !== undefined) {
             updateData.video_id_text = video_id_text;
+        }
+        if (note !== undefined) {
+            updateData.note = note;
         }
         
         const { error } = await supabase
@@ -521,6 +524,28 @@ app.put('/api/videos/:id/status', async (req, res) => {
         }
         
         res.json({ message: 'Video status updated successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update video note
+app.put('/api/videos/:id/note', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { note } = req.body;
+        
+        const { error } = await supabase
+            .from('videos')
+            .update({ note: note || null })
+            .eq('id', id);
+            
+        if (error) {
+            res.status(500).json({ error: error.message });
+            return;
+        }
+        
+        res.json({ message: 'Note updated successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
