@@ -413,6 +413,9 @@ function getVideoActions(video, status) {
             `;
         case 'accepted':
             return `
+                <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
+                    📋
+                </button>
                 <button class="btn btn-primary" onclick="assignVideoId(${video.id})">👨‍💼 Shridhar</button>
                 <button class="btn btn-team" onclick="assignVideoToTeam(${video.id})">👥 Team</button>
                 <button class="btn btn-reject" onclick="rejectVideo(${video.id})">❌ Reject</button>
@@ -1873,3 +1876,47 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Copy to clipboard functionality
+async function copyLinkAndNote(videoLink, videoNote) {
+    try {
+        // Create tab-separated format for Google Sheets (link + tab + note)
+        const textToCopy = `${videoLink || ''}\t${videoNote || ''}`;
+        
+        // Use the modern Clipboard API
+        await navigator.clipboard.writeText(textToCopy);
+        
+        // Show visual feedback
+        showCopySuccess();
+        showNotification('Link and note copied to clipboard!', 'success');
+    } catch (error) {
+        console.error('Failed to copy to clipboard:', error);
+        
+        // Fallback for older browsers
+        try {
+            const textArea = document.createElement('textarea');
+            textArea.value = `${videoLink || ''}\t${videoNote || ''}`;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            showCopySuccess();
+            showNotification('Link and note copied to clipboard!', 'success');
+        } catch (fallbackError) {
+            console.error('Fallback copy failed:', fallbackError);
+            showNotification('Failed to copy to clipboard. Please copy manually.', 'error');
+        }
+    }
+}
+
+function showCopySuccess() {
+    // Find all copy buttons and briefly highlight them
+    const copyBtns = document.querySelectorAll('.copy-btn');
+    copyBtns.forEach(btn => {
+        btn.classList.add('copy-success');
+        setTimeout(() => {
+            btn.classList.remove('copy-success');
+        }, 300);
+    });
+}

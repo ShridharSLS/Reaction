@@ -679,6 +679,43 @@ header p {
     color: white;
 }
 
+/* Copy to clipboard button styles */
+.copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    font-size: 1em;
+    padding: 4px;
+    border-radius: 3px;
+    transition: all 0.2s;
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.copy-btn:hover {
+    background-color: #f0f0f0;
+    color: #333;
+    transform: scale(1.1);
+}
+
+.copy-btn:active {
+    transform: scale(0.95);
+}
+
+.copy-success {
+    color: #28a745 !important;
+    animation: copySuccess 0.3s ease;
+}
+
+@keyframes copySuccess {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
 .sortable-table {
     width: 100%;
     border-collapse: collapse;
