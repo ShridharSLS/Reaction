@@ -583,6 +583,27 @@ header p {
     margin-left: 5px;
 }
 
+/* Button count styles for navigation */
+.btn-count {
+    font-size: 0.75em;
+    color: #888;
+    font-weight: normal;
+    margin-left: 4px;
+    opacity: 0.8;
+}
+
+.tab-btn .btn-count {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 1px 4px;
+    border-radius: 8px;
+    font-size: 0.7em;
+}
+
+.dropdown-item .btn-count {
+    color: #666;
+    font-size: 0.75em;
+}
+
 /* Note display and editing styles */
 .note-display {
     display: inline-flex;

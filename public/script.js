@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadPeople();
     setupForms();
     setupModals();
+    updateButtonCounts(); // Load navigation button counts
     
     // Load initial data for active tab
     if (currentTab !== 'add-topic' && currentTab !== 'manage-people') {
@@ -855,6 +856,7 @@ async function revertToPending(videoId) {
             body: JSON.stringify({ status: 'pending' })
         });
         loadVideos(currentTab);
+        updateButtonCounts(); // Update navigation counts
     } catch (error) {
         console.error('Failed to revert video:', error);
     }
@@ -867,6 +869,7 @@ async function revertToAccepted(videoId) {
             body: JSON.stringify({ status: 'accepted' })
         });
         loadVideos(currentTab);
+        updateButtonCounts(); // Update navigation counts
     } catch (error) {
         console.error('Failed to revert video:', error);
     }
@@ -1780,6 +1783,7 @@ async function saveNote() {
             
             hideNoteModal();
             loadVideos(currentTab);
+            updateButtonCounts(); // Update navigation counts
             showNotification(`Video ${currentNoteAction}ed with note successfully!`, 'success');
         } else {
             // Edit existing note
@@ -1836,6 +1840,38 @@ function renderNoteDisplay(note, videoId) {
             </button>
         </span>
     `;
+}
+
+// Update button counts in navigation
+async function updateButtonCounts() {
+    try {
+        // Fetch counts for each section
+        const responses = await Promise.all([
+            fetch('/api/videos/relevance'),
+            fetch('/api/videos/pending'),
+            fetch('/api/videos/accepted'),
+            fetch('/api/videos/rejected'),
+            fetch('/api/videos/assigned'),
+            fetch('/api/videos/team'),
+            fetch('/api/videos/all/entries')
+        ]);
+        
+        const data = await Promise.all(responses.map(r => r.json()));
+        
+        // Update button counts
+        document.getElementById('relevance-btn-count').textContent = `(${data[0].length})`;
+        document.getElementById('pending-btn-count').textContent = `(${data[1].length})`;
+        document.getElementById('accepted-btn-count').textContent = `(${data[2].length})`;
+        document.getElementById('rejected-btn-count').textContent = `(${data[3].length})`;
+        document.getElementById('assigned-btn-count').textContent = `(${data[4].length})`;
+        document.getElementById('team-btn-count').textContent = `(${data[5].length})`;
+        document.getElementById('all-btn-count').textContent = `(${data[6].length})`;
+        
+    } catch (error) {
+        console.error('Error updating button counts:', error);
+        // Hide counts on error
+        document.querySelectorAll('.btn-count').forEach(el => el.textContent = '');
+    }
 }
 
 // Initialize note modal event listeners
