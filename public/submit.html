@@ -216,12 +216,59 @@
                     option.textContent = person.name;
                     nameSelect.appendChild(option);
                 });
+                
+                // Pre-fill form after people are loaded
+                prefillForm();
             } catch (error) {
                 console.error('Failed to load people:', error);
                 showMessage('Failed to load names. Please refresh the page.', 'error');
             }
         }
 
+        // Parse URL parameters and pre-fill form
+        function parseURLParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const name = urlParams.get('name');
+            const type = urlParams.get('type');
+            
+            // Store parameters to use after people are loaded
+            window.prefilledData = { name, type };
+        }
+        
+        // Pre-fill form fields after people are loaded
+        function prefillForm() {
+            if (!window.prefilledData) return;
+            
+            const { name, type } = window.prefilledData;
+            
+            // Pre-fill name if provided
+            if (name) {
+                // Find the person by name (case-insensitive)
+                const nameOptions = Array.from(nameSelect.options);
+                const matchingOption = nameOptions.find(option => 
+                    option.textContent.toLowerCase() === name.toLowerCase()
+                );
+                if (matchingOption) {
+                    nameSelect.value = matchingOption.value;
+                }
+            }
+            
+            // Pre-fill video type if provided
+            if (type) {
+                const videoTypeSelect = document.getElementById('videoType');
+                const typeOptions = Array.from(videoTypeSelect.options);
+                const matchingTypeOption = typeOptions.find(option => 
+                    option.value.toLowerCase() === type.toLowerCase()
+                );
+                if (matchingTypeOption) {
+                    videoTypeSelect.value = matchingTypeOption.value;
+                }
+            }
+        }
+        
+        // Parse URL parameters on page load
+        parseURLParams();
+        
         // Load people when page loads
         loadPeople();
 
