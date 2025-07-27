@@ -128,7 +128,7 @@
         <!-- Relevance Tab -->
         <div id="relevance" class="tab-content">
             <div class="view-header">
-                <h2>🎯 Relevance Rating</h2>
+                <h2>🎯 Relevance Rating <span id="relevance-count" class="view-count"></span></h2>
                 <p style="margin: 10px 0; color: #666; font-size: 14px;">
                     Rate the relevance of new video submissions (0-3). Videos move to Pending automatically after rating.
                 </p>
@@ -140,7 +140,7 @@
         <!-- Pending Tab -->
         <div id="pending" class="tab-content active">
             <div class="view-header">
-                <h2>🟡 Pending Videos</h2>
+                <h2>🟡 Pending Videos <span id="pending-count" class="view-count"></span></h2>
                 <button class="btn btn-secondary" onclick="exportCSV('pending')">📤 Export CSV</button>
             </div>
             <div id="pending-videos" class="videos-grid"></div>
@@ -149,7 +149,7 @@
         <!-- Accepted Tab -->
         <div id="accepted" class="tab-content">
             <div class="view-header">
-                <h2>✅ Accepted Videos</h2>
+                <h2>✅ Accepted Videos <span id="accepted-count" class="view-count"></span></h2>
                 <button class="btn btn-secondary" onclick="exportCSV('accepted')">📤 Export CSV</button>
             </div>
             <div id="accepted-videos" class="videos-grid"></div>
@@ -158,7 +158,7 @@
         <!-- Rejected Tab -->
         <div id="rejected" class="tab-content">
             <div class="view-header">
-                <h2>🟥 Rejected Videos</h2>
+                <h2>🟥 Rejected Videos <span id="rejected-count" class="view-count"></span></h2>
                 <button class="btn btn-secondary" onclick="exportCSV('rejected')">📤 Export CSV</button>
             </div>
             <div id="rejected-videos" class="videos-grid"></div>
@@ -167,7 +167,7 @@
         <!-- Shridhar Tab -->
         <div id="assigned" class="tab-content">
             <div class="view-header">
-                <h2>👨‍💼 Shridhar Videos</h2>
+                <h2>👨‍💼 Shridhar Videos <span id="assigned-count" class="view-count"></span></h2>
                 <button class="btn btn-secondary" onclick="exportCSV('assigned')">📤 Export CSV</button>
             </div>
             <div id="assigned-videos" class="videos-grid"></div>
@@ -176,7 +176,7 @@
         <!-- Team Tab -->
         <div id="team" class="tab-content">
             <div class="view-header">
-                <h2>👥 Team Videos</h2>
+                <h2>👥 Team Videos <span id="team-count" class="view-count"></span></h2>
                 <button class="btn btn-secondary" onclick="exportCSV('team')">📤 Export CSV</button>
             </div>
             <div id="team-videos" class="videos-grid"></div>
@@ -185,7 +185,7 @@
         <!-- All Tab -->
         <div id="all" class="tab-content">
             <div class="view-header">
-                <h2>📈 All Database Entries</h2>
+                <h2>📈 All Database Entries <span id="all-count" class="view-count"></span></h2>
                 <div class="all-view-controls">
                     <input type="text" id="all-search" placeholder="Search all columns..." class="search-input">
                     <button class="btn btn-secondary" onclick="exportCSV('all')">📤 Export CSV</button>

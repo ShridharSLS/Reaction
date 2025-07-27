@@ -278,14 +278,27 @@ function updateArchivedPeopleList(archivedPeople) {
 async function loadVideos(status) {
     try {
         const videos = await apiCall(`/api/videos/${status}`);
-        updateVideosDisplay(status, videos);
+        renderVideos(videos, `${status}-videos`, status);
     } catch (error) {
         console.error(`Failed to load ${status} videos:`, error);
+        // Update count to 0 on error
+        updateViewCount(status, 0);
     }
 }
 
-function updateVideosDisplay(status, videos) {
-    const container = document.getElementById(`${status}-videos`);
+// Update view count display
+function updateViewCount(status, count) {
+    const countElement = document.getElementById(`${status}-count`);
+    if (countElement) {
+        countElement.textContent = `(${count})`;
+    }
+}
+
+function renderVideos(videos, containerId, status) {
+    const container = document.getElementById(containerId);
+    
+    // Update view count
+    updateViewCount(status, videos.length);
     
     if (videos.length === 0) {
         container.innerHTML = `<div class="empty-state"><h3>No ${status} videos</h3><p>Videos will appear here when they reach this stage.</p></div>`;
@@ -1538,6 +1551,9 @@ function renderAllEntriesTable(data) {
     const headerContainer = document.getElementById('all-table-header');
     const bodyContainer = document.getElementById('all-table-body');
     
+    // Update view count for All view
+    updateViewCount('all', data.length);
+    
     if (data.length === 0) {
         headerContainer.innerHTML = '';
         bodyContainer.innerHTML = '<tr><td colspan="100%" class="empty-state">No entries found</td></tr>';
@@ -1595,7 +1611,21 @@ function sortAllEntries(column) {
         currentSortDirection = 'asc';
     }
     
-    const sortedData = [...allEntriesData].sort((a, b) => {
+    // Get the current filtered data or all data
+    const searchInput = document.getElementById('all-search');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    
+    let dataToSort = allEntriesData;
+    if (searchTerm) {
+        dataToSort = allEntriesData.filter(entry => {
+            return Object.values(entry).some(value => {
+                if (value === null || value === undefined) return false;
+                return String(value).toLowerCase().includes(searchTerm);
+            });
+        });
+    }
+    
+    const sortedData = [...dataToSort].sort((a, b) => {
         let aVal = a[column];
         let bVal = b[column];
         
@@ -1642,5 +1672,57 @@ function filterAllEntries(searchTerm) {
         });
     });
     
-    renderAllEntriesTable(filteredData);
+    // Update count to show filtered results
+    updateViewCount('all', filteredData.length);
+    
+    const headerContainer = document.getElementById('all-table-header');
+    const bodyContainer = document.getElementById('all-table-body');
+    
+    if (filteredData.length === 0) {
+        headerContainer.innerHTML = '';
+        bodyContainer.innerHTML = '<tr><td colspan="100%" class="empty-state">No entries match your search</td></tr>';
+        return;
+    }
+    
+    // Define column order and display names (same as renderAllEntriesTable)
+    const columns = [
+        { key: 'id', label: 'ID', sortable: true },
+        { key: 'person_name', label: 'Person', sortable: true },
+        { key: 'link', label: 'Video Link', sortable: false },
+        { key: 'type', label: 'Type', sortable: true },
+        { key: 'status', label: 'Status', sortable: true },
+        { key: 'likes_count', label: 'Likes', sortable: true },
+        { key: 'relevance_rating', label: 'Relevance', sortable: true },
+        { key: 'score', label: 'Score', sortable: true },
+        { key: 'video_id_text', label: 'Video ID', sortable: true },
+        { key: 'video_code', label: 'Code', sortable: true },
+        { key: 'created_at', label: 'Created', sortable: true }
+    ];
+    
+    // Render header
+    headerContainer.innerHTML = columns.map(col => `
+        <th class="${col.sortable ? 'sortable' : ''} ${currentSortColumn === col.key ? 'sort-' + currentSortDirection : ''}" 
+            ${col.sortable ? `onclick="sortAllEntries('${col.key}')"` : ''}>
+            ${col.label}
+        </th>
+    `).join('');
+    
+    // Render body
+    bodyContainer.innerHTML = filteredData.map(entry => `
+        <tr>
+            <td>${entry.id || ''}</td>
+            <td>${escapeHtml(entry.person_name || '')}</td>
+            <td class="link-cell">
+                ${entry.link ? `<a href="${escapeHtml(entry.link)}" target="_blank" title="${escapeHtml(entry.link)}">${escapeHtml(entry.link)}</a>` : ''}
+            </td>
+            <td class="type-cell">${entry.type || ''}</td>
+            <td class="status-cell">${entry.status || ''}</td>
+            <td>${entry.likes_count || 0}</td>
+            <td>${entry.relevance_rating !== null ? entry.relevance_rating : ''}</td>
+            <td>${entry.score !== null ? entry.score.toFixed(2) : ''}</td>
+            <td>${escapeHtml(entry.video_id_text || '')}</td>
+            <td>${escapeHtml(entry.video_code || '')}</td>
+            <td>${entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}</td>
+        </tr>
+    `).join('');
 }

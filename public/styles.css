@@ -574,6 +574,13 @@ header p {
     background: white;
 }
 
+.view-count {
+    font-size: 0.8em;
+    color: #666;
+    font-weight: normal;
+    margin-left: 5px;
+}
+
 .sortable-table {
     width: 100%;
     border-collapse: collapse;
