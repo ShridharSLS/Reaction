@@ -1594,6 +1594,7 @@ function renderAllEntriesTable(data) {
             <td>${entry.score !== null ? entry.score.toFixed(2) : ''}</td>
             <td>${escapeHtml(entry.video_id_text || '')}</td>
             <td>${escapeHtml(entry.video_code || '')}</td>
+            <td class="note-cell">${entry.note ? renderNoteDisplay(entry.note, entry.id) : ''}</td>
             <td>${entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}</td>
         </tr>
     `).join('');
@@ -1718,6 +1719,7 @@ function filterAllEntries(searchTerm) {
             <td>${entry.score !== null ? entry.score.toFixed(2) : ''}</td>
             <td>${escapeHtml(entry.video_id_text || '')}</td>
             <td>${escapeHtml(entry.video_code || '')}</td>
+            <td class="note-cell">${entry.note ? renderNoteDisplay(entry.note, entry.id) : ''}</td>
             <td>${entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}</td>
         </tr>
     `).join('');
