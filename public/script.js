@@ -405,40 +405,40 @@ function getVideoActions(video, status) {
     switch (status) {
         case 'pending':
             return `
-                <button class="btn btn-success" onclick="acceptVideo(${video.id})">✅ Accept</button>
-                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">👨‍💼 Shridhar</button>
-                <button class="btn btn-team" onclick="assignVideoToTeam(${video.id})">👥 Team</button>
-                <button class="btn btn-reject" onclick="rejectVideo(${video.id})">❌ Reject</button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
+                <button class="btn btn-success" onclick="acceptVideo(${video.id})">Accept</button>
+                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">Shridhar</button>
+                <button class="btn btn-team" onclick="assignVideoToTeam(${video.id})">Team</button>
+                <button class="btn btn-reject" onclick="rejectVideo(${video.id})">Reject</button>
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'accepted':
             return `
                 <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
                     📋
                 </button>
-                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">👨‍💼 Shridhar</button>
-                <button class="btn btn-team" onclick="assignVideoToTeam(${video.id})">👥 Team</button>
-                <button class="btn btn-reject" onclick="rejectVideo(${video.id})">❌ Reject</button>
-                <button class="btn btn-warning" onclick="revertToPending(${video.id})">↩️ Pending</button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
+                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">Shridhar</button>
+                <button class="btn btn-team" onclick="assignVideoToTeam(${video.id})">Team</button>
+                <button class="btn btn-reject" onclick="rejectVideo(${video.id})">Reject</button>
+                <button class="btn btn-warning" onclick="revertToPending(${video.id})">Pending</button>
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'rejected':
             return `
-                <button class="btn btn-success" onclick="acceptVideo(${video.id})">✅ Accept</button>
-                <button class="btn btn-warning" onclick="revertToPending(${video.id})">↩️ Pending</button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
+                <button class="btn btn-success" onclick="acceptVideo(${video.id})">Accept</button>
+                <button class="btn btn-warning" onclick="revertToPending(${video.id})">Pending</button>
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'assigned':
             return `
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'team':
             return `
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'relevance':
             return `
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">🗑️ Delete</button>
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         default:
             return '';
@@ -1827,13 +1827,10 @@ function renderNoteDisplay(note, videoId) {
         return '';
     }
     
-    const firstWord = note.trim().split(' ')[0];
-    const displayText = note.length > firstWord.length ? `${firstWord}...` : firstWord;
     const escapedNote = escapeHtml(note).replace(/'/g, '\\\'');
     
     return `
         <span class="note-display">
-            <span class="note-text">${escapeHtml(displayText)}</span>
             <button class="note-edit-btn" onclick="showNoteModal(${videoId}, 'edit', '${escapedNote}')" title="Edit note">
                 ✏️
             </button>
