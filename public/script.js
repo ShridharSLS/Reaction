@@ -1845,6 +1845,8 @@ function renderNoteDisplay(note, videoId) {
 // Update button counts in navigation
 async function updateButtonCounts() {
     try {
+        console.log('Updating button counts...');
+        
         // Fetch counts for each section
         const responses = await Promise.all([
             fetch('/api/videos/relevance'),
@@ -1857,15 +1859,28 @@ async function updateButtonCounts() {
         ]);
         
         const data = await Promise.all(responses.map(r => r.json()));
+        console.log('Button count data:', data.map(d => d.length));
         
-        // Update button counts
-        document.getElementById('relevance-btn-count').textContent = `(${data[0].length})`;
-        document.getElementById('pending-btn-count').textContent = `(${data[1].length})`;
-        document.getElementById('accepted-btn-count').textContent = `(${data[2].length})`;
-        document.getElementById('rejected-btn-count').textContent = `(${data[3].length})`;
-        document.getElementById('assigned-btn-count').textContent = `(${data[4].length})`;
-        document.getElementById('team-btn-count').textContent = `(${data[5].length})`;
-        document.getElementById('all-btn-count').textContent = `(${data[6].length})`;
+        // Update button counts with better error handling
+        const updates = [
+            { id: 'relevance-btn-count', count: data[0].length },
+            { id: 'pending-btn-count', count: data[1].length },
+            { id: 'accepted-btn-count', count: data[2].length },
+            { id: 'rejected-btn-count', count: data[3].length },
+            { id: 'assigned-btn-count', count: data[4].length },
+            { id: 'team-btn-count', count: data[5].length },
+            { id: 'all-btn-count', count: data[6].length }
+        ];
+        
+        updates.forEach(({ id, count }) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = `(${count})`;
+                console.log(`Updated ${id}: (${count})`);
+            } else {
+                console.warn(`Element not found: ${id}`);
+            }
+        });
         
     } catch (error) {
         console.error('Error updating button counts:', error);
