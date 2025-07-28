@@ -36,6 +36,7 @@
                     <button class="dropdown-item" data-tab="add-topic">➕ Add Topic</button>
                     <button class="dropdown-item" data-tab="bulk-import">📋 Bulk Import</button>
                     <button class="dropdown-item" data-tab="manage-people">👥 Manage People</button>
+                    <button class="dropdown-item" data-tab="manage-tags">🏷️ Manage Tags</button>
                     <button class="dropdown-item" data-tab="manage-admins">🔐 Manage Admins</button>
                 </div>
             </div>
@@ -230,6 +231,30 @@
             </div>
         </div>
 
+        <!-- Manage Tags Tab -->
+        <div id="manage-tags" class="tab-content">
+            <div class="form-container">
+                <h2>🏷️ Manage Tags</h2>
+                <p class="tags-instructions">
+                    Create and manage predefined tags that can be assigned to videos. Tags help categorize and organize video content.
+                </p>
+                
+                <form id="add-tag-form">
+                    <div class="form-group">
+                        <label for="tag-name">Tag Name:</label>
+                        <input type="text" id="tag-name" required placeholder="Enter tag name..." maxlength="50">
+                    </div>
+                    <div class="form-group">
+                        <label for="tag-color">Tag Color:</label>
+                        <input type="color" id="tag-color" value="#007bff">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Tag</button>
+                </form>
+                
+                <div id="tags-list" class="tags-list"></div>
+            </div>
+        </div>
+
         <!-- Manage Admins Tab -->
         <div id="manage-admins" class="tab-content">
             <div class="form-container">
@@ -298,6 +323,23 @@
             <div class="modal-actions">
                 <button id="video-id-confirm" class="btn btn-primary">Assign ID</button>
                 <button id="video-id-cancel" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tag Selection Modal -->
+    <div id="tagSelectionModal" class="tag-selection-modal">
+        <div class="tag-selection-content">
+            <div class="tag-selection-header">
+                <h3>Select Tags</h3>
+                <button id="tagModalClose" class="btn btn-secondary">×</button>
+            </div>
+            <div class="tag-selection-list" id="tagSelectionList">
+                <!-- Tag options will be populated here -->
+            </div>
+            <div class="tag-selection-actions">
+                <button id="tagModalSave" class="btn btn-primary">Save</button>
+                <button id="tagModalCancel" class="btn btn-secondary">Cancel</button>
             </div>
         </div>
     </div>

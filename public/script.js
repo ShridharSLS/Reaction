@@ -1,8 +1,11 @@
 // Global state
 let currentTab = 'pending';
 let people = [];
+let tags = [];
 let confirmationCallback = null;
 let videoIdCallback = null;
+let tagSelectionCallback = null;
+let currentVideoId = null;
 
 // Helper function for success notifications
 function showSuccessNotification(message) {
@@ -28,8 +31,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     initializeTabs();
     loadPeople();
+    loadTags();
     setupForms();
     setupModals();
+    setupTagModal();
     
     // Force load pending videos immediately
     console.log('Loading initial videos for tab:', currentTab);
@@ -114,8 +119,8 @@ function switchTab(tabId) {
     
     // Update dropdown button states
     const dropdownBtns = document.querySelectorAll('.dropdown-btn');
-    const isTasksDropdownTab = ['add-topic', 'bulk-import', 'manage-people', 'manage-admins'].includes(tabId);
-    const isClosedDropdownTab = ['rejected', 'assigned', 'team'].includes(tabId);
+    const isTasksDropdownTab = ['add-topic', 'bulk-import', 'manage-people', 'manage-tags', 'manage-admins'].includes(tabId);
+    const isClosedDropdownTab = ['rejected', 'assigned', 'team', 'all'].includes(tabId);
     
     // Reset all dropdown button styles first
     dropdownBtns.forEach(btn => {
@@ -156,6 +161,8 @@ function switchTab(tabId) {
     if (tabId === 'manage-people') {
         loadPeople();
         setupPeopleTabs(); // Setup people management tabs
+    } else if (tabId === 'manage-tags') {
+        loadTags();
     } else if (tabId === 'manage-admins') {
         initializeAdminManagement();
     } else if (tabId === 'all') {
@@ -291,6 +298,17 @@ async function loadVideos(status) {
         console.log(`Loading ${status} videos...`);
         const videos = await apiCall(`/api/videos/${status}`);
         console.log(`Received ${videos.length} ${status} videos:`, videos);
+        
+        // Load tags for each video
+        for (const video of videos) {
+            try {
+                video.tags = await loadVideoTags(video.id);
+            } catch (error) {
+                console.warn(`Failed to load tags for video ${video.id}:`, error);
+                video.tags = [];
+            }
+        }
+        
         renderVideos(videos, `${status}-videos`, status);
         console.log(`Rendered ${status} videos successfully`);
     } catch (error) {
@@ -387,6 +405,15 @@ function createVideoCard(video, status) {
                 <div class="detail-item score-item">
                     <span class="detail-label">Score</span>
                     <span class="detail-value score">${score}</span>
+                </div>
+                
+                <div class="detail-item tags-item">
+                    <span class="detail-label">Tags</span>
+                    <span class="detail-value tags-cell" onclick="showTagModal(${video.id})">
+                        <div class="tags-display" id="tags-${video.id}">
+                            ${video.tags ? renderVideoTags(video.tags) : '<span class="tags-placeholder">#</span>'}
+                        </div>
+                    </span>
                 </div>
                 
                 ${video.video_id_text ? `
@@ -532,6 +559,23 @@ function setupForms() {
             console.error('Failed to add person:', error);
         }
     });
+    
+    // Add Tag Form
+    const addTagForm = document.getElementById('add-tag-form');
+    if (addTagForm) {
+        addTagForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('tag-name').value.trim();
+            const color = document.getElementById('tag-color').value;
+            
+            if (await addTag(name, color)) {
+                // Reset form on success
+                this.reset();
+                document.getElementById('tag-color').value = '#007bff'; // Reset to default color
+            }
+        });
+    }
 }
 
 // People Management Functions
@@ -1963,6 +2007,230 @@ async function updateButtonCountsFallback() {
         }
     } catch (error) {
         console.error('Fallback button counts failed:', error);
+    }
+}
+
+// Tags Management Functions
+
+// Load all tags from the server
+async function loadTags() {
+    try {
+        tags = await apiCall('/api/tags');
+        if (currentTab === 'manage-tags') {
+            renderTagsList();
+        }
+    } catch (error) {
+        console.error('Failed to load tags:', error);
+        tags = [];
+    }
+}
+
+// Render the tags list in the manage tags section
+function renderTagsList() {
+    const container = document.getElementById('tags-list');
+    if (!container) return;
+    
+    if (tags.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No tags created yet. Add your first tag above.</p></div>';
+        return;
+    }
+    
+    container.innerHTML = tags.map(tag => `
+        <div class="tag-item">
+            <div class="tag-display">
+                <span class="tag-preview" style="background-color: ${tag.color}">${tag.name}</span>
+                <span class="tag-name">${tag.name}</span>
+            </div>
+            <div class="tag-actions">
+                <button class="btn btn-secondary" onclick="editTag(${tag.id}, '${escapeHtml(tag.name)}', '${tag.color}')">Edit</button>
+                <button class="btn btn-danger" onclick="deleteTag(${tag.id}, '${escapeHtml(tag.name)}')">Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Add new tag
+async function addTag(name, color) {
+    try {
+        const newTag = await apiCall('/api/tags', {
+            method: 'POST',
+            body: JSON.stringify({ name, color })
+        });
+        
+        tags.push(newTag);
+        renderTagsList();
+        showSuccessNotification('Tag added successfully!');
+        return true;
+    } catch (error) {
+        console.error('Failed to add tag:', error);
+        if (error.message.includes('already exists')) {
+            alert('A tag with this name already exists.');
+        } else {
+            alert('Failed to add tag. Please try again.');
+        }
+        return false;
+    }
+}
+
+// Edit existing tag
+async function editTag(tagId, currentName, currentColor) {
+    const newName = prompt('Enter new tag name:', currentName);
+    if (!newName || newName.trim() === '') return;
+    
+    const newColor = prompt('Enter new color (hex format):', currentColor);
+    if (!newColor) return;
+    
+    try {
+        const updatedTag = await apiCall(`/api/tags/${tagId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ name: newName.trim(), color: newColor })
+        });
+        
+        const tagIndex = tags.findIndex(t => t.id === tagId);
+        if (tagIndex !== -1) {
+            tags[tagIndex] = updatedTag;
+        }
+        
+        renderTagsList();
+        showSuccessNotification('Tag updated successfully!');
+    } catch (error) {
+        console.error('Failed to update tag:', error);
+        if (error.message.includes('already exists')) {
+            alert('A tag with this name already exists.');
+        } else {
+            alert('Failed to update tag. Please try again.');
+        }
+    }
+}
+
+// Delete tag
+async function deleteTag(tagId, tagName) {
+    if (!confirm(`Are you sure you want to delete the tag "${tagName}"? This will remove it from all videos.`)) {
+        return;
+    }
+    
+    try {
+        await apiCall(`/api/tags/${tagId}`, {
+            method: 'DELETE'
+        });
+        
+        tags = tags.filter(t => t.id !== tagId);
+        renderTagsList();
+        showSuccessNotification('Tag deleted successfully!');
+    } catch (error) {
+        console.error('Failed to delete tag:', error);
+        alert('Failed to delete tag. Please try again.');
+    }
+}
+
+// Setup tag modal functionality
+function setupTagModal() {
+    const modal = document.getElementById('tagSelectionModal');
+    const closeBtn = document.getElementById('tagModalClose');
+    const cancelBtn = document.getElementById('tagModalCancel');
+    const saveBtn = document.getElementById('tagModalSave');
+    
+    if (!modal || !closeBtn || !cancelBtn || !saveBtn) {
+        console.warn('Tag modal elements not found');
+        return;
+    }
+    
+    // Close modal handlers
+    closeBtn.addEventListener('click', hideTagModal);
+    cancelBtn.addEventListener('click', hideTagModal);
+    
+    // Save tags handler
+    saveBtn.addEventListener('click', saveVideoTags);
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            hideTagModal();
+        }
+    });
+}
+
+// Show tag selection modal for a video
+async function showTagModal(videoId) {
+    currentVideoId = videoId;
+    const modal = document.getElementById('tagSelectionModal');
+    const tagsList = document.getElementById('tagSelectionList');
+    
+    if (!modal || !tagsList) return;
+    
+    try {
+        // Load current video tags
+        const videoTags = await apiCall(`/api/videos/${videoId}/tags`);
+        const videoTagIds = videoTags.map(tag => tag.id);
+        
+        // Render tag options
+        tagsList.innerHTML = tags.map(tag => `
+            <div class="tag-option">
+                <input type="checkbox" id="tag-${tag.id}" value="${tag.id}" 
+                       ${videoTagIds.includes(tag.id) ? 'checked' : ''}>
+                <label for="tag-${tag.id}">${tag.name}</label>
+                <span class="tag-option-preview tag-preview" style="background-color: ${tag.color}">${tag.name}</span>
+            </div>
+        `).join('');
+        
+        modal.style.display = 'block';
+    } catch (error) {
+        console.error('Failed to load video tags:', error);
+        alert('Failed to load tags. Please try again.');
+    }
+}
+
+// Hide tag selection modal
+function hideTagModal() {
+    const modal = document.getElementById('tagSelectionModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    currentVideoId = null;
+}
+
+// Save selected tags for the current video
+async function saveVideoTags() {
+    if (!currentVideoId) return;
+    
+    const checkboxes = document.querySelectorAll('#tagSelectionList input[type="checkbox"]');
+    const selectedTagIds = Array.from(checkboxes)
+        .filter(cb => cb.checked)
+        .map(cb => parseInt(cb.value));
+    
+    try {
+        await apiCall(`/api/videos/${currentVideoId}/tags`, {
+            method: 'PUT',
+            body: JSON.stringify({ tag_ids: selectedTagIds })
+        });
+        
+        hideTagModal();
+        loadVideos(currentTab); // Refresh current view
+        showSuccessNotification('Tags updated successfully!');
+    } catch (error) {
+        console.error('Failed to save video tags:', error);
+        alert('Failed to save tags. Please try again.');
+    }
+}
+
+// Render tags display for a video (used in video cards)
+function renderVideoTags(videoTags) {
+    if (!videoTags || videoTags.length === 0) {
+        return '<span class="tags-placeholder">#</span>';
+    }
+    
+    return videoTags.map(tag => 
+        `<span class="video-tag" style="background-color: ${tag.color}">${tag.name}</span>`
+    ).join('');
+}
+
+// Load tags for a specific video (used when rendering video cards)
+async function loadVideoTags(videoId) {
+    try {
+        return await apiCall(`/api/videos/${videoId}/tags`);
+    } catch (error) {
+        console.error('Failed to load video tags:', error);
+        return [];
     }
 }
 

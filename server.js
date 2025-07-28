@@ -949,6 +949,182 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Tags Management Endpoints
+
+// Get all tags
+app.get('/api/tags', async (req, res) => {
+    try {
+        const { data: tags, error } = await supabase
+            .from('tags')
+            .select('*')
+            .order('name');
+            
+        if (error) {
+            res.status(500).json({ error: error.message });
+            return;
+        }
+        
+        res.json(tags || []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Add new tag
+app.post('/api/tags', async (req, res) => {
+    try {
+        const { name, color } = req.body;
+        
+        if (!name) {
+            res.status(400).json({ error: 'Tag name is required' });
+            return;
+        }
+        
+        const { data, error } = await supabase
+            .from('tags')
+            .insert({ name: name.trim(), color: color || '#007bff' })
+            .select()
+            .single();
+            
+        if (error) {
+            if (error.code === '23505') { // Unique constraint violation
+                res.status(409).json({ error: 'Tag name already exists' });
+            } else {
+                res.status(500).json({ error: error.message });
+            }
+            return;
+        }
+        
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update tag
+app.put('/api/tags/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, color } = req.body;
+        
+        if (!name) {
+            res.status(400).json({ error: 'Tag name is required' });
+            return;
+        }
+        
+        const { data, error } = await supabase
+            .from('tags')
+            .update({ name: name.trim(), color: color || '#007bff' })
+            .eq('id', id)
+            .select()
+            .single();
+            
+        if (error) {
+            if (error.code === '23505') { // Unique constraint violation
+                res.status(409).json({ error: 'Tag name already exists' });
+            } else {
+                res.status(500).json({ error: error.message });
+            }
+            return;
+        }
+        
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete tag
+app.delete('/api/tags/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const { error } = await supabase
+            .from('tags')
+            .delete()
+            .eq('id', id);
+            
+        if (error) {
+            res.status(500).json({ error: error.message });
+            return;
+        }
+        
+        res.json({ message: 'Tag deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get tags for a specific video
+app.get('/api/videos/:id/tags', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const { data: videoTags, error } = await supabase
+            .from('video_tags')
+            .select(`
+                tag_id,
+                tags (id, name, color)
+            `)
+            .eq('video_id', id);
+            
+        if (error) {
+            res.status(500).json({ error: error.message });
+            return;
+        }
+        
+        const tags = videoTags?.map(vt => vt.tags) || [];
+        res.json(tags);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update tags for a video
+app.put('/api/videos/:id/tags', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { tag_ids } = req.body;
+        
+        if (!Array.isArray(tag_ids)) {
+            res.status(400).json({ error: 'tag_ids must be an array' });
+            return;
+        }
+        
+        // Remove existing tags for this video
+        const { error: deleteError } = await supabase
+            .from('video_tags')
+            .delete()
+            .eq('video_id', id);
+            
+        if (deleteError) {
+            res.status(500).json({ error: deleteError.message });
+            return;
+        }
+        
+        // Add new tags if any
+        if (tag_ids.length > 0) {
+            const videoTagsData = tag_ids.map(tag_id => ({
+                video_id: parseInt(id),
+                tag_id: parseInt(tag_id)
+            }));
+            
+            const { error: insertError } = await supabase
+                .from('video_tags')
+                .insert(videoTagsData);
+                
+            if (insertError) {
+                res.status(500).json({ error: insertError.message });
+                return;
+            }
+        }
+        
+        res.json({ message: 'Video tags updated successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Serve login page
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
