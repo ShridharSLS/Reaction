@@ -213,43 +213,91 @@ app.put('/api/people/:id/unarchive', async (req, res) => {
 // Get all database entries for All view
 app.get('/api/videos/all/entries', async (req, res) => {
     try {
-        // Get all videos without JOIN since we removed the foreign key constraint
+        // Get all videos
         const { data: videos, error: videosError } = await supabase
             .from('videos')
             .select('*')
             .order('created_at', { ascending: false });
-            
+        
         if (videosError) {
-            res.status(500).json({ error: videosError.message });
-            return;
+            console.error('Error fetching videos:', videosError);
+            return res.status(500).json({ error: 'Failed to fetch videos' });
         }
         
-        // Get all people to map names
+        // Get all people separately (no foreign key constraint)
         const { data: people, error: peopleError } = await supabase
             .from('people')
-            .select('*')
-            .eq('archived', false);
-            
+            .select('*');
+        
         if (peopleError) {
-            res.status(500).json({ error: peopleError.message });
-            return;
+            console.error('Error fetching people:', peopleError);
+            return res.status(500).json({ error: 'Failed to fetch people' });
         }
         
-        // Create a map of people by ID
+        // Create a map of person_id to person name
         const peopleMap = {};
         people.forEach(person => {
             peopleMap[person.id] = person.name;
         });
         
-        // Transform data to include person name directly
-        const transformedVideos = videos.map(video => ({
+        // Add person names to videos
+        const videosWithNames = videos.map(video => ({
             ...video,
-            person_name: peopleMap[video.added_by] || 'Unknown'
+            person_name: peopleMap[video.person_id] || 'Unknown'
         }));
         
-        res.json(transformedVideos);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.json(videosWithNames);
+    } catch (error) {
+        console.error('Error in /api/videos/all/entries:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get counts for all video statuses in a single call (performance optimization)
+app.get('/api/videos/counts', async (req, res) => {
+    try {
+        // Single query to get all videos
+        const { data: videos, error } = await supabase
+            .from('videos')
+            .select('status');
+        
+        if (error) {
+            console.error('Error fetching video counts:', error);
+            return res.status(500).json({ error: 'Failed to fetch counts' });
+        }
+        
+        // Count by status
+        const counts = {
+            relevance: 0,
+            pending: 0,
+            accepted: 0,
+            rejected: 0,
+            assigned: 0,
+            team: 0,
+            all: videos.length
+        };
+        
+        videos.forEach(video => {
+            const status = video.status;
+            if (status === 'relevance' && video.relevance_rating === -1) {
+                counts.relevance++;
+            } else if (status === 'pending') {
+                counts.pending++;
+            } else if (status === 'accepted') {
+                counts.accepted++;
+            } else if (status === 'rejected') {
+                counts.rejected++;
+            } else if (status === 'assigned') {
+                counts.assigned++;
+            } else if (status === 'team') {
+                counts.team++;
+            }
+        });
+        
+        res.json(counts);
+    } catch (error) {
+        console.error('Error in /api/videos/counts:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

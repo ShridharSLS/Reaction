@@ -29,15 +29,15 @@ document.addEventListener('DOMContentLoaded', function() {
     setupForms();
     setupModals();
     
-    // Load initial data for active tab
+    // Load initial data for active tab immediately
     if (currentTab !== 'add-topic' && currentTab !== 'manage-people') {
         loadVideos(currentTab);
     }
     
-    // Update button counts after a short delay to ensure DOM is ready
+    // Update button counts quickly with reduced delay
     setTimeout(() => {
         updateButtonCounts();
-    }, 500);
+    }, 100);
 });
 
 // Tab Management
@@ -1846,68 +1846,69 @@ function renderNoteDisplay(note, videoId) {
     `;
 }
 
-// Update button counts in navigation
-async function updateButtonCounts(retryCount = 0) {
+// Update button counts in navigation - simplified and faster
+async function updateButtonCounts() {
     try {
-        console.log('Updating button counts... attempt:', retryCount + 1);
-        
-        // Check if DOM elements exist first
-        const requiredElements = [
-            'relevance-btn-count', 'pending-btn-count', 'accepted-btn-count',
-            'rejected-btn-count', 'assigned-btn-count', 'team-btn-count', 'all-btn-count'
-        ];
-        
-        const missingElements = requiredElements.filter(id => !document.getElementById(id));
-        if (missingElements.length > 0 && retryCount < 3) {
-            console.warn('Missing elements, retrying in 500ms:', missingElements);
-            setTimeout(() => updateButtonCounts(retryCount + 1), 500);
-            return;
+        // Single API call to get all counts at once
+        const response = await fetch('/api/videos/counts');
+        if (!response.ok) {
+            console.warn('Counts API not available, using individual calls');
+            return updateButtonCountsFallback();
         }
         
-        // Fetch counts for each section
-        const responses = await Promise.all([
-            fetch('/api/videos/relevance'),
-            fetch('/api/videos/pending'),
-            fetch('/api/videos/accepted'),
-            fetch('/api/videos/rejected'),
-            fetch('/api/videos/assigned'),
-            fetch('/api/videos/team'),
-            fetch('/api/videos/all/entries')
-        ]);
+        const counts = await response.json();
+        console.log('Button counts received:', counts);
         
-        const data = await Promise.all(responses.map(r => r.json()));
-        console.log('Button count data:', data.map(d => d.length));
-        
-        // Update button counts with better error handling
+        // Update button counts efficiently
         const updates = [
-            { id: 'relevance-btn-count', count: data[0].length },
-            { id: 'pending-btn-count', count: data[1].length },
-            { id: 'accepted-btn-count', count: data[2].length },
-            { id: 'rejected-btn-count', count: data[3].length },
-            { id: 'assigned-btn-count', count: data[4].length },
-            { id: 'team-btn-count', count: data[5].length },
-            { id: 'all-btn-count', count: data[6].length }
+            { id: 'relevance-btn-count', count: counts.relevance || 0 },
+            { id: 'pending-btn-count', count: counts.pending || 0 },
+            { id: 'accepted-btn-count', count: counts.accepted || 0 },
+            { id: 'rejected-btn-count', count: counts.rejected || 0 },
+            { id: 'assigned-btn-count', count: counts.assigned || 0 },
+            { id: 'team-btn-count', count: counts.team || 0 },
+            { id: 'all-btn-count', count: counts.all || 0 }
         ];
         
-        let successCount = 0;
         updates.forEach(({ id, count }) => {
             const element = document.getElementById(id);
             if (element) {
                 element.textContent = `(${count})`;
                 element.style.display = 'inline-block';
-                console.log(`Updated ${id}: (${count})`);
-                successCount++;
-            } else {
-                console.warn(`Element not found: ${id}`);
             }
         });
         
-        console.log(`Successfully updated ${successCount}/${updates.length} button counts`);
-        
     } catch (error) {
         console.error('Error updating button counts:', error);
-        // Hide counts on error
-        document.querySelectorAll('.btn-count').forEach(el => el.textContent = '');
+        // Fallback to individual calls if needed
+        updateButtonCountsFallback();
+    }
+}
+
+// Fallback function for button counts (simplified)
+async function updateButtonCountsFallback() {
+    try {
+        // Only update counts that are visible and needed
+        const quickUpdates = [
+            { id: 'pending-btn-count', endpoint: '/api/videos/pending' },
+            { id: 'accepted-btn-count', endpoint: '/api/videos/accepted' }
+        ];
+        
+        for (const { id, endpoint } of quickUpdates) {
+            const element = document.getElementById(id);
+            if (element) {
+                try {
+                    const response = await fetch(endpoint);
+                    const data = await response.json();
+                    element.textContent = `(${data.length})`;
+                    element.style.display = 'inline-block';
+                } catch (err) {
+                    console.warn(`Failed to update ${id}:`, err);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Fallback button counts failed:', error);
     }
 }
 
