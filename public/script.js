@@ -729,38 +729,67 @@ function showTemporaryMessage(message, type = 'info') {
 
 // Modal Setup
 function setupModals() {
-    // Confirmation Modal
-    document.getElementById('modal-cancel').addEventListener('click', function() {
-        document.getElementById('confirmation-modal').style.display = 'none';
-        confirmationCallback = null;
-    });
+    console.log('Setting up modals...');
     
-    document.getElementById('modal-confirm').addEventListener('click', function() {
-        if (confirmationCallback) {
-            confirmationCallback();
-        }
-        document.getElementById('confirmation-modal').style.display = 'none';
-        confirmationCallback = null;
-    });
+    // Confirmation Modal - with null checks
+    const modalCancel = document.getElementById('modal-cancel');
+    const modalConfirm = document.getElementById('modal-confirm');
+    const confirmationModal = document.getElementById('confirmation-modal');
     
-    // Video ID Modal
-    document.getElementById('video-id-cancel').addEventListener('click', function() {
-        document.getElementById('video-id-modal').style.display = 'none';
-        document.getElementById('video-id-input').value = '';
-        videoIdCallback = null;
-    });
+    if (modalCancel && confirmationModal) {
+        modalCancel.addEventListener('click', function() {
+            confirmationModal.style.display = 'none';
+            confirmationCallback = null;
+        });
+    } else {
+        console.warn('Confirmation modal elements not found');
+    }
     
-    document.getElementById('video-id-confirm').addEventListener('click', function() {
-        const videoId = document.getElementById('video-id-input').value.trim();
-        if (videoId && videoIdCallback) {
-            videoIdCallback(videoId);
-        }
-        
-        // Close the modal after submission
-        document.getElementById('video-id-modal').style.display = 'none';
-        document.getElementById('video-id-input').value = '';
-        videoIdCallback = null;
-    });
+    if (modalConfirm && confirmationModal) {
+        modalConfirm.addEventListener('click', function() {
+            if (confirmationCallback) {
+                confirmationCallback();
+            }
+            confirmationModal.style.display = 'none';
+            confirmationCallback = null;
+        });
+    } else {
+        console.warn('Confirmation modal confirm button not found');
+    }
+    
+    // Video ID Modal - with null checks
+    const videoIdCancel = document.getElementById('video-id-cancel');
+    const videoIdConfirm = document.getElementById('video-id-confirm');
+    const videoIdModal = document.getElementById('video-id-modal');
+    const videoIdInput = document.getElementById('video-id-input');
+    
+    if (videoIdCancel && videoIdModal && videoIdInput) {
+        videoIdCancel.addEventListener('click', function() {
+            videoIdModal.style.display = 'none';
+            videoIdInput.value = '';
+            videoIdCallback = null;
+        });
+    } else {
+        console.warn('Video ID modal cancel elements not found');
+    }
+    
+    if (videoIdConfirm && videoIdModal && videoIdInput) {
+        videoIdConfirm.addEventListener('click', function() {
+            const videoId = videoIdInput.value.trim();
+            if (videoId && videoIdCallback) {
+                videoIdCallback(videoId);
+            }
+            
+            // Close the modal after submission
+            videoIdModal.style.display = 'none';
+            videoIdInput.value = '';
+            videoIdCallback = null;
+        });
+    } else {
+        console.warn('Video ID modal confirm elements not found');
+    }
+    
+    console.log('Modal setup completed');
 }
 
 // Video Actions
