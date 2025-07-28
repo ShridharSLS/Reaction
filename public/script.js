@@ -421,14 +421,12 @@ function createVideoCard(video, status) {
                     </div>
                 ` : ''}
                 
-                ${video.note ? `
-                    <div class="detail-item note-item">
-                        <span class="detail-label">Note</span>
-                        <span class="detail-value">
-                            ${renderNoteDisplay(video.note, video.id)}
-                        </span>
-                    </div>
-                ` : ''}
+                <div class="detail-item note-item">
+                    <span class="detail-label">Note</span>
+                    <span class="detail-value">
+                        ${renderNoteDisplay(video.note, video.id)}
+                    </span>
+                </div>
             </div>
             
             <div class="video-actions">
@@ -1915,16 +1913,16 @@ async function deleteNote() {
 }
 
 function renderNoteDisplay(note, videoId) {
-    if (!note || note.trim() === '') {
-        return '';
-    }
-    
-    const escapedNote = escapeHtml(note).replace(/'/g, '\\\'');
+    const escapedNote = note ? escapeHtml(note).replace(/'/g, "\\'") : '';
+    const hasNote = note && note.trim() !== '';
+    const action = hasNote ? 'edit' : 'add';
+    const title = hasNote ? 'Edit note' : 'Add note';
+    const icon = hasNote ? '✏️' : '❓';
     
     return `
         <span class="note-display">
-            <button class="note-edit-btn" onclick="showNoteModal(${videoId}, 'edit', '${escapedNote}')" title="Edit note">
-                ✏️
+            <button class="note-edit-btn" onclick="showNoteModal(${videoId}, '${action}', '${escapedNote}')" title="${title}">
+                ${icon}
             </button>
         </span>
     `;
