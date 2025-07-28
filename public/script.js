@@ -467,10 +467,16 @@ function getVideoActions(video, status) {
             `;
         case 'assigned':
             return `
+                <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
+                    📋
+                </button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'team':
             return `
+                <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
+                    📋
+                </button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'relevance':
