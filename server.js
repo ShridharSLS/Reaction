@@ -336,10 +336,39 @@ app.get('/api/videos/:status', async (req, res) => {
             peopleMap[person.id] = person.name;
         });
         
-        // Transform the data to include person names
+        // Get all tags for all videos in one query (performance optimization)
+        const videoIds = videos?.map(v => v.id) || [];
+        let videoTagsMap = {};
+        
+        if (videoIds.length > 0) {
+            const { data: videoTags, error: tagsError } = await supabase
+                .from('video_tags')
+                .select(`
+                    video_id,
+                    tags (
+                        id,
+                        name,
+                        color
+                    )
+                `)
+                .in('video_id', videoIds);
+            
+            if (!tagsError && videoTags) {
+                // Group tags by video_id
+                videoTags.forEach(vt => {
+                    if (!videoTagsMap[vt.video_id]) {
+                        videoTagsMap[vt.video_id] = [];
+                    }
+                    videoTagsMap[vt.video_id].push(vt.tags);
+                });
+            }
+        }
+        
+        // Transform the data to include person names and tags
         const transformedData = videos?.map(video => ({
             ...video,
-            added_by_name: peopleMap[video.added_by] || 'Unknown'
+            added_by_name: peopleMap[video.added_by] || 'Unknown',
+            tags: videoTagsMap[video.id] || []
         })) || [];
         
         res.json(transformedData);

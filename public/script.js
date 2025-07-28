@@ -299,16 +299,7 @@ async function loadVideos(status) {
         const videos = await apiCall(`/api/videos/${status}`);
         console.log(`Received ${videos.length} ${status} videos:`, videos);
         
-        // Load tags for each video
-        for (const video of videos) {
-            try {
-                video.tags = await loadVideoTags(video.id);
-            } catch (error) {
-                console.warn(`Failed to load tags for video ${video.id}:`, error);
-                video.tags = [];
-            }
-        }
-        
+        // Tags are now included in the API response - no need for separate calls
         renderVideos(videos, `${status}-videos`, status);
         console.log(`Rendered ${status} videos successfully`);
     } catch (error) {
