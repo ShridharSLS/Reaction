@@ -24,20 +24,26 @@ function showSuccessNotification(message) {
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('App initializing... currentTab:', currentTab);
+    
     initializeTabs();
     loadPeople();
     setupForms();
     setupModals();
     
-    // Load initial data for active tab immediately
-    if (currentTab !== 'add-topic' && currentTab !== 'manage-people') {
-        loadVideos(currentTab);
-    }
+    // Force load pending videos immediately
+    console.log('Loading initial videos for tab:', currentTab);
+    loadVideos(currentTab).then(() => {
+        console.log('Initial videos loaded successfully');
+    }).catch(error => {
+        console.error('Failed to load initial videos:', error);
+    });
     
-    // Update button counts quickly with reduced delay
+    // Update button counts with debugging
     setTimeout(() => {
+        console.log('Updating button counts...');
         updateButtonCounts();
-    }, 100);
+    }, 200);
 });
 
 // Tab Management
@@ -282,12 +288,20 @@ function updateArchivedPeopleList(archivedPeople) {
 // Load Videos
 async function loadVideos(status) {
     try {
+        console.log(`Loading ${status} videos...`);
         const videos = await apiCall(`/api/videos/${status}`);
+        console.log(`Received ${videos.length} ${status} videos:`, videos);
         renderVideos(videos, `${status}-videos`, status);
+        console.log(`Rendered ${status} videos successfully`);
     } catch (error) {
         console.error(`Failed to load ${status} videos:`, error);
         // Update count to 0 on error
         updateViewCount(status, 0);
+        // Show error in container
+        const container = document.getElementById(`${status}-videos`);
+        if (container) {
+            container.innerHTML = `<div class="error-state"><h3>Error loading ${status} videos</h3><p>${error.message}</p></div>`;
+        }
     }
 }
 
@@ -1849,10 +1863,14 @@ function renderNoteDisplay(note, videoId) {
 // Update button counts in navigation - simplified and faster
 async function updateButtonCounts() {
     try {
+        console.log('Attempting to fetch button counts...');
+        
         // Single API call to get all counts at once
         const response = await fetch('/api/videos/counts');
+        console.log('Counts API response status:', response.status, response.ok);
+        
         if (!response.ok) {
-            console.warn('Counts API not available, using individual calls');
+            console.warn('Counts API not available, using fallback. Status:', response.status);
             return updateButtonCountsFallback();
         }
         
@@ -1870,13 +1888,20 @@ async function updateButtonCounts() {
             { id: 'all-btn-count', count: counts.all || 0 }
         ];
         
+        let successCount = 0;
         updates.forEach(({ id, count }) => {
             const element = document.getElementById(id);
             if (element) {
                 element.textContent = `(${count})`;
                 element.style.display = 'inline-block';
+                console.log(`Updated ${id} with count: ${count}`);
+                successCount++;
+            } else {
+                console.warn(`Element not found: ${id}`);
             }
         });
+        
+        console.log(`Successfully updated ${successCount}/${updates.length} button counts`);
         
     } catch (error) {
         console.error('Error updating button counts:', error);
