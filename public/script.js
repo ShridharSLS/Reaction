@@ -28,12 +28,16 @@ document.addEventListener('DOMContentLoaded', function() {
     loadPeople();
     setupForms();
     setupModals();
-    updateButtonCounts(); // Load navigation button counts
     
     // Load initial data for active tab
     if (currentTab !== 'add-topic' && currentTab !== 'manage-people') {
         loadVideos(currentTab);
     }
+    
+    // Update button counts after a short delay to ensure DOM is ready
+    setTimeout(() => {
+        updateButtonCounts();
+    }, 500);
 });
 
 // Tab Management
@@ -1843,9 +1847,22 @@ function renderNoteDisplay(note, videoId) {
 }
 
 // Update button counts in navigation
-async function updateButtonCounts() {
+async function updateButtonCounts(retryCount = 0) {
     try {
-        console.log('Updating button counts...');
+        console.log('Updating button counts... attempt:', retryCount + 1);
+        
+        // Check if DOM elements exist first
+        const requiredElements = [
+            'relevance-btn-count', 'pending-btn-count', 'accepted-btn-count',
+            'rejected-btn-count', 'assigned-btn-count', 'team-btn-count', 'all-btn-count'
+        ];
+        
+        const missingElements = requiredElements.filter(id => !document.getElementById(id));
+        if (missingElements.length > 0 && retryCount < 3) {
+            console.warn('Missing elements, retrying in 500ms:', missingElements);
+            setTimeout(() => updateButtonCounts(retryCount + 1), 500);
+            return;
+        }
         
         // Fetch counts for each section
         const responses = await Promise.all([
@@ -1872,15 +1889,20 @@ async function updateButtonCounts() {
             { id: 'all-btn-count', count: data[6].length }
         ];
         
+        let successCount = 0;
         updates.forEach(({ id, count }) => {
             const element = document.getElementById(id);
             if (element) {
                 element.textContent = `(${count})`;
+                element.style.display = 'inline-block';
                 console.log(`Updated ${id}: (${count})`);
+                successCount++;
             } else {
                 console.warn(`Element not found: ${id}`);
             }
         });
+        
+        console.log(`Successfully updated ${successCount}/${updates.length} button counts`);
         
     } catch (error) {
         console.error('Error updating button counts:', error);
