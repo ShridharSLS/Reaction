@@ -372,34 +372,35 @@ function createVideoCard(video, status) {
                     </a>
                 </div>
                 
-                <div class="detail-item likes-item">
-                    <span class="detail-label">Likes</span>
-                    <span class="detail-value">${video.likes_count || 0}</span>
-                </div>
-                
-                <div class="detail-item relevance-item">
-                    <span class="detail-label">Relevance</span>
-                    <span class="detail-value">
-                        ${status === 'relevance' || status === 'pending' || status === 'accepted' ? 
-                            `<select onchange="updateRelevance(${video.id}, this.value)" style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
-                                ${status === 'relevance' ? 
-                                    `<option value="-1" ${relevanceRating === '-1' ? 'selected' : ''}>-1</option>` : 
-                                    `<option value="" ${relevanceRating === '' ? 'selected' : ''}>-</option>`
-                                }
+                ${status === 'relevance' ? `
+                    <div class="detail-item likes-item">
+                        <span class="detail-label">Likes</span>
+                        <span class="detail-value">${video.likes_count || 0}</span>
+                    </div>
+                    
+                    <div class="detail-item relevance-item">
+                        <span class="detail-label">Relevance</span>
+                        <span class="detail-value">
+                            <select onchange="updateRelevance(${video.id}, this.value)" style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="-1" ${relevanceRating === '-1' ? 'selected' : ''}>-1</option>
                                 <option value="0" ${relevanceRating == 0 ? 'selected' : ''}>0</option>
                                 <option value="1" ${relevanceRating == 1 ? 'selected' : ''}>1</option>
                                 <option value="2" ${relevanceRating == 2 ? 'selected' : ''}>2</option>
                                 <option value="3" ${relevanceRating == 3 ? 'selected' : ''}>3</option>
-                            </select>` : 
-                            (relevanceRating !== '' ? relevanceRating : '-')
-                        }
-                    </span>
-                </div>
-                
-                <div class="detail-item score-item">
-                    <span class="detail-label">Score</span>
-                    <span class="detail-value score">${score}</span>
-                </div>
+                            </select>
+                        </span>
+                    </div>
+                    
+                    <div class="detail-item score-item">
+                        <span class="detail-label">Score</span>
+                        <span class="detail-value score">${score}</span>
+                    </div>
+                ` : `
+                    <div class="detail-item score-item">
+                        <span class="detail-label">Score</span>
+                        <span class="detail-value score-formula">${video.likes_count || 0} x ${relevanceRating >= 0 ? relevanceRating : 0} = ${score}</span>
+                    </div>
+                `}
                 
                 <div class="detail-item tags-item">
                     <span class="detail-label">Tags</span>

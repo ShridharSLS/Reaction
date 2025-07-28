@@ -616,6 +616,15 @@ header p {
     text-align: center;
 }
 
+/* Score formula styling */
+.score-formula {
+    font-family: inherit;
+    font-weight: normal;
+    font-size: inherit;
+    color: inherit;
+    font-style: normal;
+}
+
 /* Note display and editing styles */
 .note-display {
     display: inline-flex;
