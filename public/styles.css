@@ -623,6 +623,9 @@ header p {
     font-size: inherit;
     color: inherit;
     font-style: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Note display and editing styles */

@@ -366,7 +366,6 @@ function createVideoCard(video, status) {
             
             <div class="video-details">
                 <div class="detail-item link-item">
-                    <span class="detail-label">Link</span>
                     <a href="${escapeHtml(video.link)}" target="_blank" class="link-icon" title="${escapeHtml(video.link)}">
                         🔗
                     </a>
@@ -392,18 +391,15 @@ function createVideoCard(video, status) {
                     </div>
                     
                     <div class="detail-item score-item">
-                        <span class="detail-label">Score</span>
                         <span class="detail-value score">${score}</span>
                     </div>
                 ` : `
                     <div class="detail-item score-item">
-                        <span class="detail-label">Score</span>
                         <span class="detail-value score-formula">${video.likes_count || 0} x ${relevanceRating >= 0 ? relevanceRating : 0} = ${score}</span>
                     </div>
                 `}
                 
                 <div class="detail-item tags-item">
-                    <span class="detail-label">Tags</span>
                     <span class="detail-value tags-cell" onclick="showTagModal(${video.id})">
                         <div class="tags-display" id="tags-${video.id}">
                             ${video.tags ? renderVideoTags(video.tags) : '<span class="tags-placeholder">#</span>'}
