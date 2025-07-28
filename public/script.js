@@ -344,9 +344,8 @@ function createVideoCard(video, status) {
     return `
         <div class="video-card ${typeClass}">
             <div class="video-header">
-                <div class="video-info">
-                    <h3 title="${escapeHtml(video.added_by_name)}">${truncateName(video.added_by_name)}</h3>
-                    <div class="video-meta">${formatDate(video.link_added_on)}</div>
+                <div class="video-info-icon" title="Added by: ${escapeHtml(video.added_by_name)}&#10;Date: ${formatDate(video.link_added_on)}">
+                    <span class="info-icon">ℹ️</span>
                 </div>
             </div>
             
