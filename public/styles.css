@@ -438,6 +438,7 @@ header p {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    overflow: visible;
 }
 
 .video-card {
@@ -452,7 +453,7 @@ header p {
     gap: 12px;
     min-height: 70px;
     width: 100%;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .video-card:hover {
@@ -875,11 +876,12 @@ header p {
     border-radius: 6px;
     font-size: 12px;
     white-space: nowrap;
-    z-index: 1000;
+    z-index: 9999;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    pointer-events: none;
 }
 
 .info-tooltip::after {
