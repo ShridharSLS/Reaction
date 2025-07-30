@@ -273,7 +273,6 @@ app.get('/api/videos/counts', async (req, res) => {
             accepted: 0,
             rejected: 0,
             assigned: 0,
-            team: 0,
             all: videos.length
         };
         
@@ -289,8 +288,6 @@ app.get('/api/videos/counts', async (req, res) => {
                 counts.rejected++;
             } else if (status === 'assigned') {
                 counts.assigned++;
-            } else if (status === 'team') {
-                counts.team++;
             }
         });
         

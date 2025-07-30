@@ -120,7 +120,7 @@ function switchTab(tabId) {
     // Update dropdown button states
     const dropdownBtns = document.querySelectorAll('.dropdown-btn');
     const isTasksDropdownTab = ['add-topic', 'bulk-import', 'manage-people', 'manage-tags', 'manage-admins'].includes(tabId);
-    const isClosedDropdownTab = ['rejected', 'assigned', 'team', 'all'].includes(tabId);
+    const isClosedDropdownTab = ['rejected', 'assigned', 'all'].includes(tabId);
     
     // Reset all dropdown button styles first
     dropdownBtns.forEach(btn => {
@@ -442,7 +442,6 @@ function getVideoActions(video, status) {
             return `
                 <button class="btn btn-success" onclick="acceptVideo(${video.id})">Accept</button>
                 <button class="btn btn-primary" onclick="assignVideoId(${video.id})">Shridhar</button>
-                <button class="btn btn-team" onclick="assignVideoToTeam(${video.id})">Team</button>
                 <button class="btn btn-reject" onclick="rejectVideo(${video.id})">Reject</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
@@ -452,7 +451,6 @@ function getVideoActions(video, status) {
                     📋
                 </button>
                 <button class="btn btn-primary" onclick="assignVideoId(${video.id})">Shridhar</button>
-                <button class="btn btn-team" onclick="assignVideoToTeam(${video.id})">Team</button>
                 <button class="btn btn-reject" onclick="rejectVideo(${video.id})">Reject</button>
                 <button class="btn btn-warning" onclick="revertToPending(${video.id})">Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
@@ -470,13 +468,7 @@ function getVideoActions(video, status) {
                 </button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
-        case 'team':
-            return `
-                <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
-                    📋
-                </button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
-            `;
+
         case 'relevance':
             return `
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
@@ -918,22 +910,7 @@ function assignVideoId(videoId) {
     });
 }
 
-function assignVideoToTeam(videoId) {
-    showVideoIdInput(async (videoIdText) => {
-        try {
-            await apiCall(`/api/videos/${videoId}/status`, {
-                method: 'PUT',
-                body: JSON.stringify({ 
-                    status: 'team',
-                    video_id_text: videoIdText
-                })
-            });
-            loadVideos(currentTab);
-        } catch (error) {
-            console.error('Failed to assign video to team:', error);
-        }
-    });
-}
+
 
 async function revertToPending(videoId) {
     try {
@@ -1952,7 +1929,7 @@ async function updateButtonCounts() {
             { id: 'accepted-btn-count', count: counts.accepted || 0 },
             { id: 'rejected-btn-count', count: counts.rejected || 0 },
             { id: 'assigned-btn-count', count: counts.assigned || 0 },
-            { id: 'team-btn-count', count: counts.team || 0 },
+
             { id: 'all-btn-count', count: counts.all || 0 }
         ];
         
