@@ -441,7 +441,7 @@ function getVideoActions(video, status) {
         case 'pending':
             return `
                 <button class="btn btn-success" onclick="acceptVideo(${video.id})">Accept</button>
-                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">Shridhar</button>
+                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">ID given</button>
                 <button class="btn btn-reject" onclick="rejectVideo(${video.id})">Reject</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
@@ -450,7 +450,7 @@ function getVideoActions(video, status) {
                 <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
                     📋
                 </button>
-                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">Shridhar</button>
+                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">ID given</button>
                 <button class="btn btn-reject" onclick="rejectVideo(${video.id})">Reject</button>
                 <button class="btn btn-warning" onclick="revertToPending(${video.id})">Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
