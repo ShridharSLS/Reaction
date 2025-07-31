@@ -1055,10 +1055,11 @@ async function host2RevertToPending(videoId) {
 
 // Host 2 Note Modal (for status_2 and note_2)
 function showHost2NoteModal(videoId, action) {
-    const modal = document.getElementById('note-modal');
-    const title = document.getElementById('note-modal-title');
-    const input = document.getElementById('note-input');
-    const saveBtn = document.getElementById('note-save-btn');
+    const modal = document.getElementById('noteModal');
+    const title = document.getElementById('noteModalTitle');
+    const input = document.getElementById('noteTextarea');
+    const saveBtn = document.getElementById('noteSaveBtn');
+    const cancelBtn = document.getElementById('noteCancelBtn');
     
     title.textContent = `${action.charAt(0).toUpperCase() + action.slice(1)} Video - Add Note (Host 2)`;
     input.value = '';
@@ -1068,6 +1069,14 @@ function showHost2NoteModal(videoId, action) {
     // Remove any existing event listeners
     const newSaveBtn = saveBtn.cloneNode(true);
     saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+    
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    
+    // Add cancel event listener
+    newCancelBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
     
     // Add new event listener for Host 2
     newSaveBtn.addEventListener('click', async () => {
