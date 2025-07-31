@@ -625,7 +625,7 @@ function getHost2VideoActions(video, status) {
         case 'pending':
             return `
                 <button class="btn btn-success" onclick="hostAction(2, ${video.id}, 'accept')">Accept</button>
-                <button class="btn btn-primary" onclick="host2AssignVideoId(${video.id})">ID given</button>
+                <button class="btn btn-primary" onclick="hostAction(2, ${video.id}, 'assign')">ID given</button>
                 <button class="btn btn-reject" onclick="hostAction(2, ${video.id}, 'reject')">Reject</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
@@ -634,7 +634,7 @@ function getHost2VideoActions(video, status) {
                 <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note_2 || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
                     📋
                 </button>
-                <button class="btn btn-primary" onclick="host2AssignVideoId(${video.id})">ID given</button>
+                <button class="btn btn-primary" onclick="hostAction(2, ${video.id}, 'assign')">ID given</button>
                 <button class="btn btn-reject" onclick="hostAction(2, ${video.id}, 'reject')">Reject</button>
                 <button class="btn btn-warning" onclick="hostAction(2, ${video.id}, 'pending')">Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
