@@ -581,9 +581,9 @@ function getVideoActions(video, status) {
     switch (status) {
         case 'pending':
             return `
-                <button class="btn btn-success" onclick="acceptVideo(${video.id})">Accept</button>
+                <button class="btn btn-success" onclick="hostAction(1, ${video.id}, 'accept')">Accept</button>
                 <button class="btn btn-primary" onclick="assignVideoId(${video.id})">ID given</button>
-                <button class="btn btn-reject" onclick="rejectVideo(${video.id})">Reject</button>
+                <button class="btn btn-reject" onclick="hostAction(1, ${video.id}, 'reject')">Reject</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'accepted':
@@ -592,13 +592,13 @@ function getVideoActions(video, status) {
                     📋
                 </button>
                 <button class="btn btn-primary" onclick="assignVideoId(${video.id})">ID given</button>
-                <button class="btn btn-reject" onclick="rejectVideo(${video.id})">Reject</button>
+                <button class="btn btn-reject" onclick="hostAction(1, ${video.id}, 'reject')">Reject</button>
                 <button class="btn btn-warning" onclick="revertToPending(${video.id})">Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'rejected':
             return `
-                <button class="btn btn-success" onclick="acceptVideo(${video.id})">Accept</button>
+                <button class="btn btn-success" onclick="hostAction(1, ${video.id}, 'accept')">Accept</button>
                 <button class="btn btn-warning" onclick="revertToPending(${video.id})">Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
