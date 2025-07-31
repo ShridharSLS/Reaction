@@ -307,7 +307,7 @@ app.get('/api/videos/:status', async (req, res) => {
         const { data: videos, error: videosError } = await supabase
             .from('videos')
             .select('*')
-            .eq('status', status)
+            .eq('status_1', status)
             .order('type', { ascending: false }) // Trending first
             .order('score', { ascending: false, nullsFirst: false })
             .order('likes_count', { ascending: false, nullsFirst: false });
@@ -467,7 +467,7 @@ app.post('/api/videos', async (req, res) => {
             video_id_text,
             video_code: videoCode,  // Store extracted video code
             relevance_rating: relevance_rating !== undefined ? relevance_rating : -1,  // Use provided or default to -1
-            status: status || 'relevance'    // Use provided status or default to 'relevance'
+            status_1: status || 'relevance'    // Use provided status or default to 'relevance'
         };
         
         const { data, error } = await supabase
@@ -579,7 +579,7 @@ app.put('/api/videos/:id/status', async (req, res) => {
         const { id } = req.params;
         const { status, video_id_text, note } = req.body;
         
-        const updateData = { status };
+        const updateData = { status_1: status };
         if (video_id_text !== undefined) {
             updateData.video_id_text = video_id_text;
         }
@@ -683,7 +683,7 @@ app.get('/api/videos/:status/export', async (req, res) => {
         const { data: videos, error: videosError } = await supabase
             .from('videos')
             .select('*')
-            .eq('status', status)
+            .eq('status_1', status)
             .order('type', { ascending: false }) // Trending first
             .order('score', { ascending: false, nullsFirst: false })
             .order('likes_count', { ascending: false, nullsFirst: false });
