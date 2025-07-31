@@ -582,7 +582,7 @@ function getVideoActions(video, status) {
         case 'pending':
             return `
                 <button class="btn btn-success" onclick="hostAction(1, ${video.id}, 'accept')">Accept</button>
-                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">ID given</button>
+                <button class="btn btn-primary" onclick="hostAction(1, ${video.id}, 'assign')">ID given</button>
                 <button class="btn btn-reject" onclick="hostAction(1, ${video.id}, 'reject')">Reject</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
@@ -591,15 +591,15 @@ function getVideoActions(video, status) {
                 <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
                     📋
                 </button>
-                <button class="btn btn-primary" onclick="assignVideoId(${video.id})">ID given</button>
+                <button class="btn btn-primary" onclick="hostAction(1, ${video.id}, 'assign')">ID given</button>
                 <button class="btn btn-reject" onclick="hostAction(1, ${video.id}, 'reject')">Reject</button>
-                <button class="btn btn-warning" onclick="revertToPending(${video.id})">Pending</button>
+                <button class="btn btn-warning" onclick="hostAction(1, ${video.id}, 'pending')">Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'rejected':
             return `
                 <button class="btn btn-success" onclick="hostAction(1, ${video.id}, 'accept')">Accept</button>
-                <button class="btn btn-warning" onclick="revertToPending(${video.id})">Pending</button>
+                <button class="btn btn-warning" onclick="hostAction(1, ${video.id}, 'pending')">Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'assigned':
