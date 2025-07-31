@@ -1794,23 +1794,25 @@ function renderAllEntriesTable(data) {
         return;
     }
     
-    // Define column order and display names
+    // Define column order and display names - ALL database columns
     const columns = [
         { key: 'id', label: 'ID', sortable: true },
-        { key: 'person_name', label: 'Person', sortable: true },
+        { key: 'person_id', label: 'Person ID', sortable: true },
+        { key: 'person_name', label: 'Person Name', sortable: true },
         { key: 'link', label: 'Video Link', sortable: false },
         { key: 'type', label: 'Type', sortable: true },
         { key: 'status_1', label: 'Status 1', sortable: true },
         { key: 'status_2', label: 'Status 2', sortable: true },
-        { key: 'likes_count', label: 'Likes', sortable: true },
-        { key: 'relevance_rating', label: 'Relevance', sortable: true },
+        { key: 'likes_count', label: 'Likes Count', sortable: true },
+        { key: 'relevance_rating', label: 'Relevance Rating', sortable: true },
         { key: 'score', label: 'Score', sortable: true },
         { key: 'video_id_text', label: 'Video ID 1', sortable: true },
         { key: 'video_id_text_2', label: 'Video ID 2', sortable: true },
-        { key: 'video_code', label: 'Code', sortable: true },
+        { key: 'video_code', label: 'Video Code', sortable: true },
         { key: 'note', label: 'Note 1', sortable: true },
         { key: 'note_2', label: 'Note 2', sortable: true },
-        { key: 'created_at', label: 'Created', sortable: true }
+        { key: 'created_at', label: 'Created At', sortable: true },
+        { key: 'updated_at', label: 'Updated At', sortable: true }
     ];
     
     // Render header
@@ -1825,6 +1827,7 @@ function renderAllEntriesTable(data) {
     bodyContainer.innerHTML = data.map(entry => `
         <tr>
             <td>${entry.id || ''}</td>
+            <td>${entry.person_id || ''}</td>
             <td>${escapeHtml(entry.person_name || '')}</td>
             <td class="link-cell">
                 ${entry.link ? `<a href="${escapeHtml(entry.link)}" target="_blank" title="${escapeHtml(entry.link)}">${escapeHtml(entry.link)}</a>` : ''}
@@ -1841,6 +1844,7 @@ function renderAllEntriesTable(data) {
             <td class="note-cell">${entry.note ? renderNoteDisplay(entry.note, entry.id) : ''}</td>
             <td class="note-cell">${entry.note_2 ? renderNoteDisplay(entry.note_2, entry.id) : ''}</td>
             <td>${entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}</td>
+            <td>${entry.updated_at ? new Date(entry.updated_at).toLocaleDateString() : ''}</td>
         </tr>
     `).join('');
 }
