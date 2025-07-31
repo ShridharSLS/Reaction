@@ -58,6 +58,9 @@
                 <button class="dropdown-btn">👩‍💼 Host 2 ▼</button>
                 <div class="dropdown-content">
                     <button class="dropdown-item" data-tab="host2-pending">🟡 Pending <span class="btn-count" id="host2-pending-btn-count"></span></button>
+                    <button class="dropdown-item" data-tab="host2-accepted">✅ Accepted <span class="btn-count" id="host2-accepted-btn-count"></span></button>
+                    <button class="dropdown-item" data-tab="host2-rejected">🟥 Rejected <span class="btn-count" id="host2-rejected-btn-count"></span></button>
+                    <button class="dropdown-item" data-tab="host2-assigned">🆔 ID given <span class="btn-count" id="host2-assigned-btn-count"></span></button>
                 </div>
             </div>
             
@@ -189,6 +192,33 @@
                 <button class="btn btn-secondary" onclick="exportCSV('host2-pending')">📤 Export CSV</button>
             </div>
             <div id="host2-pending-videos" class="videos-grid"></div>
+        </div>
+
+        <!-- Host 2 Accepted Tab -->
+        <div id="host2-accepted" class="tab-content">
+            <div class="view-header">
+                <h2>✅ Host 2 Accepted Videos <span id="host2-accepted-count" class="view-count"></span></h2>
+                <button class="btn btn-secondary" onclick="exportCSV('host2-accepted')">📤 Export CSV</button>
+            </div>
+            <div id="host2-accepted-videos" class="videos-grid"></div>
+        </div>
+
+        <!-- Host 2 Rejected Tab -->
+        <div id="host2-rejected" class="tab-content">
+            <div class="view-header">
+                <h2>🟥 Host 2 Rejected Videos <span id="host2-rejected-count" class="view-count"></span></h2>
+                <button class="btn btn-secondary" onclick="exportCSV('host2-rejected')">📤 Export CSV</button>
+            </div>
+            <div id="host2-rejected-videos" class="videos-grid"></div>
+        </div>
+
+        <!-- Host 2 ID Given Tab -->
+        <div id="host2-assigned" class="tab-content">
+            <div class="view-header">
+                <h2>🆔 Host 2 ID Given Videos <span id="host2-assigned-count" class="view-count"></span></h2>
+                <button class="btn btn-secondary" onclick="exportCSV('host2-assigned')">📤 Export CSV</button>
+            </div>
+            <div id="host2-assigned-videos" class="videos-grid"></div>
         </div>
 
         <!-- All Tab -->

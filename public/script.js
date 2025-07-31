@@ -1950,6 +1950,9 @@ async function updateButtonCounts() {
             
             // Host 2 counts
             { id: 'host2-pending-btn-count', count: counts.person2_pending || 0 },
+            { id: 'host2-accepted-btn-count', count: counts.person2_accepted || 0 },
+            { id: 'host2-rejected-btn-count', count: counts.person2_rejected || 0 },
+            { id: 'host2-assigned-btn-count', count: counts.person2_assigned || 0 },
 
             { id: 'all-btn-count', count: counts.all || 0 }
         ];
