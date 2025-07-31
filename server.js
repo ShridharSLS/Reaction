@@ -259,7 +259,7 @@ app.get('/api/videos/counts', async (req, res) => {
         // Single query to get all videos
         const { data: videos, error } = await supabase
             .from('videos')
-            .select('status');
+            .select('status_1, relevance_rating');
         
         if (error) {
             console.error('Error fetching video counts:', error);
@@ -277,7 +277,7 @@ app.get('/api/videos/counts', async (req, res) => {
         };
         
         videos.forEach(video => {
-            const status = video.status;
+            const status = video.status_1;
             if (status === 'relevance' && video.relevance_rating === -1) {
                 counts.relevance++;
             } else if (status === 'pending') {
