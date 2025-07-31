@@ -259,35 +259,59 @@ app.get('/api/videos/counts', async (req, res) => {
         // Single query to get all videos
         const { data: videos, error } = await supabase
             .from('videos')
-            .select('status_1, relevance_rating');
+            .select('status_1, status_2, relevance_rating');
         
         if (error) {
             console.error('Error fetching video counts:', error);
             return res.status(500).json({ error: 'Failed to fetch counts' });
         }
         
-        // Count by status
+        // Count by status for both persons
         const counts = {
+            // Person 1 counts
             relevance: 0,
             pending: 0,
             accepted: 0,
             rejected: 0,
             assigned: 0,
+            
+            // Person 2 counts
+            person2_relevance: 0,
+            person2_pending: 0,
+            person2_accepted: 0,
+            person2_rejected: 0,
+            person2_assigned: 0,
+            
             all: videos.length
         };
         
         videos.forEach(video => {
-            const status = video.status_1;
-            if (status === 'relevance' && video.relevance_rating === -1) {
+            // Count Person 1 statuses
+            const status1 = video.status_1;
+            if (status1 === 'relevance' && video.relevance_rating === -1) {
                 counts.relevance++;
-            } else if (status === 'pending') {
+            } else if (status1 === 'pending') {
                 counts.pending++;
-            } else if (status === 'accepted') {
+            } else if (status1 === 'accepted') {
                 counts.accepted++;
-            } else if (status === 'rejected') {
+            } else if (status1 === 'rejected') {
                 counts.rejected++;
-            } else if (status === 'assigned') {
+            } else if (status1 === 'assigned') {
                 counts.assigned++;
+            }
+            
+            // Count Person 2 statuses
+            const status2 = video.status_2;
+            if (status2 === 'relevance' && video.relevance_rating === -1) {
+                counts.person2_relevance++;
+            } else if (status2 === 'pending') {
+                counts.person2_pending++;
+            } else if (status2 === 'accepted') {
+                counts.person2_accepted++;
+            } else if (status2 === 'rejected') {
+                counts.person2_rejected++;
+            } else if (status2 === 'assigned') {
+                counts.person2_assigned++;
             }
         });
         
