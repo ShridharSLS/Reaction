@@ -419,11 +419,11 @@ function createVideoCard(video, status) {
                     </span>
                 </div>
                 
-                ${video.video_id_text ? `
+                ${(status.startsWith('host2-') ? video.video_id_text_2 : video.video_id_text) ? `
                     <div class="detail-item">
                         <span class="detail-label">Video ID</span>
                         <span class="detail-value">
-                            <input type="text" value="${escapeHtml(video.video_id_text)}" 
+                            <input type="text" value="${escapeHtml(status.startsWith('host2-') ? video.video_id_text_2 : video.video_id_text)}" 
                                    onchange="updateVideoId(${video.id}, this.value)" 
                                    style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
                             <button onclick="clearVideoId(${video.id})" 
@@ -436,7 +436,7 @@ function createVideoCard(video, status) {
                 <div class="detail-item note-item">
                     <span class="detail-label">Note</span>
                     <span class="detail-value">
-                        ${renderNoteDisplay(video.note, video.id)}
+                        ${renderNoteDisplay(status.startsWith('host2-') ? video.note_2 : video.note, video.id)}
                     </span>
                 </div>
             </div>
