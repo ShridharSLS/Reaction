@@ -426,7 +426,7 @@ function createVideoCard(video, status) {
                             <input type="text" value="${escapeHtml(status.startsWith('host2-') ? video.video_id_text_2 : video.video_id_text)}" 
                                    onchange="updateVideoId(${video.id}, this.value)" 
                                    style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
-                            <button onclick="clearVideoId(${video.id})" 
+                            <button onclick="${status.startsWith('host2-') ? 'host2ClearVideoId' : 'clearVideoId'}(${video.id})" 
                                     style="margin-left: 4px; padding: 1px 4px; font-size: 10px; background: #dc3545; color: white; border: none; border-radius: 2px; cursor: pointer;" 
                                     title="Clear Video ID">×</button>
                         </span>
@@ -937,6 +937,25 @@ async function clearVideoId(videoId) {
         loadVideos(currentTab);
     } catch (error) {
         console.error('Failed to clear video ID:', error);
+    }
+}
+
+// Host 2 Clear Video ID (only updates status_2 and video_id_text_2)
+async function host2ClearVideoId(videoId) {
+    try {
+        await apiCall(`/api/videos/${videoId}/host2/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ 
+                status: 'accepted',
+                video_id_text: null
+            })
+        });
+        
+        // Refresh current view
+        loadVideos(currentTab);
+        updateButtonCounts();
+    } catch (error) {
+        console.error('Failed to clear Host 2 video ID:', error);
     }
 }
 
