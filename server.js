@@ -700,6 +700,36 @@ app.put('/api/videos/:id/status', async (req, res) => {
     }
 });
 
+// Update Host 2 video status (status_2 column)
+app.put('/api/videos/:id/host2/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, video_id_text, note } = req.body;
+        
+        const updateData = { status_2: status };
+        if (video_id_text !== undefined) {
+            updateData.video_id_text_2 = video_id_text;
+        }
+        if (note !== undefined) {
+            updateData.note_2 = note;
+        }
+        
+        const { error } = await supabase
+            .from('videos')
+            .update(updateData)
+            .eq('id', id);
+            
+        if (error) {
+            res.status(500).json({ error: error.message });
+            return;
+        }
+        
+        res.json({ message: 'Host 2 video status updated successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Update video note
 app.put('/api/videos/:id/note', async (req, res) => {
     try {

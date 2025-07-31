@@ -449,6 +449,13 @@ function createVideoCard(video, status) {
 }
 
 function getVideoActions(video, status) {
+    // Check if this is a Host 2 view
+    if (status.startsWith('host2-')) {
+        const host2Status = status.replace('host2-', '');
+        return getHost2VideoActions(video, host2Status);
+    }
+    
+    // Regular Shridhar views
     switch (status) {
         case 'pending':
             return `
@@ -483,6 +490,43 @@ function getVideoActions(video, status) {
 
         case 'relevance':
             return `
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
+            `;
+        default:
+            return '';
+    }
+}
+
+// Host 2 specific action buttons (only updates status_2)
+function getHost2VideoActions(video, status) {
+    switch (status) {
+        case 'pending':
+            return `
+                <button class="btn btn-success" onclick="host2AcceptVideo(${video.id})">Accept</button>
+                <button class="btn btn-primary" onclick="host2AssignVideoId(${video.id})">ID given</button>
+                <button class="btn btn-reject" onclick="host2RejectVideo(${video.id})">Reject</button>
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
+            `;
+        case 'accepted':
+            return `
+                <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note_2 || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
+                    📋
+                </button>
+                <button class="btn btn-primary" onclick="host2AssignVideoId(${video.id})">ID given</button>
+                <button class="btn btn-reject" onclick="host2RejectVideo(${video.id})">Reject</button>
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
+            `;
+        case 'rejected':
+            return `
+                <button class="btn btn-success" onclick="host2AcceptVideo(${video.id})">Accept</button>
+                <button class="btn btn-warning" onclick="host2RevertToPending(${video.id})">Pending</button>
+                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
+            `;
+        case 'assigned':
+            return `
+                <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note_2 || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
+                    📋
+                </button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         default:
@@ -965,6 +1009,91 @@ function deleteVideo(videoId) {
             }
         }
     );
+}
+
+// Host 2 Action Functions (only update status_2 column)
+async function host2AcceptVideo(videoId) {
+    // Show note modal for Host 2 accept action
+    showHost2NoteModal(videoId, 'accepted');
+}
+
+async function host2RejectVideo(videoId) {
+    // Show note modal for Host 2 reject action
+    showHost2NoteModal(videoId, 'rejected');
+}
+
+function host2AssignVideoId(videoId) {
+    showVideoIdInput(async (videoIdText) => {
+        try {
+            await apiCall(`/api/videos/${videoId}/host2/status`, {
+                method: 'PUT',
+                body: JSON.stringify({ 
+                    status: 'assigned',
+                    video_id_text: videoIdText
+                })
+            });
+            loadVideos(currentTab);
+            updateButtonCounts();
+        } catch (error) {
+            console.error('Failed to assign Host 2 video ID:', error);
+        }
+    });
+}
+
+async function host2RevertToPending(videoId) {
+    try {
+        await apiCall(`/api/videos/${videoId}/host2/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status: 'pending' })
+        });
+        loadVideos(currentTab);
+        updateButtonCounts();
+    } catch (error) {
+        console.error('Failed to revert Host 2 video:', error);
+    }
+}
+
+// Host 2 Note Modal (for status_2 and note_2)
+function showHost2NoteModal(videoId, action) {
+    const modal = document.getElementById('note-modal');
+    const title = document.getElementById('note-modal-title');
+    const input = document.getElementById('note-input');
+    const saveBtn = document.getElementById('note-save-btn');
+    
+    title.textContent = `${action.charAt(0).toUpperCase() + action.slice(1)} Video - Add Note (Host 2)`;
+    input.value = '';
+    modal.style.display = 'block';
+    input.focus();
+    
+    // Remove any existing event listeners
+    const newSaveBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+    
+    // Add new event listener for Host 2
+    newSaveBtn.addEventListener('click', async () => {
+        const note = input.value.trim();
+        if (!note) {
+            alert('Please enter a note.');
+            return;
+        }
+        
+        try {
+            await apiCall(`/api/videos/${videoId}/host2/status`, {
+                method: 'PUT',
+                body: JSON.stringify({ 
+                    status: action,
+                    note: note
+                })
+            });
+            
+            modal.style.display = 'none';
+            loadVideos(currentTab);
+            updateButtonCounts();
+        } catch (error) {
+            console.error(`Failed to ${action} Host 2 video:`, error);
+            alert(`Failed to ${action} video. Please try again.`);
+        }
+    });
 }
 
 // Modal Functions
