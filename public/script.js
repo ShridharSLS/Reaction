@@ -1660,13 +1660,16 @@ function renderAllEntriesTable(data) {
                 ${entry.link ? `<a href="${escapeHtml(entry.link)}" target="_blank" title="${escapeHtml(entry.link)}">${escapeHtml(entry.link)}</a>` : ''}
             </td>
             <td class="type-cell">${entry.type || ''}</td>
-            <td class="status-cell">${entry.status || ''}</td>
+            <td class="status-cell">${entry.status_1 || ''}</td>
+            <td class="status-cell">${entry.status_2 || ''}</td>
             <td>${entry.likes_count || 0}</td>
             <td>${entry.relevance_rating !== null ? entry.relevance_rating : ''}</td>
             <td>${entry.score !== null ? entry.score.toFixed(2) : ''}</td>
             <td>${escapeHtml(entry.video_id_text || '')}</td>
+            <td>${escapeHtml(entry.video_id_text_2 || '')}</td>
             <td>${escapeHtml(entry.video_code || '')}</td>
             <td class="note-cell">${entry.note ? renderNoteDisplay(entry.note, entry.id) : ''}</td>
+            <td class="note-cell">${entry.note_2 ? renderNoteDisplay(entry.note_2, entry.id) : ''}</td>
             <td>${entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}</td>
         </tr>
     `).join('');
