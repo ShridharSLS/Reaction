@@ -296,7 +296,19 @@ function updateArchivedPeopleList(archivedPeople) {
 async function loadVideos(status) {
     try {
         console.log(`Loading ${status} videos...`);
-        const videos = await apiCall(`/api/videos/${status}`);
+        
+        // Determine API endpoint based on status
+        let apiEndpoint;
+        if (status.startsWith('host2-')) {
+            // Host 2 tabs: use host2 API endpoint
+            const host2Status = status.replace('host2-', '');
+            apiEndpoint = `/api/videos/host2/${host2Status}`;
+        } else {
+            // Regular tabs: use standard API endpoint
+            apiEndpoint = `/api/videos/${status}`;
+        }
+        
+        const videos = await apiCall(apiEndpoint);
         console.log(`Received ${videos.length} ${status} videos:`, videos);
         
         // Tags are now included in the API response - no need for separate calls
@@ -1935,6 +1947,9 @@ async function updateButtonCounts() {
             { id: 'accepted-btn-count', count: counts.accepted || 0 },
             { id: 'rejected-btn-count', count: counts.rejected || 0 },
             { id: 'assigned-btn-count', count: counts.assigned || 0 },
+            
+            // Host 2 counts
+            { id: 'host2-pending-btn-count', count: counts.person2_pending || 0 },
 
             { id: 'all-btn-count', count: counts.all || 0 }
         ];

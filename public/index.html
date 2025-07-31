@@ -53,6 +53,14 @@
                 </div>
             </div>
             
+            <!-- Host 2 Dropdown -->
+            <div class="dropdown">
+                <button class="dropdown-btn">👩‍💼 Host 2 ▼</button>
+                <div class="dropdown-content">
+                    <button class="dropdown-item" data-tab="host2-pending">🟡 Pending <span class="btn-count" id="host2-pending-btn-count"></span></button>
+                </div>
+            </div>
+            
             <button class="tab-btn" data-tab="all">📈 All <span class="btn-count" id="all-btn-count"></span></button>
         </nav>
 
@@ -174,7 +182,14 @@
             <div id="assigned-videos" class="videos-grid"></div>
         </div>
 
-
+        <!-- Host 2 Pending Tab -->
+        <div id="host2-pending" class="tab-content">
+            <div class="view-header">
+                <h2>🟡 Host 2 Pending Videos <span id="host2-pending-count" class="view-count"></span></h2>
+                <button class="btn btn-secondary" onclick="exportCSV('host2-pending')">📤 Export CSV</button>
+            </div>
+            <div id="host2-pending-videos" class="videos-grid"></div>
+        </div>
 
         <!-- All Tab -->
         <div id="all" class="tab-content">

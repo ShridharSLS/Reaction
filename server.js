@@ -398,6 +398,76 @@ app.get('/api/videos/:status', async (req, res) => {
     }
 });
 
+// Get Host 2 videos by status (queries status_2 column)
+app.get('/api/videos/host2/:status', async (req, res) => {
+    try {
+        const { status } = req.params;
+        
+        // Get videos from status_2 column (Host 2 workflow)
+        const { data: videos, error: videosError } = await supabase
+            .from('videos')
+            .select('*')
+            .eq('status_2', status)
+            .order('type', { ascending: false }) // Trending first
+            .order('score', { ascending: false, nullsFirst: false })
+            .order('likes_count', { ascending: false, nullsFirst: false });
+            
+        if (videosError) {
+            res.status(500).json({ error: videosError.message });
+            return;
+        }
+        
+        // Get all people to map names
+        const { data: people, error: peopleError } = await supabase
+            .from('people')
+            .select('id, name');
+            
+        if (peopleError) {
+            res.status(500).json({ error: peopleError.message });
+            return;
+        }
+        
+        // Create a lookup map for people names
+        const peopleMap = {};
+        people?.forEach(person => {
+            peopleMap[person.id] = person.name;
+        });
+        
+        // Get all tags for all videos in one query (performance optimization)
+        let videoTagsMap = {};
+        if (videos && videos.length > 0) {
+            const videoIds = videos.map(v => v.id);
+            const { data: videoTags, error: tagsError } = await supabase
+                .from('video_tags')
+                .select(`
+                    video_id,
+                    tags (id, name)
+                `)
+                .in('video_id', videoIds);
+                
+            if (!tagsError && videoTags) {
+                videoTags.forEach(vt => {
+                    if (!videoTagsMap[vt.video_id]) {
+                        videoTagsMap[vt.video_id] = [];
+                    }
+                    videoTagsMap[vt.video_id].push(vt.tags);
+                });
+            }
+        }
+        
+        // Transform the data to include person names and tags
+        const transformedData = videos?.map(video => ({
+            ...video,
+            added_by_name: peopleMap[video.added_by] || 'Unknown',
+            tags: videoTagsMap[video.id] || []
+        })) || [];
+        
+        res.json(transformedData);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Add new video
 app.post('/api/videos', async (req, res) => {
     try {
