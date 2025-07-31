@@ -49,6 +49,86 @@ function getHostFromTab(tabId) {
     return 1; // Default to Shridhar
 }
 
+// Unified Helper Functions (Phase 1.2: Non-Breaking)
+// These provide host-agnostic access to data and endpoints
+
+// Get the correct video column value for any host
+function getVideoColumn(video, hostId, columnType) {
+    const config = getHostConfig(hostId);
+    if (!config) return null;
+    
+    switch(columnType) {
+        case 'status': return video[config.statusCol];
+        case 'note': return video[config.noteCol];
+        case 'videoId': return video[config.videoIdCol];
+        default: return null;
+    }
+}
+
+// Get the correct API endpoint for any host and action
+function getHostApiEndpoint(hostId, videoId, action) {
+    const config = getHostConfig(hostId);
+    if (!config) return null;
+    
+    if (hostId === 1) {
+        // Shridhar uses the original endpoints
+        return `/api/videos/${videoId}/status`;
+    } else {
+        // Other hosts use the host-specific endpoints
+        return `/api/videos/${videoId}/${config.apiPath}/status`;
+    }
+}
+
+// Get the correct count key for any host and status
+function getCountKey(hostId, status) {
+    const config = getHostConfig(hostId);
+    if (!config) return null;
+    
+    if (hostId === 1) {
+        // Shridhar uses the original count keys
+        return status; // e.g., 'pending', 'accepted'
+    } else {
+        // Other hosts use prefixed count keys
+        return `${config.countPrefix}${status}`; // e.g., 'person2_pending'
+    }
+}
+
+// Get the correct tab ID for any host and status
+function getTabId(hostId, status) {
+    const config = getHostConfig(hostId);
+    if (!config) return null;
+    
+    if (hostId === 1) {
+        return status; // e.g., 'pending', 'accepted'
+    } else {
+        return `${config.prefix}${status}`; // e.g., 'host2-pending'
+    }
+}
+
+// Get the correct button count element ID for any host and status
+function getButtonCountId(hostId, status) {
+    const config = getHostConfig(hostId);
+    if (!config) return null;
+    
+    if (hostId === 1) {
+        return `${status}-btn-count`; // e.g., 'pending-btn-count'
+    } else {
+        return `${config.prefix}${status}-btn-count`; // e.g., 'host2-pending-btn-count'
+    }
+}
+
+// Get the correct view count element ID for any host and status
+function getViewCountId(hostId, status) {
+    const config = getHostConfig(hostId);
+    if (!config) return null;
+    
+    if (hostId === 1) {
+        return `${status}-count`; // e.g., 'pending-count'
+    } else {
+        return `${config.prefix}${status}-count`; // e.g., 'host2-pending-count'
+    }
+}
+
 // Helper function for success notifications
 function showSuccessNotification(message) {
     const notification = document.createElement('div');
