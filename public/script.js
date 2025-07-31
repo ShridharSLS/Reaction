@@ -624,9 +624,9 @@ function getHost2VideoActions(video, status) {
     switch (status) {
         case 'pending':
             return `
-                <button class="btn btn-success" onclick="host2AcceptVideo(${video.id})">Accept</button>
+                <button class="btn btn-success" onclick="hostAction(2, ${video.id}, 'accept')">Accept</button>
                 <button class="btn btn-primary" onclick="host2AssignVideoId(${video.id})">ID given</button>
-                <button class="btn btn-reject" onclick="host2RejectVideo(${video.id})">Reject</button>
+                <button class="btn btn-reject" onclick="hostAction(2, ${video.id}, 'reject')">Reject</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'accepted':
@@ -635,13 +635,13 @@ function getHost2VideoActions(video, status) {
                     📋
                 </button>
                 <button class="btn btn-primary" onclick="host2AssignVideoId(${video.id})">ID given</button>
-                <button class="btn btn-reject" onclick="host2RejectVideo(${video.id})">Reject</button>
+                <button class="btn btn-reject" onclick="hostAction(2, ${video.id}, 'reject')">Reject</button>
                 <button class="btn btn-warning" onclick="hostAction(2, ${video.id}, 'pending')">Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'rejected':
             return `
-                <button class="btn btn-success" onclick="host2AcceptVideo(${video.id})">Accept</button>
+                <button class="btn btn-success" onclick="hostAction(2, ${video.id}, 'accept')">Accept</button>
                 <button class="btn btn-warning" onclick="hostAction(2, ${video.id}, 'pending')">Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
@@ -1124,11 +1124,11 @@ async function hostActionAccept(hostId, videoId) {
     const config = getHostConfig(hostId);
     
     if (hostId === 1) {
-        // Use existing Shridhar modal system
+        // Use existing Shridhar modal system (uses 'accept')
         showNoteModal(videoId, 'accept');
     } else {
-        // Use host-specific modal system
-        showHost2NoteModal(videoId, 'accept');
+        // Use host-specific modal system (uses 'accepted')
+        showHost2NoteModal(videoId, 'accepted');
     }
 }
 
@@ -1137,11 +1137,11 @@ async function hostActionReject(hostId, videoId) {
     const config = getHostConfig(hostId);
     
     if (hostId === 1) {
-        // Use existing Shridhar modal system
+        // Use existing Shridhar modal system (uses 'reject')
         showNoteModal(videoId, 'reject');
     } else {
-        // Use host-specific modal system
-        showHost2NoteModal(videoId, 'reject');
+        // Use host-specific modal system (uses 'rejected')
+        showHost2NoteModal(videoId, 'rejected');
     }
 }
 
