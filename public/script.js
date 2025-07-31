@@ -2724,3 +2724,108 @@ function showCopySuccess() {
         }, 300);
     });
 }
+
+// ===== HOST MANAGEMENT FUNCTIONS =====
+
+// Load hosts when manage-hosts tab is opened
+function loadHosts() {
+    // For now, show the current hosts from HOST_CONFIG
+    const hostsContainer = document.getElementById('hosts-container');
+    if (!hostsContainer) return;
+    
+    hostsContainer.innerHTML = '';
+    
+    // Display current hosts
+    Object.entries(HOST_CONFIG).forEach(([hostId, config]) => {
+        const hostElement = document.createElement('div');
+        hostElement.className = 'host-item';
+        hostElement.innerHTML = `
+            <div class="host-info">
+                <span class="host-id">Host ${hostId}</span>
+                <span class="host-name">${config.name}</span>
+            </div>
+            <div class="host-actions">
+                <button class="btn btn-sm btn-secondary" onclick="editHost(${hostId}, '${config.name}')">Edit</button>
+                ${hostId > 2 ? `<button class="btn btn-sm btn-danger" onclick="deleteHost(${hostId})">Delete</button>` : ''}
+            </div>
+        `;
+        hostsContainer.appendChild(hostElement);
+    });
+}
+
+// Add new host
+async function addHost(hostName) {
+    try {
+        // For now, this is a placeholder - in full implementation this would:
+        // 1. Add to database
+        // 2. Create new database columns
+        // 3. Update HOST_CONFIG
+        // 4. Refresh navigation
+        
+        showNotification(`Host "${hostName}" would be added (implementation pending)`, 'info');
+        
+        // Clear form
+        document.getElementById('host-name').value = '';
+        
+        // Reload hosts display
+        loadHosts();
+        
+    } catch (error) {
+        console.error('Failed to add host:', error);
+        showNotification('Failed to add host', 'error');
+    }
+}
+
+// Edit host name
+function editHost(hostId, currentName) {
+    const newName = prompt(`Edit host name:`, currentName);
+    if (newName && newName !== currentName) {
+        // For now, this is a placeholder - in full implementation this would:
+        // 1. Update database
+        // 2. Update HOST_CONFIG
+        // 3. Refresh navigation
+        
+        showNotification(`Host ${hostId} would be renamed to "${newName}" (implementation pending)`, 'info');
+        loadHosts();
+    }
+}
+
+// Delete host
+function deleteHost(hostId) {
+    if (confirm(`Are you sure you want to delete Host ${hostId}? This will remove all associated data.`)) {
+        // For now, this is a placeholder - in full implementation this would:
+        // 1. Remove from database
+        // 2. Drop database columns
+        // 3. Update HOST_CONFIG
+        // 4. Refresh navigation
+        
+        showNotification(`Host ${hostId} would be deleted (implementation pending)`, 'info');
+        loadHosts();
+    }
+}
+
+// Initialize host management when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Add form submission handler for add host form
+    const addHostForm = document.getElementById('add-host-form');
+    if (addHostForm) {
+        addHostForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const hostName = document.getElementById('host-name').value.trim();
+            if (hostName) {
+                addHost(hostName);
+            }
+        });
+    }
+});
+
+// Add to switchTab function to load hosts when manage-hosts tab is opened
+const originalSwitchTab = switchTab;
+if (typeof switchTab === 'function') {
+    switchTab = function(tabId) {
+        originalSwitchTab(tabId);
+        if (tabId === 'manage-hosts') {
+            loadHosts();
+        }
+    };
+}

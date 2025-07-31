@@ -37,6 +37,7 @@
                     <button class="dropdown-item" data-tab="bulk-import">📋 Bulk Import</button>
                     <button class="dropdown-item" data-tab="manage-people">👥 Manage People</button>
                     <button class="dropdown-item" data-tab="manage-tags">🏷️ Manage Tags</button>
+                    <button class="dropdown-item" data-tab="manage-hosts">🖥️ Manage Hosts</button>
                     <button class="dropdown-item" data-tab="manage-admins">🔐 Manage Admins</button>
                 </div>
             </div>
@@ -290,6 +291,33 @@
                 </form>
                 
                 <div id="tags-list" class="tags-list"></div>
+            </div>
+        </div>
+
+        <!-- Manage Hosts Tab -->
+        <div id="manage-hosts" class="tab-content">
+            <div class="form-container">
+                <h2>🖥️ Manage Hosts</h2>
+                <p class="hosts-instructions">
+                    Manage video review hosts. Each host has their own workflow and can be assigned a display name.
+                </p>
+                
+                <!-- Add New Host Form -->
+                <form id="add-host-form">
+                    <div class="form-group">
+                        <label for="host-name">Host Display Name:</label>
+                        <input type="text" id="host-name" required placeholder="Enter host name (e.g., John, Sarah)..." maxlength="50">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Host</button>
+                </form>
+                
+                <!-- Existing Hosts List -->
+                <div class="hosts-list">
+                    <h3>Current Hosts</h3>
+                    <div id="hosts-container">
+                        <!-- Hosts will be loaded here -->
+                    </div>
+                </div>
             </div>
         </div>
 
