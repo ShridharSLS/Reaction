@@ -467,7 +467,8 @@ app.post('/api/videos', async (req, res) => {
             video_id_text,
             video_code: videoCode,  // Store extracted video code
             relevance_rating: relevance_rating !== undefined ? relevance_rating : -1,  // Use provided or default to -1
-            status_1: status || 'relevance'    // Use provided status or default to 'relevance'
+            status_1: status || 'relevance',    // Use provided status or default to 'relevance'
+            status_2: status || 'relevance'     // Mirror status_1 for Person 2
         };
         
         const { data, error } = await supabase
@@ -545,12 +546,14 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
             // Check if video is currently in relevance status
             const { data: video } = await supabase
                 .from('videos')
-                .select('status')
+                .select('status_1')
                 .eq('id', id)
                 .single();
                 
-            if (video && video.status === 'relevance') {
-                updateData.status = 'pending';
+            if (video && video.status_1 === 'relevance') {
+                // Update both status_1 and status_2 to 'pending' simultaneously
+                updateData.status_1 = 'pending';
+                updateData.status_2 = 'pending';
             }
         }
         

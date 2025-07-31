@@ -1630,13 +1630,16 @@ function renderAllEntriesTable(data) {
         { key: 'person_name', label: 'Person', sortable: true },
         { key: 'link', label: 'Video Link', sortable: false },
         { key: 'type', label: 'Type', sortable: true },
-        { key: 'status', label: 'Status', sortable: true },
+        { key: 'status_1', label: 'Status 1', sortable: true },
+        { key: 'status_2', label: 'Status 2', sortable: true },
         { key: 'likes_count', label: 'Likes', sortable: true },
         { key: 'relevance_rating', label: 'Relevance', sortable: true },
         { key: 'score', label: 'Score', sortable: true },
-        { key: 'video_id_text', label: 'Video ID', sortable: true },
+        { key: 'video_id_text', label: 'Video ID 1', sortable: true },
+        { key: 'video_id_text_2', label: 'Video ID 2', sortable: true },
         { key: 'video_code', label: 'Code', sortable: true },
-        { key: 'note', label: 'Note', sortable: true },
+        { key: 'note', label: 'Note 1', sortable: true },
+        { key: 'note_2', label: 'Note 2', sortable: true },
         { key: 'created_at', label: 'Created', sortable: true }
     ];
     
