@@ -514,6 +514,7 @@ function getHost2VideoActions(video, status) {
                 </button>
                 <button class="btn btn-primary" onclick="host2AssignVideoId(${video.id})">ID given</button>
                 <button class="btn btn-reject" onclick="host2RejectVideo(${video.id})">Reject</button>
+                <button class="btn btn-warning" onclick="host2RevertToPending(${video.id})">Pending</button>
                 <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
             `;
         case 'rejected':
