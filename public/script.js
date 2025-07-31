@@ -7,6 +7,48 @@ let videoIdCallback = null;
 let tagSelectionCallback = null;
 let currentVideoId = null;
 
+// Host Configuration System (Phase 1: Foundation)
+// This defines the mapping for each host's database columns and UI patterns
+const HOST_CONFIG = {
+    1: {
+        id: 1,
+        name: 'Shridhar',
+        prefix: '',
+        statusCol: 'status_1',
+        noteCol: 'note',
+        videoIdCol: 'video_id_text',
+        apiPath: '',
+        countPrefix: ''
+    },
+    2: {
+        id: 2,
+        name: 'Host 2',
+        prefix: 'host2-',
+        statusCol: 'status_2',
+        noteCol: 'note_2',
+        videoIdCol: 'video_id_text_2',
+        apiPath: 'host2',
+        countPrefix: 'person2_'
+    }
+};
+
+// Helper function to get host configuration
+function getHostConfig(hostId) {
+    return HOST_CONFIG[hostId] || null;
+}
+
+// Helper function to detect host from tab/status string
+function getHostFromStatus(status) {
+    if (status.startsWith('host2-')) return 2;
+    return 1; // Default to Shridhar
+}
+
+// Helper function to get host from tab ID
+function getHostFromTab(tabId) {
+    if (tabId.startsWith('host2-')) return 2;
+    return 1; // Default to Shridhar
+}
+
 // Helper function for success notifications
 function showSuccessNotification(message) {
     const notification = document.createElement('div');
