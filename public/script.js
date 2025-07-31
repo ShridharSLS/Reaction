@@ -1081,6 +1081,137 @@ async function host2ClearVideoId(videoId) {
     }
 }
 
+// Generic Host Action Function (Phase 1.3: Parallel Implementation)
+// This function can handle accept/reject/assign actions for any host
+// It works alongside existing functions for testing and gradual migration
+
+async function hostAction(hostId, videoId, action, options = {}) {
+    try {
+        const config = getHostConfig(hostId);
+        if (!config) {
+            console.error(`Invalid host ID: ${hostId}`);
+            return;
+        }
+
+        console.log(`[hostAction] Host ${hostId} (${config.name}): ${action} on video ${videoId}`);
+
+        switch(action) {
+            case 'accept':
+                await hostActionAccept(hostId, videoId);
+                break;
+            case 'reject':
+                await hostActionReject(hostId, videoId);
+                break;
+            case 'assign':
+                await hostActionAssign(hostId, videoId);
+                break;
+            case 'pending':
+                await hostActionPending(hostId, videoId);
+                break;
+            case 'clearVideoId':
+                await hostActionClearVideoId(hostId, videoId);
+                break;
+            default:
+                console.error(`Unknown action: ${action}`);
+        }
+    } catch (error) {
+        console.error(`[hostAction] Error in host ${hostId} action ${action}:`, error);
+    }
+}
+
+// Helper function for accept action
+async function hostActionAccept(hostId, videoId) {
+    const config = getHostConfig(hostId);
+    
+    if (hostId === 1) {
+        // Use existing Shridhar modal system
+        showNoteModal(videoId, 'accept');
+    } else {
+        // Use host-specific modal system
+        showHost2NoteModal(videoId, 'accept');
+    }
+}
+
+// Helper function for reject action
+async function hostActionReject(hostId, videoId) {
+    const config = getHostConfig(hostId);
+    
+    if (hostId === 1) {
+        // Use existing Shridhar modal system
+        showNoteModal(videoId, 'reject');
+    } else {
+        // Use host-specific modal system
+        showHost2NoteModal(videoId, 'reject');
+    }
+}
+
+// Helper function for assign action
+async function hostActionAssign(hostId, videoId) {
+    const config = getHostConfig(hostId);
+    const endpoint = getHostApiEndpoint(hostId, videoId);
+    
+    try {
+        const videoIdText = prompt('Enter Video ID:');
+        if (videoIdText) {
+            const updateData = { 
+                status: 'assigned',
+                video_id_text: videoIdText
+            };
+            
+            await apiCall(endpoint, {
+                method: 'PUT',
+                body: JSON.stringify(updateData)
+            });
+            
+            loadVideos(currentTab);
+            updateButtonCounts();
+        }
+    } catch (error) {
+        console.error(`[hostActionAssign] Error for host ${hostId}:`, error);
+    }
+}
+
+// Helper function for pending action
+async function hostActionPending(hostId, videoId) {
+    const config = getHostConfig(hostId);
+    const endpoint = getHostApiEndpoint(hostId, videoId);
+    
+    try {
+        await apiCall(endpoint, {
+            method: 'PUT',
+            body: JSON.stringify({ status: 'pending' })
+        });
+        
+        loadVideos(currentTab);
+        updateButtonCounts();
+    } catch (error) {
+        console.error(`[hostActionPending] Error for host ${hostId}:`, error);
+    }
+}
+
+// Helper function for clear video ID action
+async function hostActionClearVideoId(hostId, videoId) {
+    const config = getHostConfig(hostId);
+    const endpoint = getHostApiEndpoint(hostId, videoId);
+    
+    try {
+        await apiCall(endpoint, {
+            method: 'PUT',
+            body: JSON.stringify({ 
+                status: 'accepted',
+                video_id_text: null
+            })
+        });
+        
+        loadVideos(currentTab);
+        updateButtonCounts();
+    } catch (error) {
+        console.error(`[hostActionClearVideoId] Error for host ${hostId}:`, error);
+    }
+}
+
+// Original Action Functions (Preserved for compatibility and testing)
+
 async function acceptVideo(videoId) {
     // Show note modal for accept action
     showNoteModal(videoId, 'accept');
