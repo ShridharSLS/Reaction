@@ -205,7 +205,7 @@ function generateButton(buttonTemplate, hostId, videoId, video) {
             // Get the correct note column for this host
             const noteCol = getHostConfig(hostId)?.noteCol || 'note';
             const note = video[noteCol] || '';
-            onclick = `copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${note.replace(/'/g, '\\\'')}'))`;
+            onclick = `copyLinkAndNote('${video.link.replace(/'/g, '\\\')}', '${note.replace(/'/g, '\\\')}')`;
             break;
             
         default:
@@ -1631,17 +1631,23 @@ async function revertToAccepted(videoId) {
 }
 
 function deleteVideo(videoId) {
+    console.log('Delete video called for ID:', videoId);
     showConfirmation(
         'Delete Video',
         'Are you sure you want to permanently delete this video? This action cannot be undone.',
         async () => {
             try {
-                await apiCall(`/api/videos/${videoId}`, {
+                console.log('Deleting video with ID:', videoId);
+                const response = await apiCall(`/api/videos/${videoId}`, {
                     method: 'DELETE'
                 });
+                console.log('Delete response:', response);
+                showSuccessNotification('Video deleted successfully');
                 loadVideos(currentTab);
+                updateButtonCounts(); // Update counts after deletion
             } catch (error) {
                 console.error('Failed to delete video:', error);
+                alert(`Error deleting video: ${error.message || 'Unknown error'}`);
             }
         }
     );
