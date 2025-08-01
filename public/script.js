@@ -3071,9 +3071,8 @@ async function addHost(hostName) {
         // Reload hosts display
         await loadHosts();
         
-        // Reload host configuration and update navigation
-        await loadHostConfiguration();
-        updateNavigation();
+        // Update navigation with new host
+        await updateNavigation();
         
     } catch (error) {
         console.error('[Phase 4.3] Failed to add host:', error);
@@ -3133,7 +3132,7 @@ async function editHost(hostId, currentName) {
             
             // Reload host configuration and update navigation
             await loadHostConfiguration();
-            updateNavigation();
+            await updateNavigation();
             
         } catch (error) {
             console.error('[Phase 4.3] Failed to edit host:', error);
@@ -3183,7 +3182,7 @@ async function deleteHost(hostId) {
             
             // Reload host configuration and update navigation
             await loadHostConfiguration();
-            updateNavigation();
+            await updateNavigation();
         }
         
     } catch (error) {
@@ -3226,23 +3225,23 @@ if (document.readyState === 'loading') {
 }
 
 // Update navigation dropdowns with current host names
-function updateNavigation() {
-    // Update Host 2 dropdown button text if it exists
-    const host2Dropdown = document.querySelector('.dropdown-btn');
-    if (host2Dropdown && HOST_CONFIG[2]) {
-        // Find the Host 2 dropdown specifically
-        const dropdowns = document.querySelectorAll('.dropdown');
-        dropdowns.forEach(dropdown => {
-            const btn = dropdown.querySelector('.dropdown-btn');
-            if (btn && btn.textContent.includes('Host 2')) {
-                btn.innerHTML = `👩‍💼 ${HOST_CONFIG[2].name} ▼`;
-            }
-        });
+async function updateNavigation() {
+    try {
+        console.log('[Phase 4.3] Updating navigation after host changes...');
+        
+        // Reload host configuration from database
+        await loadHostConfiguration();
+        
+        // Regenerate navigation with updated host config
+        generateNavigation();
+        
+        // Update counts for all sections
+        await updateAllCounts();
+        
+        console.log('[Phase 4.3] Navigation updated successfully');
+    } catch (error) {
+        console.error('[Phase 4.3] Failed to update navigation:', error);
     }
-    
-    // For newly added hosts (Host 3+), we would need to create new dropdown elements
-    // This is a basic implementation - full implementation would rebuild navigation
-    console.log('Navigation updated with current host names');
 }
 
 // Add to switchTab function to load hosts when manage-hosts tab is opened
