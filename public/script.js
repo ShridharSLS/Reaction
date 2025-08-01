@@ -3264,6 +3264,90 @@ if (document.readyState === 'loading') {
 }
 
 // Update navigation dropdowns with current host names
+// Create content containers for new hosts that don't have them yet
+async function createHostContentContainers() {
+    try {
+        console.log('[Phase 4.3] Creating content containers for new hosts...');
+        
+        // Get the main app container where content divs should be added
+        const mainApp = document.getElementById('main-app');
+        if (!mainApp) {
+            console.error('Main app container not found');
+            return;
+        }
+        
+        // Get all active hosts
+        const hosts = await apiCall('/api/hosts');
+        const statusTypes = ['pending', 'accepted', 'rejected', 'assigned'];
+        
+        hosts.forEach(host => {
+            const hostId = host.host_id;
+            
+            // Skip Host 1 (uses regular tab IDs without host prefix)
+            if (hostId === 1) return;
+            
+            statusTypes.forEach(status => {
+                const tabId = `host${hostId}-${status}`;
+                
+                // Check if content container already exists
+                if (!document.getElementById(tabId)) {
+                    console.log(`Creating content container for ${tabId}`);
+                    
+                    // Create the content container
+                    const contentDiv = document.createElement('div');
+                    contentDiv.id = tabId;
+                    contentDiv.className = 'tab-content';
+                    
+                    // Add the content structure
+                    contentDiv.innerHTML = `
+                        <div class="view-header">
+                            <h2>${getStatusIcon(status)} ${host.name} - ${capitalizeFirst(status)} <span id="${tabId}-count" class="view-count"></span></h2>
+                            <p style="margin: 10px 0; color: #666; font-size: 14px;">
+                                ${getStatusDescription(status)} for ${host.name}
+                            </p>
+                        </div>
+                        <div id="${tabId}-videos" class="videos-container">
+                            <!-- Videos will be loaded here -->
+                        </div>
+                    `;
+                    
+                    // Append to main app
+                    mainApp.appendChild(contentDiv);
+                }
+            });
+        });
+        
+        console.log('[Phase 4.3] Content containers created successfully');
+    } catch (error) {
+        console.error('[Phase 4.3] Error creating content containers:', error);
+    }
+}
+
+// Helper functions for content container creation
+function getStatusIcon(status) {
+    const icons = {
+        pending: '⏳',
+        accepted: '✅',
+        rejected: '❌',
+        assigned: '🆔'
+    };
+    return icons[status] || '📝';
+}
+
+function getStatusDescription(status) {
+    const descriptions = {
+        pending: 'Videos awaiting review',
+        accepted: 'Approved videos ready for production',
+        rejected: 'Videos that did not meet criteria',
+        assigned: 'Videos with assigned IDs'
+    };
+    return descriptions[status] || 'Video management';
+}
+
+function capitalizeFirst(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 async function updateNavigation() {
     try {
         console.log('[Phase 4.3] Starting complete navigation rebuild...');
@@ -3321,10 +3405,13 @@ async function updateNavigation() {
             });
         });
         
-        // Step 5: Update the counts
+        // Step 5: Create content containers for new hosts
+        await createHostContentContainers();
+        
+        // Step 6: Update the counts
         await updateButtonCounts();
         
-        // Step 6: Reload the current view to reflect changes
+        // Step 7: Reload the current view to reflect changes
         if (currentTabId) {
             console.log('[Phase 4.3] Reloading current tab after navigation rebuild:', currentTabId);
             // Call switchTab with the current tab to reload the view
