@@ -319,6 +319,256 @@ function initializeDynamicNavigation() {
     }
 }
 
+// ===== PHASE 3.3: DYNAMIC DATA DISPLAY SYSTEM =====
+// Template-based video card rendering that works for any host and status
+
+// Video card field templates define what fields appear for each status
+const VIDEO_CARD_TEMPLATES = {
+    // Common fields that appear in all statuses
+    common: {
+        header: true,
+        typeColumn: true,
+        linkItem: true,
+        tagsItem: true,
+        actions: true
+    },
+    
+    // Status-specific field configurations
+    relevance: {
+        fields: ['likes', 'relevance', 'score'],
+        showVideoId: false,
+        showScoreFormula: false
+    },
+    
+    pending: {
+        fields: ['scoreFormula'],
+        showVideoId: false,
+        showScoreFormula: true
+    },
+    
+    accepted: {
+        fields: ['scoreFormula'],
+        showVideoId: true,
+        showScoreFormula: true
+    },
+    
+    rejected: {
+        fields: ['scoreFormula'],
+        showVideoId: true,
+        showScoreFormula: true
+    },
+    
+    assigned: {
+        fields: ['scoreFormula'],
+        showVideoId: true,
+        showScoreFormula: true
+    },
+    
+    all: {
+        fields: ['scoreFormula'],
+        showVideoId: true,
+        showScoreFormula: true
+    }
+};
+
+// Generate video card HTML dynamically based on status and host
+function generateVideoCard(video, status) {
+    const hostId = getHostFromStatus(status);
+    const baseStatus = getBaseStatus(status);
+    const template = VIDEO_CARD_TEMPLATES[baseStatus] || VIDEO_CARD_TEMPLATES.pending;
+    const typeClass = video.type.toLowerCase();
+    
+    return `
+        <div class="video-card ${typeClass}">
+            ${generateVideoHeader(video)}
+            ${generateVideoTypeColumn(video)}
+            <div class="video-details">
+                ${generateVideoLinkItem(video)}
+                ${generateVideoFields(video, status, template)}
+                ${generateVideoTagsItem(video)}
+                ${template.showVideoId ? generateVideoIdItem(video, status, hostId) : ''}
+                ${generateVideoNoteItem(video, status)}
+                ${generateVideoPersonItem(video)}
+            </div>
+            <div class="video-actions">
+                ${generateVideoActions(video, status)}
+            </div>
+        </div>
+    `;
+}
+
+// Generate video header with info tooltip
+function generateVideoHeader(video) {
+    return `
+        <div class="video-header">
+            <div class="video-info-icon">
+                <span class="info-icon">ℹ️</span>
+                <div class="info-tooltip">
+                    <div class="tooltip-line"><strong>Added by:</strong> ${escapeHtml(video.added_by_name)}</div>
+                    <div class="tooltip-line"><strong>Date:</strong> ${formatDate(video.link_added_on)}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Generate video type column with dropdown
+function generateVideoTypeColumn(video) {
+    const typeClass = video.type.toLowerCase();
+    return `
+        <div class="video-type-column">
+            <div class="video-type-pill">
+                <button class="video-type-btn ${typeClass}" onclick="toggleTypePill(${video.id})">
+                    ${video.type}
+                </button>
+                <button class="type-alternative" id="type-alt-${video.id}" onclick="updateVideoType(${video.id}, '${video.type === 'Trending' ? 'General' : 'Trending'}')">
+                    ${video.type === 'Trending' ? 'General' : 'Trending'}
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Generate video link item
+function generateVideoLinkItem(video) {
+    return `
+        <div class="detail-item link-item">
+            <a href="${escapeHtml(video.link)}" target="_blank" class="link-icon" title="${escapeHtml(video.link)}">
+                🔗
+            </a>
+        </div>
+    `;
+}
+
+// Generate status-specific video fields
+function generateVideoFields(video, status, template) {
+    const baseStatus = getBaseStatus(status);
+    const score = video.score !== null ? video.score : '-';
+    const relevanceRating = video.relevance_rating >= 0 ? video.relevance_rating : (baseStatus === 'relevance' ? '-1' : '');
+    
+    let fieldsHTML = '';
+    
+    if (template.fields.includes('likes')) {
+        fieldsHTML += `
+            <div class="detail-item likes-item">
+                <span class="detail-label">Likes</span>
+                <span class="detail-value">${video.likes_count || 0}</span>
+            </div>
+        `;
+    }
+    
+    if (template.fields.includes('relevance')) {
+        fieldsHTML += `
+            <div class="detail-item relevance-item">
+                <span class="detail-label">Relevance</span>
+                <span class="detail-value">
+                    <select onchange="updateRelevance(${video.id}, this.value)" style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="-1" ${relevanceRating === '-1' ? 'selected' : ''}>-1</option>
+                        <option value="0" ${relevanceRating == 0 ? 'selected' : ''}>0</option>
+                        <option value="1" ${relevanceRating == 1 ? 'selected' : ''}>1</option>
+                        <option value="2" ${relevanceRating == 2 ? 'selected' : ''}>2</option>
+                        <option value="3" ${relevanceRating == 3 ? 'selected' : ''}>3</option>
+                    </select>
+                </span>
+            </div>
+        `;
+    }
+    
+    if (template.fields.includes('score')) {
+        fieldsHTML += `
+            <div class="detail-item score-item">
+                <span class="detail-value score">${score}</span>
+            </div>
+        `;
+    }
+    
+    if (template.fields.includes('scoreFormula')) {
+        fieldsHTML += `
+            <div class="detail-item score-item">
+                <span class="detail-value score-formula">${video.likes_count || 0} x ${relevanceRating >= 0 ? relevanceRating : 0} = ${score}</span>
+            </div>
+        `;
+    }
+    
+    return fieldsHTML;
+}
+
+// Generate video tags item
+function generateVideoTagsItem(video) {
+    return `
+        <div class="detail-item tags-item">
+            <span class="detail-value tags-cell" onclick="showTagModal(${video.id})">
+                <div class="tags-display" id="tags-${video.id}">
+                    ${video.tags ? renderVideoTags(video.tags) : '<span class="tags-placeholder">#</span>'}
+                </div>
+            </span>
+        </div>
+    `;
+}
+
+// Generate video ID item for hosts
+function generateVideoIdItem(video, status, hostId) {
+    const videoIdValue = getHostVideoId(video, hostId);
+    if (!videoIdValue) return '';
+    
+    return `
+        <div class="detail-item">
+            <span class="detail-label">Video ID</span>
+            <span class="detail-value">
+                <input type="text" value="${escapeHtml(videoIdValue)}" 
+                       onchange="updateVideoId(${video.id}, this.value)" 
+                       style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
+                <button onclick="hostAction(${hostId}, ${video.id}, 'clearVideoId')" 
+                        style="margin-left: 4px; padding: 1px 4px; font-size: 10px; background: #dc3545; color: white; border: none; border-radius: 2px; cursor: pointer;" 
+                        title="Clear Video ID">×</button>
+            </span>
+        </div>
+    `;
+}
+
+// Generate video person item
+function generateVideoPersonItem(video) {
+    return `
+        <div class="detail-item name-item">
+            <span class="detail-value name-cell" title="${escapeHtml(video.added_by_name)}">
+                ${escapeHtml(video.added_by_name).substring(0, 10)}${video.added_by_name.length > 10 ? '...' : ''}
+            </span>
+        </div>
+    `;
+}
+
+// Generate video note item
+function generateVideoNoteItem(video, status) {
+    const hostId = getHostFromStatus(status);
+    const noteValue = hostId === 2 ? video.note_2 : video.note;
+    
+    return `
+        <div class="detail-item note-item">
+            <span class="detail-label">Note</span>
+            <span class="detail-value">
+                ${renderNoteDisplay(noteValue, video.id)}
+            </span>
+        </div>
+    `;
+}
+
+// Get host-specific video ID
+function getHostVideoId(video, hostId) {
+    if (hostId === 1) {
+        return video.video_id_text;
+    } else if (hostId === 2) {
+        return video.video_id_text_2;
+    }
+    // For future hosts, add more conditions here
+    return null;
+}
+
+// Get base status from prefixed status (e.g., 'host2-pending' -> 'pending')
+function getBaseStatus(status) {
+    // Remove host prefixes to get base status
+    return status.replace(/^host\d+-/, '');
+}
+
 // Get the correct button count element ID for any host and status
 function getButtonCountId(hostId, status) {
     const config = getHostConfig(hostId);
@@ -693,104 +943,10 @@ function renderVideos(videos, containerId, status) {
     container.innerHTML = videos.map(video => createVideoCard(video, status)).join('');
 }
 
+// Legacy createVideoCard function - now uses Phase 3.3 dynamic system
 function createVideoCard(video, status) {
-    const typeClass = video.type.toLowerCase();
-    const score = video.score !== null ? video.score : '-';
-    const relevanceRating = video.relevance_rating >= 0 ? video.relevance_rating : (status === 'relevance' ? '-1' : '');
-    
-    return `
-        <div class="video-card ${typeClass}">
-            <div class="video-header">
-                <div class="video-info-icon">
-                    <span class="info-icon">ℹ️</span>
-                    <div class="info-tooltip">
-                        <div class="tooltip-line"><strong>Added by:</strong> ${escapeHtml(video.added_by_name)}</div>
-                        <div class="tooltip-line"><strong>Date:</strong> ${formatDate(video.link_added_on)}</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="video-type-column">
-                <div class="video-type-pill">
-                    <button class="video-type-btn ${typeClass}" onclick="toggleTypePill(${video.id})">
-                        ${video.type}
-                    </button>
-                    <button class="type-alternative" id="type-alt-${video.id}" onclick="updateVideoType(${video.id}, '${video.type === 'Trending' ? 'General' : 'Trending'}')">
-                        ${video.type === 'Trending' ? 'General' : 'Trending'}
-                    </button>
-                </div>
-            </div>
-            
-            <div class="video-details">
-                <div class="detail-item link-item">
-                    <a href="${escapeHtml(video.link)}" target="_blank" class="link-icon" title="${escapeHtml(video.link)}">
-                        🔗
-                    </a>
-                </div>
-                
-                ${status === 'relevance' ? `
-                    <div class="detail-item likes-item">
-                        <span class="detail-label">Likes</span>
-                        <span class="detail-value">${video.likes_count || 0}</span>
-                    </div>
-                    
-                    <div class="detail-item relevance-item">
-                        <span class="detail-label">Relevance</span>
-                        <span class="detail-value">
-                            <select onchange="updateRelevance(${video.id}, this.value)" style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
-                                <option value="-1" ${relevanceRating === '-1' ? 'selected' : ''}>-1</option>
-                                <option value="0" ${relevanceRating == 0 ? 'selected' : ''}>0</option>
-                                <option value="1" ${relevanceRating == 1 ? 'selected' : ''}>1</option>
-                                <option value="2" ${relevanceRating == 2 ? 'selected' : ''}>2</option>
-                                <option value="3" ${relevanceRating == 3 ? 'selected' : ''}>3</option>
-                            </select>
-                        </span>
-                    </div>
-                    
-                    <div class="detail-item score-item">
-                        <span class="detail-value score">${score}</span>
-                    </div>
-                ` : `
-                    <div class="detail-item score-item">
-                        <span class="detail-value score-formula">${video.likes_count || 0} x ${relevanceRating >= 0 ? relevanceRating : 0} = ${score}</span>
-                    </div>
-                `}
-                
-                <div class="detail-item tags-item">
-                    <span class="detail-value tags-cell" onclick="showTagModal(${video.id})">
-                        <div class="tags-display" id="tags-${video.id}">
-                            ${video.tags ? renderVideoTags(video.tags) : '<span class="tags-placeholder">#</span>'}
-                        </div>
-                    </span>
-                </div>
-                
-                ${(status.startsWith('host2-') ? video.video_id_text_2 : video.video_id_text) ? `
-                    <div class="detail-item">
-                        <span class="detail-label">Video ID</span>
-                        <span class="detail-value">
-                            <input type="text" value="${escapeHtml(status.startsWith('host2-') ? video.video_id_text_2 : video.video_id_text)}" 
-                                   onchange="updateVideoId(${video.id}, this.value)" 
-                                   style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
-                            <button onclick="hostAction(${getHostFromStatus(status)}, ${video.id}, 'clearVideoId')" 
-                                    style="margin-left: 4px; padding: 1px 4px; font-size: 10px; background: #dc3545; color: white; border: none; border-radius: 2px; cursor: pointer;" 
-                                    title="Clear Video ID">×</button>
-                        </span>
-                    </div>
-                ` : ''}
-                
-                <div class="detail-item note-item">
-                    <span class="detail-label">Note</span>
-                    <span class="detail-value">
-                        ${renderNoteDisplay(status.startsWith('host2-') ? video.note_2 : video.note, video.id)}
-                    </span>
-                </div>
-            </div>
-            
-            <div class="video-actions">
-                ${getVideoActions(video, status)}
-            </div>
-        </div>
-    `;
+    // Use the new dynamic video card generation system
+    return generateVideoCard(video, status);
 }
 
 // Updated getVideoActions to use the unified dynamic button generation system
