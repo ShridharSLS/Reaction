@@ -2954,114 +2954,213 @@ function showCopySuccess() {
 // ===== HOST MANAGEMENT FUNCTIONS =====
 
 // Load hosts when manage-hosts tab is opened
-function loadHosts() {
-    // For now, show the current hosts from HOST_CONFIG
+async function loadHosts() {
     const hostsContainer = document.getElementById('hosts-container');
     if (!hostsContainer) return;
     
-    hostsContainer.innerHTML = '';
-    
-    // Display current hosts
-    Object.entries(HOST_CONFIG).forEach(([hostId, config]) => {
-        const hostElement = document.createElement('div');
-        hostElement.className = 'host-item';
-        hostElement.innerHTML = `
-            <div class="host-info">
-                <span class="host-id">Host ${hostId}</span>
-                <span class="host-name">${config.name}</span>
-            </div>
-            <div class="host-actions">
-                <button class="btn btn-sm btn-secondary" onclick="editHost(${hostId}, '${config.name}')">Edit</button>
-                ${hostId > 2 ? `<button class="btn btn-sm btn-danger" onclick="deleteHost(${hostId})">Delete</button>` : ''}
-            </div>
-        `;
-        hostsContainer.appendChild(hostElement);
-    });
+    try {
+        // Show loading state
+        hostsContainer.innerHTML = '<div class="loading">Loading hosts...</div>';
+        
+        // Fetch hosts from database
+        const response = await fetch('/api/hosts');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch hosts: ${response.status}`);
+        }
+        
+        const hosts = await response.json();
+        console.log('[Phase 4.3] Loaded hosts for management:', hosts);
+        
+        // Clear container
+        hostsContainer.innerHTML = '';
+        
+        // Display hosts from database
+        hosts.forEach(host => {
+            const hostElement = document.createElement('div');
+            hostElement.className = 'host-item';
+            hostElement.innerHTML = `
+                <div class="host-info">
+                    <span class="host-id">Host ${host.host_id}</span>
+                    <span class="host-name">${host.name}</span>
+                    <span class="host-details">(${host.prefix || 'default'} | ${host.status_column})</span>
+                </div>
+                <div class="host-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="editHost(${host.host_id}, '${host.name}')">Edit</button>
+                    ${host.host_id > 1 ? `<button class="btn btn-sm btn-danger" onclick="deleteHost(${host.host_id})">Delete</button>` : ''}
+                </div>
+            `;
+            hostsContainer.appendChild(hostElement);
+        });
+        
+        if (hosts.length === 0) {
+            hostsContainer.innerHTML = '<div class="no-hosts">No hosts found</div>';
+        }
+        
+    } catch (error) {
+        console.error('[Phase 4.3] Error loading hosts:', error);
+        hostsContainer.innerHTML = `<div class="error">Error loading hosts: ${error.message}</div>`;
+    }
 }
 
 // Add new host
 async function addHost(hostName) {
-    console.log('addHost called with:', hostName);
+    console.log('[Phase 4.3] addHost called with:', hostName);
+    
+    if (!hostName || !hostName.trim()) {
+        showNotification('Host name is required', 'error');
+        return;
+    }
+    
     try {
-        // Find next available host ID
-        const existingIds = Object.keys(HOST_CONFIG).map(id => parseInt(id));
-        const nextId = Math.max(...existingIds) + 1;
-        console.log('Adding host with ID:', nextId);
+        // Get current hosts to determine next ID
+        const hostsResponse = await fetch('/api/hosts');
+        if (!hostsResponse.ok) {
+            throw new Error('Failed to fetch existing hosts');
+        }
         
-        // Add to HOST_CONFIG
-        HOST_CONFIG[nextId] = {
-            name: hostName,
-            statusColumn: `status_${nextId}`,
-            noteColumn: `note_${nextId}`,
-            videoIdColumn: `video_id_text_${nextId}`,
-            apiPath: `host${nextId}`
+        const existingHosts = await hostsResponse.json();
+        const existingIds = existingHosts.map(host => host.host_id);
+        const nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+        
+        console.log('[Phase 4.3] Adding host with ID:', nextId);
+        
+        // Create new host object
+        const newHost = {
+            host_id: nextId,
+            name: hostName.trim(),
+            prefix: nextId === 1 ? '' : `host${nextId}-`,
+            status_column: nextId === 1 ? 'status_1' : `status_${nextId}`,
+            note_column: nextId === 1 ? 'note' : `note_${nextId}`,
+            video_id_column: nextId === 1 ? 'video_id_text' : `video_id_text_${nextId}`,
+            api_path: nextId === 1 ? '' : `host${nextId}`,
+            count_prefix: nextId === 1 ? '' : `person${nextId}_`
         };
         
-        console.log('Updated HOST_CONFIG:', HOST_CONFIG);
+        // Send POST request to create host
+        const response = await fetch('/api/hosts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newHost)
+        });
         
-        alert(`Host "${hostName}" added successfully! (Note: Database columns need to be created manually)`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Server error: ${response.status}`);
+        }
+        
+        const createdHost = await response.json();
+        console.log('[Phase 4.3] Host created successfully:', createdHost);
+        
+        showNotification(`Host "${hostName}" added successfully!`, 'success');
         
         // Clear form
         const hostNameInput = document.getElementById('host-name');
         if (hostNameInput) {
             hostNameInput.value = '';
-            console.log('Form cleared');
-        } else {
-            console.log('Host name input not found');
         }
         
         // Reload hosts display
-        loadHosts();
+        await loadHosts();
         
-        // Update navigation (basic implementation)
+        // Reload host configuration and update navigation
+        await loadHostConfiguration();
         updateNavigation();
         
     } catch (error) {
-        console.error('Failed to add host:', error);
-        alert('Failed to add host: ' + error.message);
+        console.error('[Phase 4.3] Failed to add host:', error);
+        showNotification('Failed to add host: ' + error.message, 'error');
     }
 }
 
 // Edit host name
-function editHost(hostId, currentName) {
+async function editHost(hostId, currentName) {
     const newName = prompt(`Edit host name:`, currentName);
     if (newName && newName !== currentName && newName.trim()) {
-        // Update HOST_CONFIG
-        if (HOST_CONFIG[hostId]) {
-            HOST_CONFIG[hostId].name = newName.trim();
+        try {
+            console.log(`[Phase 4.3] Editing host ${hostId} name to:`, newName);
             
-            alert(`Host ${hostId} renamed to "${newName}" successfully!`);
+            // Send PUT request to update host
+            const response = await fetch(`/api/hosts/${hostId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: newName.trim() })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Server error: ${response.status}`);
+            }
+            
+            const updatedHost = await response.json();
+            console.log('[Phase 4.3] Host updated successfully:', updatedHost);
+            
+            showNotification(`Host ${hostId} renamed to "${newName}" successfully!`, 'success');
             
             // Reload hosts display
-            loadHosts();
+            await loadHosts();
             
-            // Update navigation
+            // Reload host configuration and update navigation
+            await loadHostConfiguration();
             updateNavigation();
-        } else {
-            showNotification('Host not found', 'error');
+            
+        } catch (error) {
+            console.error('[Phase 4.3] Failed to edit host:', error);
+            showNotification('Failed to edit host: ' + error.message, 'error');
         }
     }
 }
 
 // Delete host
-function deleteHost(hostId) {
-    const hostName = HOST_CONFIG[hostId]?.name || `Host ${hostId}`;
-    
-    if (confirm(`Are you sure you want to delete ${hostName}? This will remove the host from the interface (Note: Database columns will need to be dropped manually).`)) {
-        // Remove from HOST_CONFIG
-        if (HOST_CONFIG[hostId]) {
-            delete HOST_CONFIG[hostId];
+async function deleteHost(hostId) {
+    try {
+        // Get host details first
+        const hostsResponse = await fetch('/api/hosts');
+        if (!hostsResponse.ok) {
+            throw new Error('Failed to fetch host details');
+        }
+        
+        const hosts = await hostsResponse.json();
+        const host = hosts.find(h => h.host_id === hostId);
+        const hostName = host?.name || `Host ${hostId}`;
+        
+        // Prevent deletion of primary host
+        if (hostId === 1) {
+            showNotification('Cannot delete the primary host', 'error');
+            return;
+        }
+        
+        if (confirm(`Are you sure you want to delete ${hostName}? This will remove the host from the system permanently.`)) {
+            console.log(`[Phase 4.3] Deleting host ${hostId}:`, hostName);
             
-            alert(`${hostName} deleted successfully!`);
+            // Send DELETE request
+            const response = await fetch(`/api/hosts/${hostId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Server error: ${response.status}`);
+            }
+            
+            console.log('[Phase 4.3] Host deleted successfully');
+            
+            showNotification(`${hostName} deleted successfully!`, 'success');
             
             // Reload hosts display
-            loadHosts();
+            await loadHosts();
             
-            // Update navigation
+            // Reload host configuration and update navigation
+            await loadHostConfiguration();
             updateNavigation();
-        } else {
-            showNotification('Host not found', 'error');
         }
+        
+    } catch (error) {
+        console.error('[Phase 4.3] Failed to delete host:', error);
+        showNotification('Failed to delete host: ' + error.message, 'error');
     }
 }
 
