@@ -205,7 +205,8 @@ function generateButton(buttonTemplate, hostId, videoId, video) {
             // Get the correct note column for this host
             const noteCol = getHostConfig(hostId)?.noteCol || 'note';
             const note = video[noteCol] || '';
-            onclick = `copyLinkAndNote('${video.link.replace(/'/g, '\\\')}', '${note.replace(/'/g, '\\\')}')`;
+            // Avoid template string escaping issues by using string concatenation
+            onclick = 'copyLinkAndNote("' + video.link.replace(/"/g, '\\"') + '", "' + (note || '').replace(/"/g, '\\"') + '")';
             break;
             
         default:
