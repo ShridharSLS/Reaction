@@ -729,12 +729,25 @@ async function loadVideos(status) {
         
         // Determine API endpoint based on status
         let apiEndpoint;
-        if (status.startsWith('host2-')) {
-            // Host 2 tabs: use host2 API endpoint
-            const host2Status = status.replace('host2-', '');
-            apiEndpoint = `/api/videos/host2/${host2Status}`;
+        
+        // Check if this is a host-specific tab (format: host{id}-{status})
+        const hostMatch = status.match(/^host(\d+)-(.+)$/);
+        
+        if (hostMatch) {
+            // Host-specific tabs: use generic host API endpoint
+            const hostId = hostMatch[1];
+            const hostStatus = hostMatch[2];
+            
+            // Special handling for backward compatibility
+            if (hostId === '2') {
+                // Keep using the old host2 endpoint for Host 2 (backward compatibility)
+                apiEndpoint = `/api/videos/host2/${hostStatus}`;
+            } else {
+                // Use the generic host endpoint for all other hosts
+                apiEndpoint = `/api/videos/host/${hostId}/${hostStatus}`;
+            }
         } else {
-            // Regular tabs: use standard API endpoint
+            // Regular tabs (Host 1): use standard API endpoint
             apiEndpoint = `/api/videos/${status}`;
         }
         
@@ -2588,22 +2601,48 @@ async function updateButtonCounts() {
         const counts = await response.json();
         console.log('Button counts received:', counts);
         
-        // Update button counts efficiently
+        // Update button counts dynamically for all hosts
         const updates = [
+            // Host 1 counts (backward compatibility - uses simple keys)
             { id: 'relevance-btn-count', count: counts.relevance || 0 },
             { id: 'pending-btn-count', count: counts.pending || 0 },
             { id: 'accepted-btn-count', count: counts.accepted || 0 },
             { id: 'rejected-btn-count', count: counts.rejected || 0 },
             { id: 'assigned-btn-count', count: counts.assigned || 0 },
             
-            // Host 2 counts
-            { id: 'host2-pending-btn-count', count: counts.person2_pending || 0 },
-            { id: 'host2-accepted-btn-count', count: counts.person2_accepted || 0 },
-            { id: 'host2-rejected-btn-count', count: counts.person2_rejected || 0 },
-            { id: 'host2-assigned-btn-count', count: counts.person2_assigned || 0 },
-
+            // All videos count
             { id: 'all-btn-count', count: counts.all || 0 }
         ];
+        
+        // Dynamically add counts for all hosts (including Host 2 and beyond)
+        Object.keys(counts).forEach(countKey => {
+            // Skip non-host counts
+            if (['all', 'relevance', 'pending', 'accepted', 'rejected', 'assigned'].includes(countKey)) {
+                return;
+            }
+            
+            // Parse host-specific count keys (e.g., 'person2_pending', 'person3_accepted', etc.)
+            const hostMatch = countKey.match(/^person(\d+)_(.+)$/);
+            if (hostMatch) {
+                const hostId = hostMatch[1];
+                const status = hostMatch[2];
+                
+                // Generate the corresponding button ID
+                let buttonId;
+                if (hostId === '2') {
+                    // Host 2 backward compatibility
+                    buttonId = `host2-${status}-btn-count`;
+                } else {
+                    // Host 3+ uses generic format
+                    buttonId = `host${hostId}-${status}-btn-count`;
+                }
+                
+                updates.push({
+                    id: buttonId,
+                    count: counts[countKey] || 0
+                });
+            }
+        });
         
         let successCount = 0;
         updates.forEach(({ id, count }) => {
