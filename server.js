@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const { supabase, initializeDatabase, updateScore } = require('./supabase');
+const { migrateForNewHost } = require('./schema-utils');
 require('dotenv').config();
 
 const app = express();
@@ -1542,7 +1543,7 @@ app.get('/api/hosts/:hostId', async (req, res) => {
     }
 });
 
-// Create new host
+// Create new host with dynamic schema generation
 app.post('/api/hosts', async (req, res) => {
     try {
         const { host_id, name, prefix, status_column, note_column, video_id_column, api_path, count_prefix } = req.body;
@@ -1563,6 +1564,7 @@ app.post('/api/hosts', async (req, res) => {
             return res.status(400).json({ error: 'Host ID already exists' });
         }
         
+        // Step 1: Create the host record in the database
         const { data: newHost, error } = await supabase
             .from('hosts')
             .insert({
@@ -1584,7 +1586,33 @@ app.post('/api/hosts', async (req, res) => {
             return res.status(500).json({ error: 'Failed to create host' });
         }
         
-        res.status(201).json(newHost);
+        // Step 2: Create the necessary columns in the videos table
+        try {
+            const migrationResult = await migrateForNewHost({
+                host_id: parseInt(host_id),
+                status_column,
+                note_column,
+                video_id_column
+            });
+            
+            // Return success with both host data and schema migration details
+            res.status(201).json({
+                host: newHost,
+                schema: migrationResult
+            });
+        } catch (schemaError) {
+            console.error('Schema migration failed:', schemaError);
+            
+            // The host was created but columns failed - still return 201 but with warning
+            res.status(201).json({
+                host: newHost,
+                schema: {
+                    success: false,
+                    message: 'Host created but schema migration failed. Manual column creation may be required.',
+                    error: schemaError.message
+                }
+            });
+        }
     } catch (error) {
         console.error('Error in POST /api/hosts:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -1674,6 +1702,63 @@ app.delete('/api/hosts/:hostId', async (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
+});
+
+// Migration endpoint for existing hosts - can be used to add missing columns
+app.post('/api/hosts/:hostId/migrate', async (req, res) => {
+    try {
+        const { hostId } = req.params;
+        
+        // Get the host details
+        const { data: host, error } = await supabase
+            .from('hosts')
+            .select('*')
+            .eq('host_id', parseInt(hostId))
+            .single();
+            
+        if (error || !host) {
+            return res.status(404).json({ error: 'Host not found' });
+        }
+        
+        // Run the migration for this host
+        const migrationResult = await migrateForNewHost({
+            host_id: parseInt(hostId),
+            status_column: host.status_column,
+            note_column: host.note_column,
+            video_id_column: host.video_id_column
+        });
+        
+        res.json({
+            host,
+            schema: migrationResult
+        });
+    } catch (error) {
+        console.error('Error in migration endpoint:', error);
+        res.status(500).json({ error: 'Migration failed: ' + error.message });
+    }
+});
+
+// Test schema generation without creating a new host
+app.post('/api/schema/test', async (req, res) => {
+    try {
+        // Import test function
+        const { testSchemaOperations } = require('./test-schema');
+        
+        // Run the schema test
+        const result = await testSchemaOperations();
+        
+        res.json({
+            title: "Schema Test Results",
+            timestamp: new Date().toISOString(),
+            ...result
+        });
+    } catch (error) {
+        console.error('Schema test failed:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Schema test failed: ' + error.message 
+        });
+    }
 });
 
 module.exports = app;
