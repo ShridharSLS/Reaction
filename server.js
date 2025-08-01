@@ -1203,10 +1203,39 @@ app.get('/api/videos/host/:hostId/:status', async (req, res) => {
             peopleMap[person.id] = person.name;
         });
         
-        // Add person names to videos
+        // Get all tags for all videos in one query (performance optimization)
+        const videoIds = videos?.map(v => v.id) || [];
+        let videoTagsMap = {};
+        
+        if (videoIds.length > 0) {
+            const { data: videoTags, error: tagsError } = await supabase
+                .from('video_tags')
+                .select(`
+                    video_id,
+                    tags (
+                        id,
+                        name,
+                        color
+                    )
+                `)
+                .in('video_id', videoIds);
+            
+            if (!tagsError && videoTags) {
+                // Group tags by video_id
+                videoTags.forEach(vt => {
+                    if (!videoTagsMap[vt.video_id]) {
+                        videoTagsMap[vt.video_id] = [];
+                    }
+                    videoTagsMap[vt.video_id].push(vt.tags);
+                });
+            }
+        }
+        
+        // Add person names and tags to videos
         const videosWithNames = videos.map(video => ({
             ...video,
-            added_by_name: peopleMap[video.added_by] || 'Unknown'
+            added_by_name: peopleMap[video.added_by] || 'Unknown',
+            tags: videoTagsMap[video.id] || []
         }));
         
         console.log(`[Generic API] Found ${videosWithNames.length} videos for host ${hostId}, status ${status}`);
