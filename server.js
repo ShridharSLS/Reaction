@@ -33,13 +33,41 @@ function getHostColumns(hostId) {
     }
 }
 
-// Get all status columns for operations that need to update multiple hosts
-function getAllStatusColumns() {
-    return {
-        host1: 'status_1',
-        host2: 'status_2'
-        // Add more hosts as needed
-    };
+// Get all status columns for operations that need to update multiple hosts (now dynamic)
+async function getAllStatusColumns() {
+    try {
+        // Fetch all active hosts from database
+        const { data: hosts, error } = await supabase
+            .from('hosts')
+            .select('host_id, status_column')
+            .eq('is_active', true)
+            .order('host_id');
+            
+        if (error) {
+            console.error('Error fetching hosts for status columns:', error);
+            // Fallback to hardcoded hosts if database query fails
+            return {
+                host1: 'status_1',
+                host2: 'status_2'
+            };
+        }
+        
+        // Build dynamic status columns object
+        const statusColumns = {};
+        hosts.forEach(host => {
+            statusColumns[`host${host.host_id}`] = host.status_column;
+        });
+        
+        console.log('[Dynamic Status Columns] Generated for hosts:', Object.keys(statusColumns));
+        return statusColumns;
+    } catch (error) {
+        console.error('Exception in getAllStatusColumns:', error);
+        // Fallback to hardcoded hosts if anything fails
+        return {
+            host1: 'status_1',
+            host2: 'status_2'
+        };
+    }
 }
 
 // Get status column for a specific host
@@ -329,7 +357,7 @@ app.get('/api/videos/counts', async (req, res) => {
         // ===== UNIFIED DYNAMIC COUNT SYSTEM =====
         // Generate count keys dynamically for all hosts
         const statusTypes = ['relevance', 'pending', 'accepted', 'rejected', 'assigned'];
-        const hostStatusColumns = getAllStatusColumns();
+        const hostStatusColumns = await getAllStatusColumns();
         const hostIds = Object.keys(hostStatusColumns).map(key => key.replace('host', ''));
         
         console.log(`[Dynamic Counts] Generating counts for hosts: ${hostIds.join(', ')}`);
