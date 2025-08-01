@@ -660,13 +660,28 @@ app.post('/api/videos', async (req, res) => {
             relevance_rating: relevance_rating !== undefined ? relevance_rating : -1,  // Use provided or default to -1
         };
         
-        // Set initial status for all hosts using dynamic column mapping
-        const allStatusColumns = getAllStatusColumns();
-        Object.values(allStatusColumns).forEach(statusColumn => {
-            videoData[statusColumn] = status || 'relevance';
-        });
-        
-        console.log(`[Dynamic Video Creation] Setting status columns:`, Object.keys(allStatusColumns), 'to:', status || 'relevance');
+        // For new videos with relevance_rating = -1, use system-wide relevance status
+        // All host columns should be null initially
+        if (videoData.relevance_rating === -1) {
+            // System-wide relevance: set relevance_status and leave all host columns null
+            videoData.relevance_status = 'relevance';
+            
+            // Explicitly set all host status columns to null
+            const allStatusColumns = getAllStatusColumns();
+            Object.values(allStatusColumns).forEach(statusColumn => {
+                videoData[statusColumn] = null;
+            });
+            
+            console.log(`[System-wide Relevance] New video with rating -1: setting relevance_status='relevance', all host columns=null`);
+        } else {
+            // For videos with specific ratings (used in bulk import), set host statuses
+            const allStatusColumns = getAllStatusColumns();
+            Object.values(allStatusColumns).forEach(statusColumn => {
+                videoData[statusColumn] = status || 'pending';
+            });
+            
+            console.log(`[Dynamic Video Creation] Setting status columns:`, Object.keys(allStatusColumns), 'to:', status || 'pending');
+        }
         
         const { data, error } = await supabase
             .from('videos')
