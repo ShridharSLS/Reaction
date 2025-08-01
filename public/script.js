@@ -296,6 +296,12 @@ const NAVIGATION_TEMPLATES = {
             id: 'relevance',
             label: '🎯 Relevance',
             showCount: true
+        },
+        {
+            type: 'button',
+            id: 'trash',
+            label: '🗑️ Trash',
+            showCount: true
         }
     ],
     // Host-specific navigation template

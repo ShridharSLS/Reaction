@@ -660,50 +660,80 @@ app.post('/api/videos', async (req, res) => {
             relevance_rating: relevance_rating !== undefined ? relevance_rating : -1,  // Use provided or default to -1
         };
         
+        // START DEBUG - Log input parameters
+        console.log('========== VIDEO CREATION DEBUGGING ==========');
+        console.log('[DEBUG] Input parameters:', { 
+            added_by, 
+            added_by_name, 
+            link, 
+            type, 
+            likes_count, 
+            video_id_text, 
+            relevance_rating, 
+            status 
+        });
+        
+        // Log initial videoData state before status processing
+        console.log('[DEBUG] Initial videoData (before status processing):', JSON.stringify(videoData, null, 2));
+        
         // Handle initial status based on relevance_rating (system-wide approach)
-        const allStatusColumns = getAllStatusColumns();
+        console.log('[DEBUG] Getting all status columns...');
+        const allStatusColumns = await getAllStatusColumns();
+        console.log('[DEBUG] Status columns retrieved:', allStatusColumns);
         
         if (videoData.relevance_rating === -1) {
             // Unrated videos: system-wide relevance status
+            console.log('[DEBUG] Processing video with rating -1 (unrated)');
             videoData.relevance_status = 'relevance';
             
             // All host status columns should be null
             Object.values(allStatusColumns).forEach(statusColumn => {
+                console.log(`[DEBUG] Setting ${statusColumn} = null`);
                 videoData[statusColumn] = null;
             });
             
             console.log(`[System-wide Relevance] New video with rating -1: setting relevance_status='relevance', all host columns=null`);
         } else if (videoData.relevance_rating === 0) {
             // Rating 0: system-wide trash status
+            console.log('[DEBUG] Processing video with rating 0 (trash)');
             videoData.relevance_status = 'trash';
             
             // All host status columns should be null
             Object.values(allStatusColumns).forEach(statusColumn => {
+                console.log(`[DEBUG] Setting ${statusColumn} = null`);
                 videoData[statusColumn] = null;
             });
             
             console.log(`[System-wide Trash] New video with rating 0: setting relevance_status='trash', all host columns=null`);
         } else if (videoData.relevance_rating >= 1 && videoData.relevance_rating <= 3) {
             // Rating 1-3: host-specific pending status
+            console.log(`[DEBUG] Processing video with rating ${videoData.relevance_rating} (host-specific pending)`);
             videoData.relevance_status = null;
             
             // Set all host status columns to pending
             Object.values(allStatusColumns).forEach(statusColumn => {
+                console.log(`[DEBUG] Setting ${statusColumn} = 'pending'`);
                 videoData[statusColumn] = 'pending';
             });
             
             console.log(`[Host-specific Pending] New video with rating ${videoData.relevance_rating}: setting relevance_status=null, all host columns='pending'`);
         } else {
             // Fallback for any other ratings: treat as unrated
+            console.log('[DEBUG] Processing video with unexpected rating (fallback to unrated)');
             videoData.relevance_status = 'relevance';
             
             Object.values(allStatusColumns).forEach(statusColumn => {
+                console.log(`[DEBUG] Setting ${statusColumn} = null`);
                 videoData[statusColumn] = null;
             });
             
             console.log(`[Fallback] New video with unexpected rating ${videoData.relevance_rating}: treating as unrated`);
         }
         
+        // Log final videoData state that will be inserted
+        console.log('[DEBUG] Final videoData to be inserted:', JSON.stringify(videoData, null, 2));
+        
+        console.log('[DEBUG] Executing Supabase insert operation...');
         const { data, error } = await supabase
             .from('videos')
             .insert([videoData])
@@ -711,12 +741,40 @@ app.post('/api/videos', async (req, res) => {
             .single();
             
         if (error) {
+            console.log('[DEBUG] Error during insert:', error);
             res.status(500).json({ error: error.message });
             return;
         }
         
+        console.log('[DEBUG] Inserted data returned from Supabase:', JSON.stringify(data, null, 2));
+        
+        // Additional verification - fetch the record we just inserted to verify all fields
+        console.log('[DEBUG] Verifying inserted record...');
+        const { data: verifiedData, error: verifyError } = await supabase
+            .from('videos')
+            .select('*')
+            .eq('id', data.id)
+            .single();
+            
+        if (verifyError) {
+            console.log('[DEBUG] Error verifying inserted record:', verifyError);
+        } else {
+            console.log('[DEBUG] Verified data from database:', JSON.stringify(verifiedData, null, 2));
+            
+            // Specifically check host columns
+            Object.values(allStatusColumns).forEach(statusColumn => {
+                console.log(`[DEBUG] Verified ${statusColumn} = ${verifiedData[statusColumn]}`);
+                if (verifiedData[statusColumn] === 'relevance') {
+                    console.log(`[DEBUG] ERROR: Found 'relevance' in host column ${statusColumn}!`);
+                }
+            });
+        }
+        
         // Calculate initial score
+        console.log('[DEBUG] Calculating initial score...');
         await updateScore(data.id);
+        console.log('[DEBUG] Score calculation complete');
+        console.log('========== END VIDEO CREATION DEBUGGING ==========');
         
         res.json({ id: data.id, message: 'Video added successfully' });
     } catch (err) {
@@ -1066,6 +1124,46 @@ app.get('/api/videos/system/relevance', async (req, res) => {
         */
     } catch (error) {
         console.error('Error in /api/videos/system/relevance:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get system-wide trash videos (relevance_status = 'trash')
+app.get('/api/videos/system/trash', async (req, res) => {
+    try {
+        console.log('Fetching system-wide trash videos...');
+        
+        // Query for videos with relevance_status = 'trash'
+        const { data: trashVideos, error: trashError } = await supabase
+            .from('videos')
+            .select(`
+                *,
+                people!videos_added_by_fkey(name)
+            `)
+            .eq('relevance_status', 'trash')
+            .order('created_at', { ascending: false });
+        
+        if (trashError) {
+            console.error('Error fetching trash videos:', trashError);
+            return res.status(500).json({ error: 'Failed to fetch trash videos: ' + trashError.message });
+        }
+        
+        console.log(`Found ${trashVideos ? trashVideos.length : 0} trash videos`);
+        
+        const response = {
+            videos: trashVideos.map(video => ({
+                ...video,
+                // Add person_name from joined people table
+                added_by_name: video.people ? video.people.name : 'Unknown',
+            })),
+            status: 'trash',
+            count: trashVideos.length,
+            isSystemWide: true
+        };
+        
+        res.json(response);
+    } catch (error) {
+        console.error('Error in /api/videos/system/trash:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

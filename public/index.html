@@ -116,6 +116,18 @@
             <div id="relevance-videos" class="videos-grid"></div>
         </div>
 
+        <!-- Trash Tab -->
+        <div id="trash" class="tab-content">
+            <div class="view-header">
+                <h2>🗑️ Trash <span id="trash-count" class="view-count"></span></h2>
+                <p style="margin: 10px 0; color: #666; font-size: 14px;">
+                    Videos with relevance rating of 0. These videos are considered not relevant.
+                </p>
+                <button class="btn btn-secondary" onclick="exportCSV('trash')">📤 Export CSV</button>
+            </div>
+            <div id="trash-videos" class="videos-grid"></div>
+        </div>
+
         <!-- Pending Tab -->
         <div id="pending" class="tab-content active">
             <div class="view-header">
