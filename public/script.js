@@ -148,34 +148,38 @@ function getTabId(hostId, status) {
 // Template-based button generation that works for any host and status
 
 // Button templates define what buttons appear for each status
+// NOTE: Delete buttons are only available in Relevance and Trash views
+// Hosts can only reject videos, not delete them
 const BUTTON_TEMPLATES = {
     pending: [
         { type: 'accept', label: 'Accept', class: 'btn-success' },
         { type: 'assign', label: 'ID given', class: 'btn-primary' },
-        { type: 'reject', label: 'Reject', class: 'btn-reject' },
-        { type: 'delete', label: 'Delete', class: 'btn-danger' }
+        { type: 'reject', label: 'Reject', class: 'btn-reject' }
+        // Delete removed: hosts cannot delete videos
     ],
     accepted: [
         { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy link and note for Google Sheets' },
         { type: 'assign', label: 'ID given', class: 'btn-primary' },
         { type: 'reject', label: 'Reject', class: 'btn-reject' },
-        { type: 'pending', label: 'Pending', class: 'btn-warning' },
-        { type: 'delete', label: 'Delete', class: 'btn-danger' }
+        { type: 'pending', label: 'Pending', class: 'btn-warning' }
+        // Delete removed: hosts cannot delete videos
     ],
     rejected: [
         { type: 'accept', label: 'Accept', class: 'btn-success' },
-        { type: 'pending', label: 'Pending', class: 'btn-warning' },
-        { type: 'delete', label: 'Delete', class: 'btn-danger' }
+        { type: 'pending', label: 'Pending', class: 'btn-warning' }
+        // Delete removed: hosts cannot delete videos
     ],
     assigned: [
-        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy link and note for Google Sheets' },
-        { type: 'delete', label: 'Delete', class: 'btn-danger' }
+        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy link and note for Google Sheets' }
+        // Delete removed: hosts cannot delete videos
     ],
     relevance: [
         { type: 'delete', label: 'Delete', class: 'btn-danger' }
+        // Delete kept: admins can delete from relevance section
     ],
     trash: [
         { type: 'delete', label: 'Delete', class: 'btn-danger' }
+        // Delete kept: admins can delete from trash section
     ]
 };
 
