@@ -325,7 +325,7 @@ app.get('/api/videos/all/entries', async (req, res) => {
         // Add person names to videos
         const videosWithNames = videos.map(video => ({
             ...video,
-            person_name: peopleMap[video.person_id] || 'Unknown'
+            person_name: peopleMap[video.added_by] || 'Unknown'
         }));
         
         res.json(videosWithNames);
@@ -1206,7 +1206,7 @@ app.get('/api/videos/host/:hostId/:status', async (req, res) => {
         // Add person names to videos
         const videosWithNames = videos.map(video => ({
             ...video,
-            person_name: peopleMap[video.person_id] || 'Unknown'
+            person_name: peopleMap[video.added_by] || 'Unknown'
         }));
         
         console.log(`[Generic API] Found ${videosWithNames.length} videos for host ${hostId}, status ${status}`);
