@@ -187,10 +187,41 @@ function getUnifiedVideoActions(video, status) {
     const hostId = getHostFromStatus(status);
     
     // Extract the actual status (remove host prefix if present)
-    const actualStatus = status.startsWith('host2-') ? status.replace('host2-', '') : status;
+    const actualStatus = getBaseStatus(status);
     
     // Generate buttons using the template system
     return generateVideoActions(video, hostId, actualStatus);
+}
+
+// ===== PHASE 3.3 MINIMAL: HOST-AGNOSTIC DATA ACCESS =====
+// Minimal helper functions to eliminate hardcoded host logic in video cards
+
+// Get base status from prefixed status (e.g., 'host2-pending' -> 'pending')
+function getBaseStatus(status) {
+    // Remove host prefixes to get base status
+    return status.replace(/^host\d+-/, '');
+}
+
+// Get host-specific video ID value dynamically
+function getHostVideoIdValue(video, status) {
+    const hostId = getHostFromStatus(status);
+    const config = getHostConfig(hostId);
+    if (!config) return null;
+    
+    // Use the column mapping from HOST_CONFIG
+    const videoIdColumn = config.columns.video_id_text;
+    return video[videoIdColumn] || null;
+}
+
+// Get host-specific note value dynamically
+function getHostNoteValue(video, status) {
+    const hostId = getHostFromStatus(status);
+    const config = getHostConfig(hostId);
+    if (!config) return null;
+    
+    // Use the column mapping from HOST_CONFIG
+    const noteColumn = config.columns.note;
+    return video[noteColumn] || null;
 }
 
 // ===== PHASE 3.2: DYNAMIC NAVIGATION GENERATION SYSTEM =====
@@ -764,11 +795,11 @@ function createVideoCard(video, status) {
                     </span>
                 </div>
                 
-                ${(status.startsWith('host2-') ? video.video_id_text_2 : video.video_id_text) ? `
+                ${getHostVideoIdValue(video, status) ? `
                     <div class="detail-item">
                         <span class="detail-label">Video ID</span>
                         <span class="detail-value">
-                            <input type="text" value="${escapeHtml(status.startsWith('host2-') ? video.video_id_text_2 : video.video_id_text)}" 
+                            <input type="text" value="${escapeHtml(getHostVideoIdValue(video, status))}" 
                                    onchange="updateVideoId(${video.id}, this.value)" 
                                    style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
                             <button onclick="hostAction(${getHostFromStatus(status)}, ${video.id}, 'clearVideoId')" 
@@ -781,7 +812,7 @@ function createVideoCard(video, status) {
                 <div class="detail-item note-item">
                     <span class="detail-label">Note</span>
                     <span class="detail-value">
-                        ${renderNoteDisplay(status.startsWith('host2-') ? video.note_2 : video.note, video.id)}
+                        ${renderNoteDisplay(getHostNoteValue(video, status), video.id)}
                     </span>
                 </div>
             </div>
