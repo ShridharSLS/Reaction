@@ -366,7 +366,9 @@ app.get('/api/videos/counts', async (req, res) => {
         const counts = {
             all: videos.length,
             // System-wide relevance count (new)
-            system_relevance: 0
+            system_relevance: 0,
+            // System-wide trash count (new)
+            system_trash: 0
         };
         
         // Initialize count keys dynamically for all hosts (now without 'relevance' since it's system-wide)
@@ -381,9 +383,11 @@ app.get('/api/videos/counts', async (req, res) => {
         
         // Count videos dynamically for all hosts
         videos.forEach(video => {
-            // Count system-wide relevance first (new)
+            // Count system-wide statuses first (new)
             if (video.relevance_status === 'relevance') {
                 counts.system_relevance++;
+            } else if (video.relevance_status === 'trash') {
+                counts.system_trash++;
             }
             
             // Count host-specific statuses
@@ -734,11 +738,8 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
         // Prepare update data
         const updateData = { relevance_rating };
         
-        // If relevance rating is 0-3, move from system-wide 'relevance' to host-specific 'pending' status
+        // Handle system-wide relevance status transitions based on rating
         if (relevance_rating >= 0 && relevance_rating <= 3) {
-            // Get all active host status columns for mass update
-            const allStatusColumns = await getAllStatusColumns();
-            
             // First check if video is currently in system-wide relevance status
             const { data: video } = await supabase
                 .from('videos')
@@ -747,15 +748,26 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
                 .single();
                 
             if (video && video.relevance_status === 'relevance') {
-                console.log(`[System-wide Relevance] Moving video ${id} from system relevance to host-specific pending`);
-                
-                // Clear system-wide relevance status
-                updateData.relevance_status = null;
-                
-                // Set all host-specific status columns to 'pending'
-                Object.values(allStatusColumns).forEach(statusColumn => {
-                    updateData[statusColumn] = 'pending';
-                });
+                if (relevance_rating === 0) {
+                    // Rating 0: Move to system-wide Trash status
+                    console.log(`[System-wide Relevance] Moving video ${id} from relevance to trash (rating 0)`);
+                    updateData.relevance_status = 'trash';
+                    // Do NOT set any host-specific statuses - stays system-wide
+                } else if (relevance_rating >= 1 && relevance_rating <= 3) {
+                    // Rating 1-3: Move to host-specific pending status
+                    console.log(`[System-wide Relevance] Moving video ${id} from relevance to host-specific pending (rating ${relevance_rating})`);
+                    
+                    // Get all active host status columns for mass update
+                    const allStatusColumns = await getAllStatusColumns();
+                    
+                    // Clear system-wide relevance status
+                    updateData.relevance_status = null;
+                    
+                    // Set all host-specific status columns to 'pending'
+                    Object.values(allStatusColumns).forEach(statusColumn => {
+                        updateData[statusColumn] = 'pending';
+                    });
+                }
             }
         }
         
@@ -897,6 +909,46 @@ app.put('/api/videos/:id/host/:hostId/status', async (req, res) => {
 });
 
 // Get videos by status for any host (replaces host-specific endpoints)
+// System-wide trash endpoint (new endpoint for system-wide trash status)
+app.get('/api/videos/system/trash', async (req, res) => {
+    try {
+        console.log('Fetching system-wide trash videos...');
+        
+        // Get all videos with relevance_status = 'trash'
+        const { data: trashVideos, error: trashError } = await supabase
+            .from('videos')
+            .select('*')
+            .eq('relevance_status', 'trash')
+            .limit(50);
+        
+        console.log('Trash query result:', trashError ? 'ERROR' : 'SUCCESS');
+        console.log(`Found ${trashVideos ? trashVideos.length : 0} videos with relevance_status = 'trash'`);
+        
+        if (trashError) {
+            console.error('ERROR in trash query:', trashError);
+            return res.status(500).json({ error: 'Failed in trash query: ' + trashError.message });
+        }
+        
+        // Format response to match other endpoints
+        const response = {
+            videos: trashVideos.map(video => ({
+                ...video,
+                // Add placeholder for person name since we're skipping the join
+                added_by_name: 'Unknown', // Simplified - no join with people
+            })),
+            status: 'trash',
+            count: trashVideos.length,
+            isSystemWide: true
+        };
+        
+        console.log('Returning trash response with', response.count, 'videos');
+        return res.json(response);
+    } catch (error) {
+        console.error('Error in /api/videos/system/trash:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // System-wide relevance endpoint (new endpoint for system-wide relevance status) - SIMPLIFIED FOR DEBUGGING
 app.get('/api/videos/system/relevance', async (req, res) => {
     try {

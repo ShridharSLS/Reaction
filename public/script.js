@@ -173,6 +173,9 @@ const BUTTON_TEMPLATES = {
     ],
     relevance: [
         { type: 'delete', label: 'Delete', class: 'btn-danger' }
+    ],
+    trash: [
+        { type: 'delete', label: 'Delete', class: 'btn-danger' }
     ]
 };
 
@@ -763,12 +766,17 @@ async function loadVideos(status) {
         let hostId;
         let isSystemWide = false;
         
-        // Special handling for system-wide relevance
+        // Special handling for system-wide statuses
         if (status === 'relevance') {
             // Use the new system-wide relevance endpoint
             apiEndpoint = '/api/videos/system/relevance';
             isSystemWide = true;
             console.log('Using system-wide relevance endpoint');
+        } else if (status === 'trash') {
+            // Use the new system-wide trash endpoint
+            apiEndpoint = '/api/videos/system/trash';
+            isSystemWide = true;
+            console.log('Using system-wide trash endpoint');
         } else {
             // Check if this is a host-specific tab (format: host{id}-{status})
             const hostMatch = status.match(/^host(\d+)-(.+)$/);
@@ -1313,7 +1321,7 @@ async function updateRelevance(videoId, relevanceRating) {
             body: JSON.stringify({ relevance_rating: parseInt(relevanceRating) })
         });
         
-        // If rating is 0-3, the video will disappear from relevance and appear in all hosts' pending
+        // Handle different rating outcomes
         if (relevanceRating >= 0 && relevanceRating <= 3) {
             // Update relevance count immediately
             updateRelevanceCount();
@@ -1323,25 +1331,39 @@ async function updateRelevance(videoId, relevanceRating) {
                 loadVideos('relevance');
             }
             
-            // Also load all host pending views to show the newly rated video
-            // This should happen regardless of which tab we're in
-            setTimeout(() => {
-                // Refresh the pending view for Host 1
-                if (currentTab === 'pending') {
-                    loadVideos('pending');
-                }
-                
-                // Refresh pending views for all other hosts
-                const hostTabs = Object.keys(hosts).map(hostId => `host${hostId}-pending`);
-                if (hostTabs.includes(currentTab)) {
-                    loadVideos(currentTab);
-                }
-                
-                // Update button counts for all sections
-                updateButtonCounts();
-                
-                showNotification('Relevance updated! Video moved to pending for all hosts.', 'success');
-            }, 300);
+            if (relevanceRating === 0) {
+                // Rating 0: Video moves to Trash (system-wide)
+                setTimeout(() => {
+                    // If we're in the trash view, refresh it to show the newly trashed video
+                    if (currentTab === 'trash') {
+                        loadVideos('trash');
+                    }
+                    
+                    // Update button counts for all sections
+                    updateButtonCounts();
+                    
+                    showNotification('Video moved to Trash (rating 0).', 'success');
+                }, 300);
+            } else if (relevanceRating >= 1 && relevanceRating <= 3) {
+                // Rating 1-3: Video moves to pending for all hosts
+                setTimeout(() => {
+                    // Refresh the pending view for Host 1
+                    if (currentTab === 'pending') {
+                        loadVideos('pending');
+                    }
+                    
+                    // Refresh pending views for all other hosts
+                    const hostTabs = Object.keys(hosts).map(hostId => `host${hostId}-pending`);
+                    if (hostTabs.includes(currentTab)) {
+                        loadVideos(currentTab);
+                    }
+                    
+                    // Update button counts for all sections
+                    updateButtonCounts();
+                    
+                    showNotification('Relevance updated! Video moved to pending for all hosts.', 'success');
+                }, 300);
+            }
         } else {
             // Just refresh the current view
             loadVideos(currentTab);
@@ -2663,15 +2685,15 @@ function renderNoteDisplay(note, videoId) {
     `;
 }
 
-// Function to specifically update the relevance count
+// Function to specifically update the relevance and trash counts
 async function updateRelevanceCount() {
     try {
-        // Fetch only the relevance count from the API
-        const response = await apiCall('/api/videos/system/relevance');
+        // Fetch relevance count from the API
+        const relevanceResponse = await apiCall('/api/videos/system/relevance');
         
         // Update the count in the UI for relevance section
-        if (response && typeof response.count === 'number') {
-            const relevanceCount = response.count;
+        if (relevanceResponse && typeof relevanceResponse.count === 'number') {
+            const relevanceCount = relevanceResponse.count;
             
             // Update relevance button count
             const relevanceButtonCountEl = document.getElementById('relevance-count');
@@ -2692,8 +2714,34 @@ async function updateRelevanceCount() {
             
             console.log('Relevance count updated successfully:', relevanceCount);
         }
+        
+        // Also fetch and update trash count
+        const trashResponse = await apiCall('/api/videos/system/trash');
+        
+        if (trashResponse && typeof trashResponse.count === 'number') {
+            const trashCount = trashResponse.count;
+            
+            // Update trash button count if it exists
+            const trashButtonCountEl = document.getElementById('trash-count');
+            if (trashButtonCountEl) {
+                trashButtonCountEl.textContent = trashCount;
+                if (trashCount > 0) {
+                    trashButtonCountEl.style.display = 'inline';
+                } else {
+                    trashButtonCountEl.style.display = 'none';
+                }
+            }
+            
+            // Update trash view count header if applicable
+            const trashViewCountEl = document.getElementById('trash-view-count');
+            if (trashViewCountEl) {
+                trashViewCountEl.textContent = `(${trashCount})`;
+            }
+            
+            console.log('Trash count updated successfully:', trashCount);
+        }
     } catch (error) {
-        console.error('Failed to update relevance count:', error);
+        console.error('Failed to update relevance/trash counts:', error);
     }
 }
 
