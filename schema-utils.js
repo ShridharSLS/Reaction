@@ -35,13 +35,47 @@ async function executeRawSql(sql) {
         throw new Error('Schema operations are not available: missing Supabase service role key');
     }
     
+    // Log the query being executed for debugging
+    console.log('Executing SQL query:', sql);
+    
     try {
+        // Log key info for debugging (without exposing full key)
+        const keyPreview = process.env.SUPABASE_SERVICE_ROLE_KEY ? 
+            `${process.env.SUPABASE_SERVICE_ROLE_KEY.substring(0, 10)}...${process.env.SUPABASE_SERVICE_ROLE_KEY.substring(process.env.SUPABASE_SERVICE_ROLE_KEY.length-5)}` : 
+            'NOT SET';
+        console.log(`Using service role key (preview): ${keyPreview}`);
+        
+        // Check if exec_sql function exists
+        try {
+            const { data: functionExists, error: functionCheckError } = await supabaseAdmin
+                .from('pg_proc')
+                .select('proname')
+                .eq('proname', 'exec_sql')
+                .maybeSingle();
+                
+            if (functionCheckError) {
+                console.warn('Error checking if exec_sql exists:', functionCheckError);
+            } else {
+                console.log('exec_sql function exists:', !!functionExists);
+            }
+        } catch (functionCheckErr) {
+            console.warn('Could not verify exec_sql function:', functionCheckErr.message);
+        }
+        
+        // Execute the SQL via RPC
+        console.log('Calling exec_sql RPC function...');
         const { data, error } = await supabaseAdmin.rpc('exec_sql', { sql });
         
-        if (error) throw error;
+        if (error) {
+            console.error('RPC exec_sql error:', error);
+            throw error;
+        }
+        
+        console.log('SQL execution successful, result:', data);
         return data;
     } catch (error) {
         console.error('Error executing raw SQL:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
         throw error;
     }
 }
@@ -155,6 +189,57 @@ async function addHostColumns(hostId, statusColumn, noteColumn, videoIdColumn) {
 }
 
 /**
+ * Initialize the status column for a new host by copying appropriate values from Host 1
+ * Rules:
+ * - Where Host 1 status is 'pending', copy 'pending'
+ * - All other statuses (including 'relevance', 'accepted', 'rejected', 'assigned'), set to NULL
+ * 
+ * @param {string} newStatusColumn - The status column name for the new host
+ * @returns {Promise} - Result of initialization
+ */
+async function initializeHostStatusFromHost1(newStatusColumn) {
+    try {
+        console.log(`Initializing ${newStatusColumn} with values from Host 1 (status_1) - only copying 'pending' status`);
+        
+        // Update the new host's status column based on Host 1's status
+        // Only copy 'pending', set everything else to NULL
+        const updateSql = `
+            UPDATE videos 
+            SET ${newStatusColumn} = CASE 
+                WHEN status_1 = 'pending' THEN 'pending'
+                ELSE NULL
+            END
+            WHERE status_1 IS NOT NULL;
+        `;
+        
+        await executeRawSql(updateSql);
+        
+        // Get count of records updated
+        const countSql = `
+            SELECT 
+                COUNT(*) FILTER (WHERE ${newStatusColumn} = 'pending') as pending_count,
+                COUNT(*) FILTER (WHERE ${newStatusColumn} IS NULL AND status_1 IS NOT NULL) as nulled_count,
+                COUNT(*) FILTER (WHERE status_1 = 'pending') as source_pending_count
+            FROM videos 
+            WHERE status_1 IS NOT NULL;
+        `;
+        
+        const { data: counts } = await supabaseAdmin.rpc('exec_sql', { sql: countSql });
+        
+        console.log(`Status initialization complete for ${newStatusColumn}:`, counts);
+        
+        return {
+            success: true,
+            message: `Status column ${newStatusColumn} initialized from Host 1 (only 'pending' copied)`,
+            counts: counts && counts.length > 0 ? counts[0] : null
+        };
+    } catch (error) {
+        console.error(`Error initializing status for ${newStatusColumn}:`, error);
+        throw error;
+    }
+}
+
+/**
  * Create necessary database migration for adding a new host
  * 
  * @param {Object} hostData - Host configuration data
@@ -168,13 +253,29 @@ async function migrateForNewHost(hostData) {
             throw new Error('Missing required host column information');
         }
         
-        // Add the columns for this host
-        const result = await addHostColumns(host_id, status_column, note_column, video_id_column);
+        // Step 1: Add the columns for this host
+        const columnResult = await addHostColumns(host_id, status_column, note_column, video_id_column);
+        
+        // Step 2: Initialize the status column with values from Host 1
+        let initializationResult = null;
+        try {
+            initializationResult = await initializeHostStatusFromHost1(status_column);
+        } catch (initError) {
+            console.warn('Status initialization failed, but continuing:', initError.message);
+            initializationResult = {
+                success: false,
+                message: 'Status initialization failed: ' + initError.message,
+                error: initError
+            };
+        }
         
         return {
             success: true,
             message: `Migration completed for host ${host_id}`,
-            details: result
+            details: {
+                columns: columnResult,
+                initialization: initializationResult
+            }
         };
     } catch (error) {
         console.error('Migration failed:', error);
@@ -241,5 +342,6 @@ module.exports = {
     columnExists,
     executeRawSql,
     createColumnIndex,
+    initializeHostStatusFromHost1,
     supabaseAdmin
 };
