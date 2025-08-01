@@ -2755,10 +2755,12 @@ function loadHosts() {
 
 // Add new host
 async function addHost(hostName) {
+    console.log('addHost called with:', hostName);
     try {
         // Find next available host ID
         const existingIds = Object.keys(HOST_CONFIG).map(id => parseInt(id));
         const nextId = Math.max(...existingIds) + 1;
+        console.log('Adding host with ID:', nextId);
         
         // Add to HOST_CONFIG
         HOST_CONFIG[nextId] = {
@@ -2769,10 +2771,18 @@ async function addHost(hostName) {
             apiPath: `host${nextId}`
         };
         
+        console.log('Updated HOST_CONFIG:', HOST_CONFIG);
+        
         showNotification(`Host "${hostName}" added successfully! (Note: Database columns need to be created manually)`, 'success');
         
         // Clear form
-        document.getElementById('host-name').value = '';
+        const hostNameInput = document.getElementById('host-name');
+        if (hostNameInput) {
+            hostNameInput.value = '';
+            console.log('Form cleared');
+        } else {
+            console.log('Host name input not found');
+        }
         
         // Reload hosts display
         loadHosts();
@@ -2829,20 +2839,38 @@ function deleteHost(hostId) {
     }
 }
 
-// Initialize host management when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize host management - handle both cases: DOM already loaded or still loading
+function initializeHostManagement() {
     // Add form submission handler for add host form
     const addHostForm = document.getElementById('add-host-form');
     if (addHostForm) {
-        addHostForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const hostName = document.getElementById('host-name').value.trim();
-            if (hostName) {
-                addHost(hostName);
-            }
-        });
+        // Remove any existing event listeners to avoid duplicates
+        addHostForm.removeEventListener('submit', handleAddHostSubmit);
+        addHostForm.addEventListener('submit', handleAddHostSubmit);
+        console.log('Host management form handler attached');
+    } else {
+        console.log('Add host form not found');
     }
-});
+}
+
+// Handle add host form submission
+function handleAddHostSubmit(e) {
+    e.preventDefault();
+    console.log('Add host form submitted');
+    const hostName = document.getElementById('host-name').value.trim();
+    if (hostName) {
+        addHost(hostName);
+    } else {
+        showNotification('Please enter a host name', 'error');
+    }
+}
+
+// Initialize when DOM is loaded OR immediately if already loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeHostManagement);
+} else {
+    initializeHostManagement();
+}
 
 // Update navigation dropdowns with current host names
 function updateNavigation() {
@@ -2870,7 +2898,11 @@ if (typeof switchTab === 'function') {
     switchTab = function(tabId) {
         originalSwitchTab(tabId);
         if (tabId === 'manage-hosts') {
-            loadHosts();
+            // Ensure host management is initialized when tab is opened
+            setTimeout(() => {
+                initializeHostManagement();
+                loadHosts();
+            }, 100); // Small delay to ensure DOM elements are visible
         }
     };
 }
