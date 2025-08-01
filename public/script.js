@@ -8,29 +8,73 @@ let tagSelectionCallback = null;
 let currentVideoId = null;
 
 // Host Configuration System (Phase 1: Foundation)
-// This defines the mapping for each host's database columns and UI patterns
-const HOST_CONFIG = {
-    1: {
-        id: 1,
-        name: 'Shridhar',
-        prefix: '',
-        statusCol: 'status_1',
-        noteCol: 'note',
-        videoIdCol: 'video_id_text',
-        apiPath: '',
-        countPrefix: ''
-    },
-    2: {
-        id: 2,
-        name: 'Host 2',
-        prefix: 'host2-',
-        statusCol: 'status_2',
-        noteCol: 'note_2',
-        videoIdCol: 'video_id_text_2',
-        apiPath: 'host2',
-        countPrefix: 'person2_'
+// ===== HOST CONFIGURATION SYSTEM =====
+// Multi-host support with dynamic column mapping
+// Phase 4.2: Dynamic host configuration loaded from database
+
+// Global host configuration - will be populated from database
+let HOST_CONFIG = {};
+
+// Load host configuration from database
+async function loadHostConfiguration() {
+    try {
+        console.log('[Phase 4.2] Loading host configuration from database...');
+        
+        const response = await fetch('/api/hosts');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch hosts: ${response.status}`);
+        }
+        
+        const hosts = await response.json();
+        console.log('[Phase 4.2] Loaded hosts from database:', hosts);
+        
+        // Transform database format to frontend HOST_CONFIG format
+        HOST_CONFIG = {};
+        hosts.forEach(host => {
+            HOST_CONFIG[host.host_id] = {
+                id: host.host_id,
+                name: host.name,
+                prefix: host.prefix,
+                statusCol: host.status_column,
+                noteCol: host.note_column,
+                videoIdCol: host.video_id_column,
+                apiPath: host.api_path,
+                countPrefix: host.count_prefix
+            };
+        });
+        
+        console.log('[Phase 4.2] HOST_CONFIG populated:', HOST_CONFIG);
+        return true;
+    } catch (error) {
+        console.error('[Phase 4.2] Failed to load host configuration:', error);
+        
+        // Fallback to hardcoded configuration for backward compatibility
+        console.log('[Phase 4.2] Using fallback hardcoded configuration');
+        HOST_CONFIG = {
+            1: {
+                id: 1,
+                name: 'Shridhar',
+                prefix: '',
+                statusCol: 'status_1',
+                noteCol: 'note',
+                videoIdCol: 'video_id_text',
+                apiPath: '',
+                countPrefix: ''
+            },
+            2: {
+                id: 2,
+                name: 'Host 2',
+                prefix: 'host2-',
+                statusCol: 'status_2',
+                noteCol: 'note_2',
+                videoIdCol: 'video_id_text_2',
+                apiPath: 'host2',
+                countPrefix: 'person2_'
+            }
+        };
+        return false;
     }
-};
+}
 
 // Helper function to get host configuration
 function getHostConfig(hostId) {
@@ -399,10 +443,13 @@ function showNotification(message, type = 'info') {
 }
 
 // Initialize app
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('App initializing... currentTab:', currentTab);
     
-    // Initialize dynamic navigation system (Phase 3.2)
+    // Phase 4.2: Load host configuration from database first
+    await loadHostConfiguration();
+    
+    // Initialize dynamic navigation system (Phase 3.2) - now uses dynamic HOST_CONFIG
     initializeDynamicNavigation();
     
     initializeTabs();
