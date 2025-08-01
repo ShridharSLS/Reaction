@@ -940,6 +940,15 @@ function createVideoCard(video, status) {
                     </span>
                 </div>
                 
+                ${video.pitch ? `
+                    <div class="detail-item pitch-item">
+                        <span class="detail-label">Pitch</span>
+                        <span class="detail-value pitch-content" id="pitch-${video.id}">
+                            ${renderPitchDisplay(video.pitch, video.id)}
+                        </span>
+                    </div>
+                ` : ''}
+                
                 ${getHostVideoIdValue(video, status) ? `
                     <div class="detail-item">
                         <span class="detail-label">Video ID</span>
@@ -991,7 +1000,8 @@ function setupForms() {
             added_by: parseInt(document.getElementById('person-select').value),
             link: document.getElementById('video-link').value,
             type: document.getElementById('video-type').value,
-            likes_count: parseInt(document.getElementById('likes-count').value)
+            likes_count: parseInt(document.getElementById('likes-count').value),
+            pitch: document.getElementById('pitch').value.trim() || null
         };
         
         try {
@@ -1859,11 +1869,11 @@ function previewBulkData() {
         const rowNum = index + 1;
         
         if (columns.length < 4) {
-            errors.push(`Row ${rowNum}: Expected 4-5 columns (Name, Link, Type, Likes, Relevance), found ${columns.length}`);
+            errors.push(`Row ${rowNum}: Expected 4-6 columns (Name, Link, Type, Likes, Relevance, Pitch), found ${columns.length}`);
             return;
         }
         
-        const [name, link, type, likes, relevance] = columns.map(col => col.trim());
+        const [name, link, type, likes, relevance, pitch] = columns.map(col => col.trim());
         
         // Validation
         if (!name) {
@@ -1894,6 +1904,7 @@ function previewBulkData() {
             type,
             likes: likes ? parseInt(likes) : 0,
             relevance: relevance && relevance !== '' ? parseInt(relevance) : null,
+            pitch: pitch || null,
             rowNum
         });
     });
@@ -1910,6 +1921,7 @@ function previewBulkData() {
                         <th>Type</th>
                         <th>Likes</th>
                         <th>Relevance</th>
+                        <th>Pitch</th>
                         <th>Destination</th>
                     </tr>
                 </thead>
@@ -1919,6 +1931,7 @@ function previewBulkData() {
         parsedBulkData.forEach(row => {
             const relevanceDisplay = row.relevance !== null ? row.relevance : '-';
             const destination = row.relevance !== null ? '🟡 Pending' : '🎯 Relevance';
+            const pitchDisplay = row.pitch ? (row.pitch.length > 30 ? row.pitch.substring(0, 30) + '...' : row.pitch) : '-';
             tableHTML += `
                 <tr>
                     <td>${row.rowNum}</td>
@@ -1927,6 +1940,7 @@ function previewBulkData() {
                     <td>${escapeHtml(row.type)}</td>
                     <td>${row.likes}</td>
                     <td>${relevanceDisplay}</td>
+                    <td title="${escapeHtml(row.pitch || '')}">${escapeHtml(pitchDisplay)}</td>
                     <td>${destination}</td>
                 </tr>
             `;
@@ -2013,7 +2027,8 @@ async function submitBulkData() {
                 link: row.link,
                 type: row.type,
                 likes_count: row.likes,
-                relevance_rating: row.relevance !== null ? row.relevance : -1
+                relevance_rating: row.relevance !== null ? row.relevance : -1,
+                pitch: row.pitch || null
                 // Note: Removed 'status' parameter - let backend handle status based on relevance_rating
                 // relevance_rating = -1 -> relevance_status = 'relevance', host columns = null
                 // relevance_rating 0-3 -> relevance_status = null, host columns = 'pending'
@@ -2463,6 +2478,7 @@ function renderAllEntriesTable(data) {
         { key: 'video_id_text', label: 'Video ID 1', sortable: true },
         { key: 'video_id_text_2', label: 'Video ID 2', sortable: true },
         { key: 'video_code', label: 'Video Code', sortable: true },
+        { key: 'pitch', label: 'Pitch', sortable: true },
         { key: 'note', label: 'Note 1', sortable: true },
         { key: 'note_2', label: 'Note 2', sortable: true },
         { key: 'created_at', label: 'Created At', sortable: true },
@@ -2748,6 +2764,51 @@ function renderNoteDisplay(note, videoId) {
             </button>
         </span>
     `;
+}
+
+function renderPitchDisplay(pitch, videoId) {
+    if (!pitch || pitch.trim() === '') {
+        return '<span class="pitch-empty">No pitch provided</span>';
+    }
+    
+    const maxLength = 100;
+    const truncated = pitch.length > maxLength;
+    const displayText = truncated ? pitch.substring(0, maxLength) + '...' : pitch;
+    
+    return `
+        <span class="pitch-text" title="${escapeHtml(pitch)}">
+            <span class="pitch-content" id="pitch-content-${videoId}">${escapeHtml(displayText)}</span>
+            ${truncated ? `
+                <button class="pitch-expand-btn" onclick="togglePitchExpansion(${videoId})" title="Show full pitch">
+                    ▼
+                </button>
+            ` : ''}
+        </span>
+    `;
+}
+
+function togglePitchExpansion(videoId) {
+    const pitchElement = document.getElementById(`pitch-content-${videoId}`);
+    const expandBtn = pitchElement.parentElement.querySelector('.pitch-expand-btn');
+    
+    if (!pitchElement || !expandBtn) return;
+    
+    const isExpanded = expandBtn.textContent.trim() === '▲';
+    
+    if (isExpanded) {
+        // Collapse - get original pitch from title attribute and truncate
+        const fullPitch = pitchElement.parentElement.getAttribute('title');
+        const truncatedText = fullPitch.substring(0, 100) + '...';
+        pitchElement.textContent = truncatedText;
+        expandBtn.textContent = '▼';
+        expandBtn.title = 'Show full pitch';
+    } else {
+        // Expand - show full pitch
+        const fullPitch = pitchElement.parentElement.getAttribute('title');
+        pitchElement.textContent = fullPitch;
+        expandBtn.textContent = '▲';
+        expandBtn.title = 'Show less';
+    }
 }
 
 // Function to specifically update the relevance and trash counts

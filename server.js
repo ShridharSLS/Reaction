@@ -420,7 +420,7 @@ app.get('/api/videos/counts', async (req, res) => {
 // Add new video
 app.post('/api/videos', async (req, res) => {
     try {
-        const { added_by, added_by_name, link, type, likes_count, video_id_text, relevance_rating, status } = req.body;
+        const { added_by, added_by_name, link, type, likes_count, video_id_text, relevance_rating, status, pitch } = req.body;
         
         let personId = added_by;
         
@@ -511,6 +511,7 @@ app.post('/api/videos', async (req, res) => {
             video_id_text,
             video_code: videoCode,  // Store extracted video code
             relevance_rating: relevance_rating !== undefined ? relevance_rating : -1,  // Use provided or default to -1
+            pitch: pitch || null  // User-submitted pitch/note
         };
         
         // START DEBUG - Log input parameters
