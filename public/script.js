@@ -3019,15 +3019,15 @@ async function addHost(hostName) {
     }
     
     try {
-        // Get current hosts to determine next ID
-        const hostsResponse = await fetch('/api/hosts');
-        if (!hostsResponse.ok) {
+        // Get ALL hosts (including inactive) to determine next available ID
+        const allHostsResponse = await fetch('/api/hosts?include_inactive=true');
+        if (!allHostsResponse.ok) {
             throw new Error('Failed to fetch existing hosts');
         }
         
-        const existingHosts = await hostsResponse.json();
-        const existingIds = existingHosts.map(host => host.host_id);
-        const nextId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
+        const allHosts = await allHostsResponse.json();
+        const allIds = allHosts.map(host => host.host_id);
+        const nextId = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
         
         console.log('[Phase 4.3] Adding host with ID:', nextId);
         

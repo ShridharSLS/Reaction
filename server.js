@@ -1495,11 +1495,16 @@ app.get('/login', (req, res) => {
 // Get all hosts
 app.get('/api/hosts', async (req, res) => {
     try {
-        const { data: hosts, error } = await supabase
-            .from('hosts')
-            .select('*')
-            .eq('is_active', true)
-            .order('host_id');
+        const { include_inactive } = req.query;
+        
+        let query = supabase.from('hosts').select('*');
+        
+        // Only filter by is_active if include_inactive is not requested
+        if (!include_inactive || include_inactive !== 'true') {
+            query = query.eq('is_active', true);
+        }
+        
+        const { data: hosts, error } = await query.order('host_id');
             
         if (error) {
             console.error('Error fetching hosts:', error);
