@@ -1065,10 +1065,8 @@ app.get('/api/videos/system/relevance', async (req, res) => {
         }
         
         // Try a simple query for relevance videos using relevance_rating as the primary filter
-        // Also check relevance_status for backward compatibility during migration phase
         try {
-            // Phase 1: Use relevance_rating as primary filter but maintain dual-read
-            // with relevance_status for compatibility
+            // Use relevance_rating as primary filter for the relevance view
             const { data: simpleVideos, error: simpleError } = await supabase
                 .from('videos')
                 .select('*')
@@ -1130,15 +1128,14 @@ app.get('/api/videos/system/trash', async (req, res) => {
     try {
         console.log('Fetching system-wide trash videos...');
         
-        // Phase 1: Use relevance_rating as primary filter but maintain dual-read
-        // with relevance_status for compatibility
+        // Use relevance_rating=0 to identify trash videos
         const { data: trashVideos, error: trashError } = await supabase
             .from('videos')
             .select(`
                 *,
                 people!videos_added_by_fkey(name)
             `)
-            .eq('relevance_rating', 0) // Primary filter: relevance_rating = 0 for trash
+            .eq('relevance_rating', 0) // relevance_rating = 0 for trash
             .order('created_at', { ascending: false });
         
         if (trashError) {
