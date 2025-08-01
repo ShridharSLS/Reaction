@@ -70,13 +70,8 @@ function getHostApiEndpoint(hostId, videoId, action) {
     const config = getHostConfig(hostId);
     if (!config) return null;
     
-    if (hostId === 1) {
-        // Shridhar uses the original endpoints
-        return `/api/videos/${videoId}/status`;
-    } else {
-        // Other hosts use the host-specific endpoints
-        return `/api/videos/${videoId}/${config.apiPath}/status`;
-    }
+    // Use unified generic API endpoint for all hosts
+    return `/api/videos/${videoId}/host/${hostId}/status`;
 }
 
 // Get the correct count key for any host and status

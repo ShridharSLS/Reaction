@@ -730,6 +730,136 @@ app.put('/api/videos/:id/host2/status', async (req, res) => {
     }
 });
 
+// ===== UNIFIED GENERIC HOST API ENDPOINT =====
+// Update video status for any host (replaces host-specific endpoints)
+app.put('/api/videos/:id/host/:hostId/status', async (req, res) => {
+    try {
+        const { id, hostId } = req.params;
+        const { status, video_id_text, note } = req.body;
+        
+        // Dynamic column mapping based on hostId
+        const getHostColumns = (hostId) => {
+            const hostNum = parseInt(hostId);
+            if (hostNum === 1) {
+                return {
+                    statusColumn: 'status_1',
+                    noteColumn: 'note',
+                    videoIdColumn: 'video_id_text'
+                };
+            } else {
+                return {
+                    statusColumn: `status_${hostNum}`,
+                    noteColumn: `note_${hostNum}`,
+                    videoIdColumn: `video_id_text_${hostNum}`
+                };
+            }
+        };
+        
+        const columns = getHostColumns(hostId);
+        
+        // Build update data dynamically
+        const updateData = {};
+        updateData[columns.statusColumn] = status;
+        
+        if (video_id_text !== undefined) {
+            updateData[columns.videoIdColumn] = video_id_text;
+        }
+        if (note !== undefined) {
+            updateData[columns.noteColumn] = note;
+        }
+        
+        console.log(`[Generic API] Updating video ${id} for host ${hostId}:`, updateData);
+        
+        const { error } = await supabase
+            .from('videos')
+            .update(updateData)
+            .eq('id', id);
+            
+        if (error) {
+            console.error(`[Generic API] Error updating video ${id} for host ${hostId}:`, error);
+            res.status(500).json({ error: error.message });
+            return;
+        }
+        
+        res.json({ 
+            message: `Host ${hostId} video status updated successfully`,
+            hostId: hostId,
+            columns: columns,
+            updateData: updateData
+        });
+    } catch (err) {
+        console.error(`[Generic API] Exception:`, err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get videos by status for any host (replaces host-specific endpoints)
+app.get('/api/videos/host/:hostId/:status', async (req, res) => {
+    try {
+        const { hostId, status } = req.params;
+        
+        // Dynamic column mapping based on hostId
+        const getStatusColumn = (hostId) => {
+            const hostNum = parseInt(hostId);
+            return hostNum === 1 ? 'status_1' : `status_${hostNum}`;
+        };
+        
+        const statusColumn = getStatusColumn(hostId);
+        
+        console.log(`[Generic API] Getting videos for host ${hostId}, status ${status}, column ${statusColumn}`);
+        
+        // Get videos from the appropriate status column
+        const { data: videos, error: videosError } = await supabase
+            .from('videos')
+            .select('*')
+            .eq(statusColumn, status)
+            .order('type', { ascending: false }) // Trending first
+            .order('score', { ascending: false, nullsFirst: false })
+            .order('likes_count', { ascending: false, nullsFirst: false });
+            
+        if (videosError) {
+            console.error(`[Generic API] Error getting videos for host ${hostId}:`, videosError);
+            res.status(500).json({ error: videosError.message });
+            return;
+        }
+        
+        // Get all people to map names
+        const { data: people, error: peopleError } = await supabase
+            .from('people')
+            .select('id, name');
+            
+        if (peopleError) {
+            res.status(500).json({ error: peopleError.message });
+            return;
+        }
+        
+        // Create a lookup map for people names
+        const peopleMap = {};
+        people.forEach(person => {
+            peopleMap[person.id] = person.name;
+        });
+        
+        // Add person names to videos
+        const videosWithNames = videos.map(video => ({
+            ...video,
+            person_name: peopleMap[video.person_id] || 'Unknown'
+        }));
+        
+        console.log(`[Generic API] Found ${videosWithNames.length} videos for host ${hostId}, status ${status}`);
+        
+        res.json({
+            videos: videosWithNames,
+            hostId: hostId,
+            status: status,
+            statusColumn: statusColumn,
+            count: videosWithNames.length
+        });
+    } catch (err) {
+        console.error(`[Generic API] Exception:`, err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Update video note
 app.put('/api/videos/:id/note', async (req, res) => {
     try {
