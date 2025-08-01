@@ -2423,7 +2423,7 @@ function renderAllEntriesTable(data) {
     const columns = [
         { key: 'id', label: 'ID', sortable: true },
         { key: 'person_id', label: 'Person ID', sortable: true },
-        { key: 'person_name', label: 'Person Name', sortable: true },
+        { key: 'added_by_name', label: 'Person Name', sortable: true },
         { key: 'link', label: 'Video Link', sortable: false },
         { key: 'type', label: 'Type', sortable: true },
         { key: 'status_1', label: 'Status 1', sortable: true },
@@ -2453,7 +2453,7 @@ function renderAllEntriesTable(data) {
         <tr>
             <td>${entry.id || ''}</td>
             <td>${entry.person_id || ''}</td>
-            <td>${escapeHtml(entry.person_name || '')}</td>
+            <td>${escapeHtml(entry.added_by_name || '')}</td>
             <td class="link-cell">
                 ${entry.link ? `<a href="${escapeHtml(entry.link)}" target="_blank" title="${escapeHtml(entry.link)}">${escapeHtml(entry.link)}</a>` : ''}
             </td>
@@ -2558,7 +2558,7 @@ function filterAllEntries(searchTerm) {
     // Define column order and display names (same as renderAllEntriesTable)
     const columns = [
         { key: 'id', label: 'ID', sortable: true },
-        { key: 'person_name', label: 'Person', sortable: true },
+        { key: 'added_by_name', label: 'Person', sortable: true },
         { key: 'link', label: 'Video Link', sortable: false },
         { key: 'type', label: 'Type', sortable: true },
         { key: 'status', label: 'Status', sortable: true },
@@ -2582,7 +2582,7 @@ function filterAllEntries(searchTerm) {
     bodyContainer.innerHTML = filteredData.map(entry => `
         <tr>
             <td>${entry.id || ''}</td>
-            <td>${escapeHtml(entry.person_name || '')}</td>
+            <td>${escapeHtml(entry.added_by_name || '')}</td>
             <td class="link-cell">
                 ${entry.link ? `<a href="${escapeHtml(entry.link)}" target="_blank" title="${escapeHtml(entry.link)}">${escapeHtml(entry.link)}</a>` : ''}
             </td>
