@@ -2708,7 +2708,7 @@ async function updateRelevanceCount() {
             const relevanceCount = relevanceResponse.count;
             
             // Update relevance button count
-            const relevanceButtonCountEl = document.getElementById('relevance-count');
+            const relevanceButtonCountEl = document.getElementById('relevance-btn-count');
             if (relevanceButtonCountEl) {
                 relevanceButtonCountEl.textContent = relevanceCount;
                 if (relevanceCount > 0) {
@@ -2734,7 +2734,7 @@ async function updateRelevanceCount() {
             const trashCount = trashResponse.count;
             
             // Update trash button count if it exists
-            const trashButtonCountEl = document.getElementById('trash-count');
+            const trashButtonCountEl = document.getElementById('trash-btn-count');
             if (trashButtonCountEl) {
                 trashButtonCountEl.textContent = trashCount;
                 if (trashCount > 0) {
