@@ -100,6 +100,99 @@ function getTabId(hostId, status) {
     }
 }
 
+// ===== PHASE 3.1: DYNAMIC BUTTON GENERATION SYSTEM =====
+// Template-based button generation that works for any host and status
+
+// Button templates define what buttons appear for each status
+const BUTTON_TEMPLATES = {
+    pending: [
+        { type: 'accept', label: 'Accept', class: 'btn-success' },
+        { type: 'assign', label: 'ID given', class: 'btn-primary' },
+        { type: 'reject', label: 'Reject', class: 'btn-reject' },
+        { type: 'delete', label: 'Delete', class: 'btn-danger' }
+    ],
+    accepted: [
+        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy link and note for Google Sheets' },
+        { type: 'assign', label: 'ID given', class: 'btn-primary' },
+        { type: 'reject', label: 'Reject', class: 'btn-reject' },
+        { type: 'pending', label: 'Pending', class: 'btn-warning' },
+        { type: 'delete', label: 'Delete', class: 'btn-danger' }
+    ],
+    rejected: [
+        { type: 'accept', label: 'Accept', class: 'btn-success' },
+        { type: 'pending', label: 'Pending', class: 'btn-warning' },
+        { type: 'delete', label: 'Delete', class: 'btn-danger' }
+    ],
+    assigned: [
+        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy link and note for Google Sheets' },
+        { type: 'delete', label: 'Delete', class: 'btn-danger' }
+    ],
+    relevance: [
+        { type: 'delete', label: 'Delete', class: 'btn-danger' }
+    ]
+};
+
+// Generate a single button based on template and host configuration
+function generateButton(buttonTemplate, hostId, videoId, video) {
+    const { type, label, class: btnClass, title } = buttonTemplate;
+    
+    let onclick = '';
+    
+    switch (type) {
+        case 'accept':
+        case 'reject':
+        case 'assign':
+        case 'pending':
+            onclick = `hostAction(${hostId}, ${videoId}, '${type}')`;
+            break;
+            
+        case 'delete':
+            onclick = `deleteVideo(${videoId})`;
+            break;
+            
+        case 'copy':
+            // Get the correct note column for this host
+            const noteCol = getHostConfig(hostId)?.noteCol || 'note';
+            const note = video[noteCol] || '';
+            onclick = `copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${note.replace(/'/g, '\\\'')}'))`;
+            break;
+            
+        default:
+            return ''; // Unknown button type
+    }
+    
+    // Build the button HTML
+    const titleAttr = title ? ` title="${title}"` : '';
+    return `<button class="btn ${btnClass}" onclick="${onclick}"${titleAttr}>${label}</button>`;
+}
+
+// Generate all action buttons for a video based on host and status
+function generateVideoActions(video, hostId, status) {
+    const template = BUTTON_TEMPLATES[status];
+    if (!template) {
+        console.warn(`No button template found for status: ${status}`);
+        return '';
+    }
+    
+    const buttons = template.map(buttonTemplate => 
+        generateButton(buttonTemplate, hostId, video.id, video)
+    ).filter(button => button !== ''); // Remove empty buttons
+    
+    return buttons.join('\n                ');
+}
+
+// Unified function to get video actions for any host (replaces getVideoActions and getHost2VideoActions)
+function getUnifiedVideoActions(video, status) {
+    // Detect host from status string
+    const hostId = getHostFromStatus(status);
+    
+    // Extract the actual status (remove host prefix if present)
+    const actualStatus = status.startsWith('host2-') ? status.replace('host2-', '') : status;
+    
+    // Generate buttons using the template system
+    return generateVideoActions(video, hostId, actualStatus);
+}
+
 // Get the correct button count element ID for any host and status
 function getButtonCountId(hostId, status) {
     const config = getHostConfig(hostId);
@@ -565,91 +658,16 @@ function createVideoCard(video, status) {
     `;
 }
 
+// Updated getVideoActions to use the unified dynamic button generation system
 function getVideoActions(video, status) {
-    // Check if this is a Host 2 view
-    if (status.startsWith('host2-')) {
-        const host2Status = status.replace('host2-', '');
-        return getHost2VideoActions(video, host2Status);
-    }
-    
-    // Regular Shridhar views
-    switch (status) {
-        case 'pending':
-            return `
-                <button class="btn btn-success" onclick="hostAction(1, ${video.id}, 'accept')">Accept</button>
-                <button class="btn btn-primary" onclick="hostAction(1, ${video.id}, 'assign')">ID given</button>
-                <button class="btn btn-reject" onclick="hostAction(1, ${video.id}, 'reject')">Reject</button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
-            `;
-        case 'accepted':
-            return `
-                <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
-                    📋
-                </button>
-                <button class="btn btn-primary" onclick="hostAction(1, ${video.id}, 'assign')">ID given</button>
-                <button class="btn btn-reject" onclick="hostAction(1, ${video.id}, 'reject')">Reject</button>
-                <button class="btn btn-warning" onclick="hostAction(1, ${video.id}, 'pending')">Pending</button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
-            `;
-        case 'rejected':
-            return `
-                <button class="btn btn-success" onclick="hostAction(1, ${video.id}, 'accept')">Accept</button>
-                <button class="btn btn-warning" onclick="hostAction(1, ${video.id}, 'pending')">Pending</button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
-            `;
-        case 'assigned':
-            return `
-                <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
-                    📋
-                </button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
-            `;
-
-        case 'relevance':
-            return `
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
-            `;
-        default:
-            return '';
-    }
+    // Use the new unified system for all hosts and statuses
+    return getUnifiedVideoActions(video, status);
 }
 
-// Host 2 specific action buttons (only updates status_2)
+// Legacy Host 2 function - now redirects to unified system for backward compatibility
 function getHost2VideoActions(video, status) {
-    switch (status) {
-        case 'pending':
-            return `
-                <button class="btn btn-success" onclick="hostAction(2, ${video.id}, 'accept')">Accept</button>
-                <button class="btn btn-primary" onclick="hostAction(2, ${video.id}, 'assign')">ID given</button>
-                <button class="btn btn-reject" onclick="hostAction(2, ${video.id}, 'reject')">Reject</button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
-            `;
-        case 'accepted':
-            return `
-                <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note_2 || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
-                    📋
-                </button>
-                <button class="btn btn-primary" onclick="hostAction(2, ${video.id}, 'assign')">ID given</button>
-                <button class="btn btn-reject" onclick="hostAction(2, ${video.id}, 'reject')">Reject</button>
-                <button class="btn btn-warning" onclick="hostAction(2, ${video.id}, 'pending')">Pending</button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
-            `;
-        case 'rejected':
-            return `
-                <button class="btn btn-success" onclick="hostAction(2, ${video.id}, 'accept')">Accept</button>
-                <button class="btn btn-warning" onclick="hostAction(2, ${video.id}, 'pending')">Pending</button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
-            `;
-        case 'assigned':
-            return `
-                <button class="copy-btn" onclick="copyLinkAndNote('${video.link.replace(/'/g, '\\\'')}', '${(video.note_2 || '').replace(/'/g, '\\\'')}')" title="Copy link and note for Google Sheets">
-                    📋
-                </button>
-                <button class="btn btn-danger" onclick="deleteVideo(${video.id})">Delete</button>
-            `;
-        default:
-            return '';
-    }
+    // Use the unified system with host2- prefix to maintain compatibility
+    return getUnifiedVideoActions(video, `host2-${status}`);
 }
 
 // Form Setup
