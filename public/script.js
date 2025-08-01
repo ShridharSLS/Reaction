@@ -476,6 +476,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('Loading initial videos for tab:', currentTab);
     loadVideos(currentTab).then(() => {
         console.log('Initial videos loaded successfully');
+        // Also load relevance and trash counts
+        updateRelevanceCount();
     }).catch(error => {
         console.error('Failed to load initial videos:', error);
     });
@@ -634,6 +636,10 @@ function switchTab(tabId) {
         initializeAdminManagement();
     } else if (tabId === 'all') {
         loadAllEntries();
+    } else if (tabId === 'relevance' || tabId === 'trash') {
+        loadVideos(tabId);
+        // Update relevance and trash counts when switching to these tabs
+        updateRelevanceCount();
     } else if (tabId !== 'add-topic' && tabId !== 'bulk-import') {
         loadVideos(tabId);
     }
