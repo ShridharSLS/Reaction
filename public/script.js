@@ -1961,8 +1961,10 @@ async function submitBulkData() {
                 link: row.link,
                 type: row.type,
                 likes_count: row.likes,
-                relevance_rating: row.relevance !== null ? row.relevance : -1,
-                status: row.relevance !== null ? 'pending' : 'relevance'
+                relevance_rating: row.relevance !== null ? row.relevance : -1
+                // Note: Removed 'status' parameter - let backend handle status based on relevance_rating
+                // relevance_rating = -1 -> relevance_status = 'relevance', host columns = null
+                // relevance_rating 0-3 -> relevance_status = null, host columns = 'pending'
             };
             
             const response = await fetch('/api/videos', {

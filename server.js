@@ -660,27 +660,48 @@ app.post('/api/videos', async (req, res) => {
             relevance_rating: relevance_rating !== undefined ? relevance_rating : -1,  // Use provided or default to -1
         };
         
-        // For new videos with relevance_rating = -1, use system-wide relevance status
-        // All host columns should be null initially
+        // Handle initial status based on relevance_rating (system-wide approach)
+        const allStatusColumns = getAllStatusColumns();
+        
         if (videoData.relevance_rating === -1) {
-            // System-wide relevance: set relevance_status and leave all host columns null
+            // Unrated videos: system-wide relevance status
             videoData.relevance_status = 'relevance';
             
-            // Explicitly set all host status columns to null
-            const allStatusColumns = getAllStatusColumns();
+            // All host status columns should be null
             Object.values(allStatusColumns).forEach(statusColumn => {
                 videoData[statusColumn] = null;
             });
             
             console.log(`[System-wide Relevance] New video with rating -1: setting relevance_status='relevance', all host columns=null`);
-        } else {
-            // For videos with specific ratings (used in bulk import), set host statuses
-            const allStatusColumns = getAllStatusColumns();
+        } else if (videoData.relevance_rating === 0) {
+            // Rating 0: system-wide trash status
+            videoData.relevance_status = 'trash';
+            
+            // All host status columns should be null
             Object.values(allStatusColumns).forEach(statusColumn => {
-                videoData[statusColumn] = status || 'pending';
+                videoData[statusColumn] = null;
             });
             
-            console.log(`[Dynamic Video Creation] Setting status columns:`, Object.keys(allStatusColumns), 'to:', status || 'pending');
+            console.log(`[System-wide Trash] New video with rating 0: setting relevance_status='trash', all host columns=null`);
+        } else if (videoData.relevance_rating >= 1 && videoData.relevance_rating <= 3) {
+            // Rating 1-3: host-specific pending status
+            videoData.relevance_status = null;
+            
+            // Set all host status columns to pending
+            Object.values(allStatusColumns).forEach(statusColumn => {
+                videoData[statusColumn] = 'pending';
+            });
+            
+            console.log(`[Host-specific Pending] New video with rating ${videoData.relevance_rating}: setting relevance_status=null, all host columns='pending'`);
+        } else {
+            // Fallback for any other ratings: treat as unrated
+            videoData.relevance_status = 'relevance';
+            
+            Object.values(allStatusColumns).forEach(statusColumn => {
+                videoData[statusColumn] = null;
+            });
+            
+            console.log(`[Fallback] New video with unexpected rating ${videoData.relevance_rating}: treating as unrated`);
         }
         
         const { data, error } = await supabase
