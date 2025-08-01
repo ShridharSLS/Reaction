@@ -193,6 +193,132 @@ function getUnifiedVideoActions(video, status) {
     return generateVideoActions(video, hostId, actualStatus);
 }
 
+// ===== PHASE 3.2: DYNAMIC NAVIGATION GENERATION SYSTEM =====
+// Template-based navigation generation that works for any number of hosts
+
+// Navigation templates define the structure of dropdowns and buttons
+const NAVIGATION_TEMPLATES = {
+    // Static navigation items (not host-specific)
+    static: [
+        {
+            type: 'dropdown',
+            id: 'tasks',
+            label: '📋 Tasks',
+            items: [
+                { id: 'add-topic', label: '➕ Add Topic' },
+                { id: 'bulk-import', label: '📋 Bulk Import' },
+                { id: 'manage-people', label: '👥 Manage People' },
+                { id: 'manage-tags', label: '🏷️ Manage Tags' },
+                { id: 'manage-hosts', label: '🖥️ Manage Hosts' },
+                { id: 'manage-admins', label: '🔐 Manage Admins' }
+            ]
+        },
+        {
+            type: 'button',
+            id: 'relevance',
+            label: '🎯 Relevance',
+            showCount: true
+        }
+    ],
+    // Host-specific navigation template
+    host: {
+        type: 'dropdown',
+        items: [
+            { id: 'pending', label: '🟡 Pending', showCount: true },
+            { id: 'accepted', label: '✅ Accepted', showCount: true },
+            { id: 'rejected', label: '🟥 Rejected', showCount: true },
+            { id: 'assigned', label: '🆔 ID given', showCount: true }
+        ]
+    },
+    // Static navigation items that come after hosts
+    staticAfter: [
+        {
+            type: 'button',
+            id: 'all',
+            label: '📈 All',
+            showCount: true
+        }
+    ]
+};
+
+// Generate navigation HTML for all hosts dynamically
+function generateNavigationHTML() {
+    let navHTML = '';
+    
+    // Add static navigation items (before hosts)
+    NAVIGATION_TEMPLATES.static.forEach(item => {
+        navHTML += generateNavigationItem(item);
+    });
+    
+    // Add host-specific navigation dropdowns
+    Object.keys(HOST_CONFIG).forEach(hostId => {
+        const config = HOST_CONFIG[hostId];
+        navHTML += generateHostNavigation(parseInt(hostId), config);
+    });
+    
+    // Add static navigation items (after hosts)
+    NAVIGATION_TEMPLATES.staticAfter.forEach(item => {
+        navHTML += generateNavigationItem(item);
+    });
+    
+    return navHTML;
+}
+
+// Generate a single navigation item (dropdown or button)
+function generateNavigationItem(item) {
+    if (item.type === 'dropdown') {
+        return generateDropdown(item.id, item.label, item.items);
+    } else if (item.type === 'button') {
+        return generateNavigationButton(item.id, item.label, item.showCount);
+    }
+    return '';
+}
+
+// Generate host-specific navigation dropdown
+function generateHostNavigation(hostId, config) {
+    const hostLabel = `👨‍💼 ${config.name}`;
+    const hostItems = NAVIGATION_TEMPLATES.host.items.map(item => ({
+        id: getTabId(hostId, item.id),
+        label: item.label,
+        showCount: item.showCount,
+        countId: getButtonCountId(hostId, item.id)
+    }));
+    
+    return generateDropdown(`host-${hostId}`, hostLabel, hostItems);
+}
+
+// Generate dropdown HTML
+function generateDropdown(id, label, items) {
+    const itemsHTML = items.map(item => {
+        const countSpan = item.showCount ? 
+            `<span class="btn-count" id="${item.countId || item.id + '-btn-count'}"></span>` : '';
+        return `<button class="dropdown-item" data-tab="${item.id}">${item.label} ${countSpan}</button>`;
+    }).join('\n                    ');
+    
+    return `
+            <div class="dropdown">
+                <button class="dropdown-btn">${label} ▼</button>
+                <div class="dropdown-content">
+                    ${itemsHTML}
+                </div>
+            </div>`;
+}
+
+// Generate navigation button HTML
+function generateNavigationButton(id, label, showCount = false) {
+    const countSpan = showCount ? `<span class="btn-count" id="${id}-btn-count"></span>` : '';
+    return `<button class="tab-btn" data-tab="${id}">${label} ${countSpan}</button>`;
+}
+
+// Initialize dynamic navigation system
+function initializeDynamicNavigation() {
+    const navContainer = document.querySelector('.tab-nav');
+    if (navContainer) {
+        navContainer.innerHTML = generateNavigationHTML();
+        console.log('[Dynamic Navigation] Navigation generated for', Object.keys(HOST_CONFIG).length, 'hosts');
+    }
+}
+
 // Get the correct button count element ID for any host and status
 function getButtonCountId(hostId, status) {
     const config = getHostConfig(hostId);
@@ -238,6 +364,9 @@ function showSuccessNotification(message) {
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
     console.log('App initializing... currentTab:', currentTab);
+    
+    // Initialize dynamic navigation system (Phase 3.2)
+    initializeDynamicNavigation();
     
     initializeTabs();
     loadPeople();
