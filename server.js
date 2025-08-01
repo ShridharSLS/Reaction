@@ -59,6 +59,18 @@ function getVideoIdColumn(hostId) {
     return hostNum === 1 ? 'video_id_text' : `video_id_text_${hostNum}`;
 }
 
+// Get count key for a specific host and status (for backward compatibility with frontend)
+function getCountKey(hostId, status) {
+    const hostNum = parseInt(hostId);
+    if (hostNum === 1) {
+        // Host 1 uses the original count keys
+        return status; // e.g., 'pending', 'accepted'
+    } else {
+        // Other hosts use prefixed count keys
+        return `person${hostNum}_${status}`; // e.g., 'person2_pending'
+    }
+}
+
 // Video code extraction function for duplicate detection
 function extractVideoCode(url) {
     if (!url || typeof url !== 'string') {
@@ -318,56 +330,48 @@ app.get('/api/videos/counts', async (req, res) => {
             return res.status(500).json({ error: 'Failed to fetch counts' });
         }
         
+        // ===== UNIFIED DYNAMIC COUNT SYSTEM =====
+        // Generate count keys dynamically for all hosts
+        const statusTypes = ['relevance', 'pending', 'accepted', 'rejected', 'assigned'];
+        const hostStatusColumns = getAllStatusColumns();
+        const hostIds = Object.keys(hostStatusColumns).map(key => key.replace('host', ''));
+        
+        console.log(`[Dynamic Counts] Generating counts for hosts: ${hostIds.join(', ')}`);
+        
         // Dynamic count initialization for all hosts
         const counts = {
-            // Host 1 counts (legacy keys for backward compatibility)
-            relevance: 0,
-            pending: 0,
-            accepted: 0,
-            rejected: 0,
-            assigned: 0,
-            
-            // Host 2 counts (legacy keys for backward compatibility)
-            person2_relevance: 0,
-            person2_pending: 0,
-            person2_accepted: 0,
-            person2_rejected: 0,
-            person2_assigned: 0,
-            
             all: videos.length
         };
         
-        videos.forEach(video => {
-            // Count Host 1 statuses using dynamic column mapping
-            const host1StatusColumn = getStatusColumn(1);
-            const status1 = video[host1StatusColumn];
-            if (status1 === 'relevance' && video.relevance_rating === -1) {
-                counts.relevance++;
-            } else if (status1 === 'pending') {
-                counts.pending++;
-            } else if (status1 === 'accepted') {
-                counts.accepted++;
-            } else if (status1 === 'rejected') {
-                counts.rejected++;
-            } else if (status1 === 'assigned') {
-                counts.assigned++;
-            }
-            
-            // Count Host 2 statuses using dynamic column mapping
-            const host2StatusColumn = getStatusColumn(2);
-            const status2 = video[host2StatusColumn];
-            if (status2 === 'relevance' && video.relevance_rating === -1) {
-                counts.person2_relevance++;
-            } else if (status2 === 'pending') {
-                counts.person2_pending++;
-            } else if (status2 === 'accepted') {
-                counts.person2_accepted++;
-            } else if (status2 === 'rejected') {
-                counts.person2_rejected++;
-            } else if (status2 === 'assigned') {
-                counts.person2_assigned++;
-            }
+        // Initialize count keys dynamically for all hosts
+        hostIds.forEach(hostId => {
+            statusTypes.forEach(status => {
+                const countKey = getCountKey(parseInt(hostId), status);
+                counts[countKey] = 0;
+            });
         });
+        
+        console.log(`[Dynamic Counts] Initialized count keys:`, Object.keys(counts).filter(key => key !== 'all'));
+        
+        // Count videos dynamically for all hosts
+        videos.forEach(video => {
+            hostIds.forEach(hostId => {
+                const hostIdNum = parseInt(hostId);
+                const statusColumn = getStatusColumn(hostIdNum);
+                const videoStatus = video[statusColumn];
+                
+                // Count based on status with relevance special handling
+                if (videoStatus === 'relevance' && video.relevance_rating === -1) {
+                    const countKey = getCountKey(hostIdNum, 'relevance');
+                    counts[countKey]++;
+                } else if (statusTypes.includes(videoStatus)) {
+                    const countKey = getCountKey(hostIdNum, videoStatus);
+                    counts[countKey]++;
+                }
+            });
+        });
+        
+        console.log(`[Dynamic Counts] Final counts:`, counts);
         
         res.json(counts);
     } catch (error) {
