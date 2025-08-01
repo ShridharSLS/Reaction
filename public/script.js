@@ -3229,11 +3229,15 @@ async function updateNavigation() {
     try {
         console.log('[Phase 4.3] Starting complete navigation rebuild...');
         
+        // Remember current tab before rebuilding
+        const currentTabId = currentTab;
+        console.log('[Phase 4.3] Current tab before navigation rebuild:', currentTabId);
+        
         // Step 1: Reload host configuration first (all hosts and their settings)
         await loadHostConfiguration();
         
         // Step 2: Get the navigation container
-        const navContainer = document.getElementById('nav-container');
+        const navContainer = document.querySelector('.tab-nav');
         if (!navContainer) {
             throw new Error('Navigation container not found');
         }
@@ -3241,18 +3245,52 @@ async function updateNavigation() {
         // Step 3: Completely regenerate the navigation HTML
         navContainer.innerHTML = generateNavigationHTML();
         
-        // Step 4: Reattach event listeners to new navigation elements
-        document.querySelectorAll('#nav-container .nav-item').forEach(navItem => {
-            navItem.addEventListener('click', function() {
+        // Step 4: Reattach event listeners to all navigation elements
+        // Handle regular tab buttons
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', function() {
                 const tabId = this.getAttribute('data-tab');
-                if (tabId) {
-                    switchTab(tabId);
-                }
+                if (tabId) switchTab(tabId);
+            });
+        });
+        
+        // Handle dropdown items
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                if (tabId) switchTab(tabId);
+                // Close all dropdowns after selection
+                document.querySelectorAll('.dropdown').forEach(dropdown => {
+                    dropdown.classList.remove('active');
+                });
+            });
+        });
+        
+        // Handle dropdown buttons
+        document.querySelectorAll('.dropdown-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const dropdown = this.closest('.dropdown');
+                dropdown.classList.toggle('active');
+                
+                // Close all other dropdowns
+                document.querySelectorAll('.dropdown').forEach(otherDropdown => {
+                    if (otherDropdown !== dropdown) {
+                        otherDropdown.classList.remove('active');
+                    }
+                });
             });
         });
         
         // Step 5: Update the counts
         await updateButtonCounts();
+        
+        // Step 6: Reload the current view to reflect changes
+        if (currentTabId) {
+            console.log('[Phase 4.3] Reloading current tab after navigation rebuild:', currentTabId);
+            // Call switchTab with the current tab to reload the view
+            switchTab(currentTabId);
+        }
         
         console.log('[Phase 4.3] Navigation fully rebuilt after host changes');
     } catch (error) {
