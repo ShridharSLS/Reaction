@@ -338,9 +338,9 @@ app.get('/api/videos/all/entries', async (req, res) => {
 // Get counts for all video statuses in a single call (performance optimization)
 app.get('/api/videos/counts', async (req, res) => {
     try {
-        // Now we need to include the system-wide relevance_status column
+        // We now only use relevance_rating for system-wide statuses
         const allStatusColumns = await getAllStatusColumns();
-        const selectColumns = Object.values(allStatusColumns).join(', ') + ', relevance_rating, relevance_status';
+        const selectColumns = Object.values(allStatusColumns).join(', ') + ', relevance_rating';
         
         console.log(`[Dynamic Counts] Selecting columns: ${selectColumns}`);
         
@@ -383,10 +383,10 @@ app.get('/api/videos/counts', async (req, res) => {
         
         // Count videos dynamically for all hosts
         videos.forEach(video => {
-            // Count system-wide statuses first (new)
-            if (video.relevance_status === 'relevance') {
+            // Count system-wide statuses using relevance_rating
+            if (video.relevance_rating === -1) {
                 counts.system_relevance++;
-            } else if (video.relevance_status === 'trash') {
+            } else if (video.relevance_rating === 0) {
                 counts.system_trash++;
             }
             
@@ -1006,15 +1006,15 @@ app.get('/api/videos/system/trash', async (req, res) => {
     try {
         console.log('Fetching system-wide trash videos...');
         
-        // Get all videos with relevance_status = 'trash'
+        // Get all videos with relevance_rating = 0 (trash)
         const { data: trashVideos, error: trashError } = await supabase
             .from('videos')
             .select('*')
-            .eq('relevance_status', 'trash')
+            .eq('relevance_rating', 0)
             .limit(50);
         
         console.log('Trash query result:', trashError ? 'ERROR' : 'SUCCESS');
-        console.log(`Found ${trashVideos ? trashVideos.length : 0} videos with relevance_status = 'trash'`);
+        console.log(`Found ${trashVideos ? trashVideos.length : 0} videos with relevance_rating = 0 (trash)`);
         
         if (trashError) {
             console.error('ERROR in trash query:', trashError);
@@ -1123,7 +1123,7 @@ app.get('/api/videos/system/relevance', async (req, res) => {
     }
 });
 
-// Get system-wide trash videos (relevance_status = 'trash')
+// Get system-wide trash videos (relevance_rating = 0)
 app.get('/api/videos/system/trash', async (req, res) => {
     try {
         console.log('Fetching system-wide trash videos...');
