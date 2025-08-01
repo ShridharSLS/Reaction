@@ -900,14 +900,38 @@ app.put('/api/videos/:id/host/:hostId/status', async (req, res) => {
 // System-wide relevance endpoint (new endpoint for system-wide relevance status)
 app.get('/api/videos/system/relevance', async (req, res) => {
     try {
-        // Get all videos with relevance_status = 'relevance'
+        console.log('Fetching system-wide relevance videos...');
+        
+        // First, log the schema to debug any column name issues
+        console.log('Checking videos table schema...');
+        const { data: schemaData, error: schemaError } = await supabase
+            .from('videos')
+            .select('*')
+            .limit(1);
+            
+        if (schemaError) {
+            console.error('Error accessing videos table:', schemaError);
+            return res.status(500).json({ error: 'Error accessing videos table' });
+        }
+        
+        // Log the first row to inspect column names
+        if (schemaData && schemaData.length > 0) {
+            console.log('Video table columns:', Object.keys(schemaData[0]));
+        } else {
+            console.log('No video records found for schema inspection');
+        }
+        
+        // Get all videos with relevance_rating = -1 instead of checking relevance_status
+        // This is a fallback approach since we're not sure if the column migration worked
         const { data: videos, error: videosError } = await supabase
             .from('videos')
             .select('*, people(name)')
-            .eq('relevance_status', 'relevance')
+            .eq('relevance_rating', -1)
             .order('type', { ascending: false }) // Trending first
             .order('score', { ascending: false, nullsFirst: false })
             .order('likes_count', { ascending: false, nullsFirst: false });
+        
+        console.log(`Found ${videos ? videos.length : 0} videos with relevance_rating = -1`);
         
         if (videosError) {
             console.error('Error fetching system-wide relevance videos:', videosError);
