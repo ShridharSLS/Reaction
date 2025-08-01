@@ -13,6 +13,52 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// ===== DYNAMIC COLUMN MAPPING SYSTEM =====
+// Centralized column mapping for all hosts (removes hardcoded column references)
+function getHostColumns(hostId) {
+    const hostNum = parseInt(hostId);
+    if (hostNum === 1) {
+        return {
+            statusColumn: 'status_1',
+            noteColumn: 'note',
+            videoIdColumn: 'video_id_text'
+        };
+    } else {
+        return {
+            statusColumn: `status_${hostNum}`,
+            noteColumn: `note_${hostNum}`,
+            videoIdColumn: `video_id_text_${hostNum}`
+        };
+    }
+}
+
+// Get all status columns for operations that need to update multiple hosts
+function getAllStatusColumns() {
+    return {
+        host1: 'status_1',
+        host2: 'status_2'
+        // Add more hosts as needed
+    };
+}
+
+// Get status column for a specific host
+function getStatusColumn(hostId) {
+    const hostNum = parseInt(hostId);
+    return hostNum === 1 ? 'status_1' : `status_${hostNum}`;
+}
+
+// Get note column for a specific host
+function getNoteColumn(hostId) {
+    const hostNum = parseInt(hostId);
+    return hostNum === 1 ? 'note' : `note_${hostNum}`;
+}
+
+// Get video ID column for a specific host
+function getVideoIdColumn(hostId) {
+    const hostNum = parseInt(hostId);
+    return hostNum === 1 ? 'video_id_text' : `video_id_text_${hostNum}`;
+}
+
 // Video code extraction function for duplicate detection
 function extractVideoCode(url) {
     if (!url || typeof url !== 'string') {
@@ -256,26 +302,32 @@ app.get('/api/videos/all/entries', async (req, res) => {
 // Get counts for all video statuses in a single call (performance optimization)
 app.get('/api/videos/counts', async (req, res) => {
     try {
-        // Single query to get all videos
+        // Dynamic column selection for all hosts
+        const allStatusColumns = getAllStatusColumns();
+        const selectColumns = Object.values(allStatusColumns).join(', ') + ', relevance_rating';
+        
+        console.log(`[Dynamic Counts] Selecting columns: ${selectColumns}`);
+        
+        // Single query to get all videos with dynamic column selection
         const { data: videos, error } = await supabase
             .from('videos')
-            .select('status_1, status_2, relevance_rating');
+            .select(selectColumns);
         
         if (error) {
             console.error('Error fetching video counts:', error);
             return res.status(500).json({ error: 'Failed to fetch counts' });
         }
         
-        // Count by status for both persons
+        // Dynamic count initialization for all hosts
         const counts = {
-            // Person 1 counts
+            // Host 1 counts (legacy keys for backward compatibility)
             relevance: 0,
             pending: 0,
             accepted: 0,
             rejected: 0,
             assigned: 0,
             
-            // Person 2 counts
+            // Host 2 counts (legacy keys for backward compatibility)
             person2_relevance: 0,
             person2_pending: 0,
             person2_accepted: 0,
@@ -286,8 +338,9 @@ app.get('/api/videos/counts', async (req, res) => {
         };
         
         videos.forEach(video => {
-            // Count Person 1 statuses
-            const status1 = video.status_1;
+            // Count Host 1 statuses using dynamic column mapping
+            const host1StatusColumn = getStatusColumn(1);
+            const status1 = video[host1StatusColumn];
             if (status1 === 'relevance' && video.relevance_rating === -1) {
                 counts.relevance++;
             } else if (status1 === 'pending') {
@@ -300,8 +353,9 @@ app.get('/api/videos/counts', async (req, res) => {
                 counts.assigned++;
             }
             
-            // Count Person 2 statuses
-            const status2 = video.status_2;
+            // Count Host 2 statuses using dynamic column mapping
+            const host2StatusColumn = getStatusColumn(2);
+            const status2 = video[host2StatusColumn];
             if (status2 === 'relevance' && video.relevance_rating === -1) {
                 counts.person2_relevance++;
             } else if (status2 === 'pending') {
@@ -322,16 +376,21 @@ app.get('/api/videos/counts', async (req, res) => {
     }
 });
 
-// Get videos by status
+// Get videos by status (Legacy endpoint for Host 1 - now uses dynamic column mapping)
 app.get('/api/videos/:status', async (req, res) => {
     try {
         const { status } = req.params;
+        
+        // Use dynamic column mapping for Host 1 (backward compatibility)
+        const host1StatusColumn = getStatusColumn(1);
+        
+        console.log(`[Legacy Endpoint] Getting Host 1 videos with status ${status} using column ${host1StatusColumn}`);
         
         // Get videos without JOIN since we removed the foreign key constraint
         const { data: videos, error: videosError } = await supabase
             .from('videos')
             .select('*')
-            .eq('status_1', status)
+            .eq(host1StatusColumn, status)
             .order('type', { ascending: false }) // Trending first
             .order('score', { ascending: false, nullsFirst: false })
             .order('likes_count', { ascending: false, nullsFirst: false });
@@ -553,6 +612,7 @@ app.post('/api/videos', async (req, res) => {
         }
         
         // Prepare video data with video_code for smart duplicate detection
+        // Dynamic status column assignment for all hosts
         const videoData = {
             added_by: personId,
             link,
@@ -561,9 +621,15 @@ app.post('/api/videos', async (req, res) => {
             video_id_text,
             video_code: videoCode,  // Store extracted video code
             relevance_rating: relevance_rating !== undefined ? relevance_rating : -1,  // Use provided or default to -1
-            status_1: status || 'relevance',    // Use provided status or default to 'relevance'
-            status_2: status || 'relevance'     // Mirror status_1 for Person 2
         };
+        
+        // Set initial status for all hosts using dynamic column mapping
+        const allStatusColumns = getAllStatusColumns();
+        Object.values(allStatusColumns).forEach(statusColumn => {
+            videoData[statusColumn] = status || 'relevance';
+        });
+        
+        console.log(`[Dynamic Video Creation] Setting status columns:`, Object.keys(allStatusColumns), 'to:', status || 'relevance');
         
         const { data, error } = await supabase
             .from('videos')
@@ -637,17 +703,28 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
         
         // If relevance rating is 0-3, move from 'relevance' to 'pending' status
         if (relevance_rating >= 0 && relevance_rating <= 3) {
+            // Dynamic column selection for status check
+            const allStatusColumns = getAllStatusColumns();
+            const selectColumns = Object.values(allStatusColumns).join(', ');
+            
             // Check if video is currently in relevance status
             const { data: video } = await supabase
                 .from('videos')
-                .select('status_1')
+                .select(selectColumns)
                 .eq('id', id)
                 .single();
                 
-            if (video && video.status_1 === 'relevance') {
-                // Update both status_1 and status_2 to 'pending' simultaneously
-                updateData.status_1 = 'pending';
-                updateData.status_2 = 'pending';
+            // Check if any host has the video in 'relevance' status and update all to 'pending'
+            if (video) {
+                const host1StatusColumn = getStatusColumn(1);
+                if (video[host1StatusColumn] === 'relevance') {
+                    console.log(`[Dynamic Relevance] Moving video ${id} from relevance to pending for all hosts`);
+                    
+                    // Update all hosts' status columns to 'pending' simultaneously
+                    Object.values(allStatusColumns).forEach(statusColumn => {
+                        updateData[statusColumn] = 'pending';
+                    });
+                }
             }
         }
         
@@ -670,19 +747,25 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
     }
 });
 
-// Update video status
+// Update video status (Legacy endpoint for Host 1 - now uses dynamic column mapping)
 app.put('/api/videos/:id/status', async (req, res) => {
     try {
         const { id } = req.params;
         const { status, video_id_text, note } = req.body;
         
-        const updateData = { status_1: status };
+        // Use dynamic column mapping for Host 1 (backward compatibility)
+        const host1Columns = getHostColumns(1);
+        const updateData = {};
+        updateData[host1Columns.statusColumn] = status;
+        
         if (video_id_text !== undefined) {
-            updateData.video_id_text = video_id_text;
+            updateData[host1Columns.videoIdColumn] = video_id_text;
         }
         if (note !== undefined) {
-            updateData.note = note;
+            updateData[host1Columns.noteColumn] = note;
         }
+        
+        console.log(`[Legacy Endpoint] Updating Host 1 with dynamic columns:`, updateData);
         
         const { error } = await supabase
             .from('videos')
@@ -700,19 +783,25 @@ app.put('/api/videos/:id/status', async (req, res) => {
     }
 });
 
-// Update Host 2 video status (status_2 column)
+// Update Host 2 video status (Legacy endpoint for Host 2 - now uses dynamic column mapping)
 app.put('/api/videos/:id/host2/status', async (req, res) => {
     try {
         const { id } = req.params;
         const { status, video_id_text, note } = req.body;
         
-        const updateData = { status_2: status };
+        // Use dynamic column mapping for Host 2 (backward compatibility)
+        const host2Columns = getHostColumns(2);
+        const updateData = {};
+        updateData[host2Columns.statusColumn] = status;
+        
         if (video_id_text !== undefined) {
-            updateData.video_id_text_2 = video_id_text;
+            updateData[host2Columns.videoIdColumn] = video_id_text;
         }
         if (note !== undefined) {
-            updateData.note_2 = note;
+            updateData[host2Columns.noteColumn] = note;
         }
+        
+        console.log(`[Legacy Endpoint] Updating Host 2 with dynamic columns:`, updateData);
         
         const { error } = await supabase
             .from('videos')
@@ -737,24 +826,7 @@ app.put('/api/videos/:id/host/:hostId/status', async (req, res) => {
         const { id, hostId } = req.params;
         const { status, video_id_text, note } = req.body;
         
-        // Dynamic column mapping based on hostId
-        const getHostColumns = (hostId) => {
-            const hostNum = parseInt(hostId);
-            if (hostNum === 1) {
-                return {
-                    statusColumn: 'status_1',
-                    noteColumn: 'note',
-                    videoIdColumn: 'video_id_text'
-                };
-            } else {
-                return {
-                    statusColumn: `status_${hostNum}`,
-                    noteColumn: `note_${hostNum}`,
-                    videoIdColumn: `video_id_text_${hostNum}`
-                };
-            }
-        };
-        
+        // Use centralized dynamic column mapping system
         const columns = getHostColumns(hostId);
         
         // Build update data dynamically
@@ -798,12 +870,7 @@ app.get('/api/videos/host/:hostId/:status', async (req, res) => {
     try {
         const { hostId, status } = req.params;
         
-        // Dynamic column mapping based on hostId
-        const getStatusColumn = (hostId) => {
-            const hostNum = parseInt(hostId);
-            return hostNum === 1 ? 'status_1' : `status_${hostNum}`;
-        };
-        
+        // Use centralized dynamic column mapping system
         const statusColumn = getStatusColumn(hostId);
         
         console.log(`[Generic API] Getting videos for host ${hostId}, status ${status}, column ${statusColumn}`);
@@ -931,16 +998,21 @@ app.put('/api/videos/:id/type', async (req, res) => {
     }
 });
 
-// Export videos to CSV
+// Export videos to CSV (Legacy endpoint for Host 1 - now uses dynamic column mapping)
 app.get('/api/videos/:status/export', async (req, res) => {
     try {
         const { status } = req.params;
+        
+        // Use dynamic column mapping for Host 1 (backward compatibility)
+        const host1StatusColumn = getStatusColumn(1);
+        
+        console.log(`[Legacy CSV Export] Exporting Host 1 videos with status ${status} using column ${host1StatusColumn}`);
         
         // Get videos without JOIN since we removed the foreign key constraint
         const { data: videos, error: videosError } = await supabase
             .from('videos')
             .select('*')
-            .eq('status_1', status)
+            .eq(host1StatusColumn, status)
             .order('type', { ascending: false }) // Trending first
             .order('score', { ascending: false, nullsFirst: false })
             .order('likes_count', { ascending: false, nullsFirst: false });
