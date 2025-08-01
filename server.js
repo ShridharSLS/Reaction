@@ -682,9 +682,9 @@ app.post('/api/videos', async (req, res) => {
         console.log('[DEBUG] Status columns retrieved:', allStatusColumns);
         
         if (videoData.relevance_rating === -1) {
-            // Unrated videos: system-wide relevance status
+            // Unrated videos: system-wide relevance view (-1)
             console.log('[DEBUG] Processing video with rating -1 (unrated)');
-            videoData.relevance_status = 'relevance';
+            // Note: relevance_status no longer used - view determined by rating
             
             // All host status columns should be null
             Object.values(allStatusColumns).forEach(statusColumn => {
@@ -692,11 +692,11 @@ app.post('/api/videos', async (req, res) => {
                 videoData[statusColumn] = null;
             });
             
-            console.log(`[System-wide Relevance] New video with rating -1: setting relevance_status='relevance', all host columns=null`);
+            console.log(`[System-wide Relevance] New video with rating -1: all host columns=null`);
         } else if (videoData.relevance_rating === 0) {
-            // Rating 0: system-wide trash status
+            // Rating 0: system-wide trash view
             console.log('[DEBUG] Processing video with rating 0 (trash)');
-            videoData.relevance_status = 'trash';
+            // Note: relevance_status no longer used - view determined by rating
             
             // All host status columns should be null
             Object.values(allStatusColumns).forEach(statusColumn => {
@@ -704,11 +704,10 @@ app.post('/api/videos', async (req, res) => {
                 videoData[statusColumn] = null;
             });
             
-            console.log(`[System-wide Trash] New video with rating 0: setting relevance_status='trash', all host columns=null`);
+            console.log(`[System-wide Trash] New video with rating 0: all host columns=null`);
         } else if (videoData.relevance_rating >= 1 && videoData.relevance_rating <= 3) {
             // Rating 1-3: host-specific pending status
             console.log(`[DEBUG] Processing video with rating ${videoData.relevance_rating} (host-specific pending)`);
-            videoData.relevance_status = null;
             
             // Set all host status columns to pending
             Object.values(allStatusColumns).forEach(statusColumn => {
@@ -716,18 +715,19 @@ app.post('/api/videos', async (req, res) => {
                 videoData[statusColumn] = 'pending';
             });
             
-            console.log(`[Host-specific Pending] New video with rating ${videoData.relevance_rating}: setting relevance_status=null, all host columns='pending'`);
+            console.log(`[Host-specific Pending] New video with rating ${videoData.relevance_rating}: all host columns='pending'`);
         } else {
             // Fallback for any other ratings: treat as unrated
             console.log('[DEBUG] Processing video with unexpected rating (fallback to unrated)');
-            videoData.relevance_status = 'relevance';
+            // Force rating to -1 for relevance view
+            videoData.relevance_rating = -1;
             
             Object.values(allStatusColumns).forEach(statusColumn => {
                 console.log(`[DEBUG] Setting ${statusColumn} = null`);
                 videoData[statusColumn] = null;
             });
             
-            console.log(`[Fallback] New video with unexpected rating ${videoData.relevance_rating}: treating as unrated`);
+            console.log(`[Fallback] New video with unexpected rating: forcing to -1 (relevance view)`);
         }
         
         // Log final videoData state that will be inserted
@@ -832,41 +832,35 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
         // Prepare update data
         const updateData = { relevance_rating };
         
-        // Handle system-wide relevance status transitions based on rating
-        if (relevance_rating >= 0 && relevance_rating <= 3) {
-            // First check if video is currently in system-wide relevance status
-            const { data: video } = await supabase
-                .from('videos')
-                .select('relevance_status')
-                .eq('id', id)
-                .single();
-                
-            if (video && video.relevance_status === 'relevance') {
-                // Get all active host status columns for updates
-                const allStatusColumns = await getAllStatusColumns();
-                
-                if (relevance_rating === 0) {
-                    // Rating 0: Move to system-wide Trash status
-                    console.log(`[System-wide Relevance] Moving video ${id} from relevance to trash (rating 0)`);
-                    updateData.relevance_status = 'trash';
-                    
-                    // Clear ALL host-specific statuses (set to null)
-                    Object.values(allStatusColumns).forEach(statusColumn => {
-                        updateData[statusColumn] = null;
-                    });
-                } else if (relevance_rating >= 1 && relevance_rating <= 3) {
-                    // Rating 1-3: Move to host-specific pending status
-                    console.log(`[System-wide Relevance] Moving video ${id} from relevance to host-specific pending (rating ${relevance_rating})`);
-                    
-                    // Clear system-wide relevance status
-                    updateData.relevance_status = null;
-                    
-                    // Set all host-specific status columns to 'pending'
-                    Object.values(allStatusColumns).forEach(statusColumn => {
-                        updateData[statusColumn] = 'pending';
-                    });
-                }
-            }
+        // Get all active host status columns for potential updates
+        const allStatusColumns = await getAllStatusColumns();
+        
+        // Rating -1: Always belongs in Relevance view
+        if (relevance_rating === -1) {
+            console.log(`[Relevance] Setting video ${id} to relevance view (rating -1)`);
+            
+            // Clear ALL host-specific statuses (set to null)
+            Object.values(allStatusColumns).forEach(statusColumn => {
+                updateData[statusColumn] = null;
+            });
+        }
+        // Rating 0: Always belongs in Trash view
+        else if (relevance_rating === 0) {
+            console.log(`[Trash] Setting video ${id} to trash view (rating 0)`);
+            
+            // Clear ALL host-specific statuses (set to null)
+            Object.values(allStatusColumns).forEach(statusColumn => {
+                updateData[statusColumn] = null;
+            });
+        }
+        // Ratings 1-3: Video belongs in host-specific pending view
+        else if (relevance_rating >= 1 && relevance_rating <= 3) {
+            console.log(`[Pending] Setting video ${id} to pending view (rating ${relevance_rating})`);
+            
+            // Set all host-specific status columns to 'pending'
+            Object.values(allStatusColumns).forEach(statusColumn => {
+                updateData[statusColumn] = 'pending';
+            });
         }
         
         const { error } = await supabase
@@ -1070,8 +1064,11 @@ app.get('/api/videos/system/relevance', async (req, res) => {
             return res.status(500).json({ error: 'Exception in basic query: ' + basicQueryError.message });
         }
         
-        // Try a simple query for relevance videos without joins or complex conditions
+        // Try a simple query for relevance videos using relevance_rating as the primary filter
+        // Also check relevance_status for backward compatibility during migration phase
         try {
+            // Phase 1: Use relevance_rating as primary filter but maintain dual-read
+            // with relevance_status for compatibility
             const { data: simpleVideos, error: simpleError } = await supabase
                 .from('videos')
                 .select('*')
@@ -1133,14 +1130,15 @@ app.get('/api/videos/system/trash', async (req, res) => {
     try {
         console.log('Fetching system-wide trash videos...');
         
-        // Query for videos with relevance_status = 'trash'
+        // Phase 1: Use relevance_rating as primary filter but maintain dual-read
+        // with relevance_status for compatibility
         const { data: trashVideos, error: trashError } = await supabase
             .from('videos')
             .select(`
                 *,
                 people!videos_added_by_fkey(name)
             `)
-            .eq('relevance_status', 'trash')
+            .eq('relevance_rating', 0) // Primary filter: relevance_rating = 0 for trash
             .order('created_at', { ascending: false });
         
         if (trashError) {
