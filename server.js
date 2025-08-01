@@ -748,17 +748,21 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
                 .single();
                 
             if (video && video.relevance_status === 'relevance') {
+                // Get all active host status columns for updates
+                const allStatusColumns = await getAllStatusColumns();
+                
                 if (relevance_rating === 0) {
                     // Rating 0: Move to system-wide Trash status
                     console.log(`[System-wide Relevance] Moving video ${id} from relevance to trash (rating 0)`);
                     updateData.relevance_status = 'trash';
-                    // Do NOT set any host-specific statuses - stays system-wide
+                    
+                    // Clear ALL host-specific statuses (set to null)
+                    Object.values(allStatusColumns).forEach(statusColumn => {
+                        updateData[statusColumn] = null;
+                    });
                 } else if (relevance_rating >= 1 && relevance_rating <= 3) {
                     // Rating 1-3: Move to host-specific pending status
                     console.log(`[System-wide Relevance] Moving video ${id} from relevance to host-specific pending (rating ${relevance_rating})`);
-                    
-                    // Get all active host status columns for mass update
-                    const allStatusColumns = await getAllStatusColumns();
                     
                     // Clear system-wide relevance status
                     updateData.relevance_status = null;
