@@ -3336,13 +3336,10 @@ async function createHostContentContainers() {
                     contentDiv.id = tabId;
                     contentDiv.className = 'tab-content';
                     
-                    // Add the content structure
+                    // Add the content structure (consistent with Host 1 and Host 2 - no description messages)
                     contentDiv.innerHTML = `
                         <div class="view-header">
                             <h2>${getStatusIcon(status)} ${host.name} - ${capitalizeFirst(status)} <span id="${tabId}-count" class="view-count"></span></h2>
-                            <p style="margin: 10px 0; color: #666; font-size: 14px;">
-                                ${getStatusDescription(status)} for ${host.name}
-                            </p>
                         </div>
                         <div id="${tabId}-videos" class="videos-container">
                             <!-- Videos will be loaded here -->
