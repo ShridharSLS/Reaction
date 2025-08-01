@@ -3227,20 +3227,36 @@ if (document.readyState === 'loading') {
 // Update navigation dropdowns with current host names
 async function updateNavigation() {
     try {
-        console.log('[Phase 4.3] Updating navigation after host changes...');
+        console.log('[Phase 4.3] Starting complete navigation rebuild...');
         
-        // Reload host configuration from database
+        // Step 1: Reload host configuration first (all hosts and their settings)
         await loadHostConfiguration();
         
-        // Regenerate navigation with updated host config
-        generateNavigation();
+        // Step 2: Get the navigation container
+        const navContainer = document.getElementById('nav-container');
+        if (!navContainer) {
+            throw new Error('Navigation container not found');
+        }
         
-        // Update counts for all sections
-        await updateAllCounts();
+        // Step 3: Completely regenerate the navigation HTML
+        navContainer.innerHTML = generateNavigationHTML();
         
-        console.log('[Phase 4.3] Navigation updated successfully');
+        // Step 4: Reattach event listeners to new navigation elements
+        document.querySelectorAll('#nav-container .nav-item').forEach(navItem => {
+            navItem.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                if (tabId) {
+                    switchTab(tabId);
+                }
+            });
+        });
+        
+        // Step 5: Update the counts
+        await updateButtonCounts();
+        
+        console.log('[Phase 4.3] Navigation fully rebuilt after host changes');
     } catch (error) {
-        console.error('[Phase 4.3] Failed to update navigation:', error);
+        console.error('[Phase 4.3] Failed to rebuild navigation:', error);
     }
 }
 
