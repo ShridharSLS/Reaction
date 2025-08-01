@@ -2773,7 +2773,7 @@ async function addHost(hostName) {
         
         console.log('Updated HOST_CONFIG:', HOST_CONFIG);
         
-        showNotification(`Host "${hostName}" added successfully! (Note: Database columns need to be created manually)`, 'success');
+        alert(`Host "${hostName}" added successfully! (Note: Database columns need to be created manually)`);
         
         // Clear form
         const hostNameInput = document.getElementById('host-name');
@@ -2792,7 +2792,7 @@ async function addHost(hostName) {
         
     } catch (error) {
         console.error('Failed to add host:', error);
-        showNotification('Failed to add host', 'error');
+        alert('Failed to add host: ' + error.message);
     }
 }
 
@@ -2804,7 +2804,7 @@ function editHost(hostId, currentName) {
         if (HOST_CONFIG[hostId]) {
             HOST_CONFIG[hostId].name = newName.trim();
             
-            showNotification(`Host ${hostId} renamed to "${newName}" successfully!`, 'success');
+            alert(`Host ${hostId} renamed to "${newName}" successfully!`);
             
             // Reload hosts display
             loadHosts();
@@ -2826,7 +2826,7 @@ function deleteHost(hostId) {
         if (HOST_CONFIG[hostId]) {
             delete HOST_CONFIG[hostId];
             
-            showNotification(`${hostName} deleted successfully!`, 'success');
+            alert(`${hostName} deleted successfully!`);
             
             // Reload hosts display
             loadHosts();
@@ -2861,7 +2861,7 @@ function handleAddHostSubmit(e) {
     if (hostName) {
         addHost(hostName);
     } else {
-        showNotification('Please enter a host name', 'error');
+        alert('Please enter a host name');
     }
 }
 
