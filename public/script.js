@@ -208,8 +208,8 @@ function getHostVideoIdValue(video, status) {
     const config = getHostConfig(hostId);
     if (!config) return null;
     
-    // Use the column mapping from HOST_CONFIG
-    const videoIdColumn = config.columns.video_id_text;
+    // Use the correct column property from HOST_CONFIG
+    const videoIdColumn = config.videoIdCol;
     return video[videoIdColumn] || null;
 }
 
@@ -219,8 +219,8 @@ function getHostNoteValue(video, status) {
     const config = getHostConfig(hostId);
     if (!config) return null;
     
-    // Use the column mapping from HOST_CONFIG
-    const noteColumn = config.columns.note;
+    // Use the correct column property from HOST_CONFIG
+    const noteColumn = config.noteCol;
     return video[noteColumn] || null;
 }
 
