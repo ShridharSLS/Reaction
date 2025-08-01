@@ -1489,6 +1489,184 @@ app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// ===== PHASE 4: HOST MANAGEMENT SYSTEM API ENDPOINTS =====
+// Backend API for dynamic host configuration management
+
+// Get all hosts
+app.get('/api/hosts', async (req, res) => {
+    try {
+        const { data: hosts, error } = await supabase
+            .from('hosts')
+            .select('*')
+            .eq('is_active', true)
+            .order('host_id');
+            
+        if (error) {
+            console.error('Error fetching hosts:', error);
+            return res.status(500).json({ error: 'Failed to fetch hosts' });
+        }
+        
+        res.json(hosts);
+    } catch (error) {
+        console.error('Error in /api/hosts:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get single host by ID
+app.get('/api/hosts/:hostId', async (req, res) => {
+    try {
+        const { hostId } = req.params;
+        
+        const { data: host, error } = await supabase
+            .from('hosts')
+            .select('*')
+            .eq('host_id', parseInt(hostId))
+            .eq('is_active', true)
+            .single();
+            
+        if (error) {
+            console.error('Error fetching host:', error);
+            return res.status(404).json({ error: 'Host not found' });
+        }
+        
+        res.json(host);
+    } catch (error) {
+        console.error('Error in /api/hosts/:hostId:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Create new host
+app.post('/api/hosts', async (req, res) => {
+    try {
+        const { host_id, name, prefix, status_column, note_column, video_id_column, api_path, count_prefix } = req.body;
+        
+        // Validate required fields
+        if (!host_id || !name || !status_column || !note_column || !video_id_column) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        
+        // Check if host_id already exists
+        const { data: existingHost } = await supabase
+            .from('hosts')
+            .select('host_id')
+            .eq('host_id', parseInt(host_id))
+            .single();
+            
+        if (existingHost) {
+            return res.status(400).json({ error: 'Host ID already exists' });
+        }
+        
+        const { data: newHost, error } = await supabase
+            .from('hosts')
+            .insert({
+                host_id: parseInt(host_id),
+                name,
+                prefix: prefix || '',
+                status_column,
+                note_column,
+                video_id_column,
+                api_path: api_path || '',
+                count_prefix: count_prefix || '',
+                is_active: true
+            })
+            .select()
+            .single();
+            
+        if (error) {
+            console.error('Error creating host:', error);
+            return res.status(500).json({ error: 'Failed to create host' });
+        }
+        
+        res.status(201).json(newHost);
+    } catch (error) {
+        console.error('Error in POST /api/hosts:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Update host
+app.put('/api/hosts/:hostId', async (req, res) => {
+    try {
+        const { hostId } = req.params;
+        const { name, prefix, status_column, note_column, video_id_column, api_path, count_prefix } = req.body;
+        
+        // Validate required fields
+        if (!name || !status_column || !note_column || !video_id_column) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        
+        const { data: updatedHost, error } = await supabase
+            .from('hosts')
+            .update({
+                name,
+                prefix: prefix || '',
+                status_column,
+                note_column,
+                video_id_column,
+                api_path: api_path || '',
+                count_prefix: count_prefix || '',
+                updated_at: new Date().toISOString()
+            })
+            .eq('host_id', parseInt(hostId))
+            .eq('is_active', true)
+            .select()
+            .single();
+            
+        if (error) {
+            console.error('Error updating host:', error);
+            return res.status(500).json({ error: 'Failed to update host' });
+        }
+        
+        if (!updatedHost) {
+            return res.status(404).json({ error: 'Host not found' });
+        }
+        
+        res.json(updatedHost);
+    } catch (error) {
+        console.error('Error in PUT /api/hosts/:hostId:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Delete host (soft delete)
+app.delete('/api/hosts/:hostId', async (req, res) => {
+    try {
+        const { hostId } = req.params;
+        
+        // Don't allow deleting Host 1 (Shridhar) as it's the primary host
+        if (parseInt(hostId) === 1) {
+            return res.status(400).json({ error: 'Cannot delete primary host (Shridhar)' });
+        }
+        
+        const { data: deletedHost, error } = await supabase
+            .from('hosts')
+            .update({
+                is_active: false,
+                updated_at: new Date().toISOString()
+            })
+            .eq('host_id', parseInt(hostId))
+            .eq('is_active', true)
+            .select()
+            .single();
+            
+        if (error) {
+            console.error('Error deleting host:', error);
+            return res.status(500).json({ error: 'Failed to delete host' });
+        }
+        
+        if (!deletedHost) {
+            return res.status(404).json({ error: 'Host not found' });
+        }
+        
+        res.json({ message: 'Host deleted successfully', host: deletedHost });
+    } catch (error) {
+        console.error('Error in DELETE /api/hosts/:hostId:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

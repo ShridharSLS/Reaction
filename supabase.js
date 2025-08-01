@@ -24,8 +24,12 @@ async function initializeDatabase() {
         const { data: videosData, error: videosError } = await supabase
             .from('videos')
             .select('count', { count: 'exact', head: true });
+            
+        const { data: hostsData, error: hostsError } = await supabase
+            .from('hosts')
+            .select('count', { count: 'exact', head: true });
         
-        if (peopleError || videosError) {
+        if (peopleError || videosError || hostsError) {
             console.log('Tables need to be created. Please run the SQL setup in Supabase dashboard.');
             console.log('SQL to run in Supabase SQL Editor:');
             console.log(`
@@ -51,6 +55,28 @@ CREATE TABLE IF NOT EXISTS videos (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create hosts table for Phase 4: Host Management System
+CREATE TABLE IF NOT EXISTS hosts (
+    id SERIAL PRIMARY KEY,
+    host_id INTEGER NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    prefix VARCHAR(20) NOT NULL,
+    status_column VARCHAR(50) NOT NULL,
+    note_column VARCHAR(50) NOT NULL,
+    video_id_column VARCHAR(50) NOT NULL,
+    api_path VARCHAR(50) NOT NULL,
+    count_prefix VARCHAR(20) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert default hosts (Shridhar and Host 2)
+INSERT INTO hosts (host_id, name, prefix, status_column, note_column, video_id_column, api_path, count_prefix) VALUES 
+    (1, 'Shridhar', '', 'status_1', 'note', 'video_id_text', '', ''),
+    (2, 'Host 2', 'host2-', 'status_2', 'note_2', 'video_id_text_2', 'host2', 'person2_')
+ON CONFLICT (host_id) DO NOTHING;
+
 -- Insert default people
 INSERT INTO people (name) VALUES 
     ('Alice Johnson'),
@@ -63,6 +89,8 @@ ON CONFLICT (name) DO NOTHING;
 CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status);
 CREATE INDEX IF NOT EXISTS idx_videos_added_by ON videos(added_by);
 CREATE INDEX IF NOT EXISTS idx_videos_type ON videos(type);
+CREATE INDEX IF NOT EXISTS idx_hosts_host_id ON hosts(host_id);
+CREATE INDEX IF NOT EXISTS idx_hosts_active ON hosts(is_active);
             `);
         } else {
             console.log('Database tables are ready');
