@@ -760,30 +760,41 @@ async function loadVideos(status) {
         
         // Determine API endpoint based on status
         let apiEndpoint;
+        let hostId;
         
         // Check if this is a host-specific tab (format: host{id}-{status})
         const hostMatch = status.match(/^host(\d+)-(.+)$/);
         
         if (hostMatch) {
-            // Host-specific tabs: use generic host API endpoint
-            const hostId = hostMatch[1];
+            // Host-specific tabs: use generic host API endpoint for ALL hosts
+            hostId = hostMatch[1];
             const hostStatus = hostMatch[2];
-            
-            // Special handling for backward compatibility
-            if (hostId === '2') {
-                // Keep using the old host2 endpoint for Host 2 (backward compatibility)
-                apiEndpoint = `/api/videos/host2/${hostStatus}`;
-            } else {
-                // Use the generic host endpoint for all other hosts
-                apiEndpoint = `/api/videos/host/${hostId}/${hostStatus}`;
-            }
+            apiEndpoint = `/api/videos/host/${hostId}/${hostStatus}`;
         } else {
-            // Regular tabs (Host 1): use standard API endpoint
-            apiEndpoint = `/api/videos/${status}`;
+            // Regular tabs (Host 1): also use generic endpoint for consistency
+            hostId = '1';
+            apiEndpoint = `/api/videos/host/1/${status}`;
         }
         
-        const videos = await apiCall(apiEndpoint);
-        console.log(`Received ${videos.length} ${status} videos:`, videos);
+        const response = await apiCall(apiEndpoint);
+        console.log(`Received response for ${status}:`, response);
+        
+        // Handle different response formats:
+        // Generic endpoint returns: { videos: [...], hostId: ..., status: ..., count: ... }
+        // Legacy endpoints return: [...] (direct array)
+        let videos;
+        if (Array.isArray(response)) {
+            // Legacy format (direct array)
+            videos = response;
+        } else if (response && Array.isArray(response.videos)) {
+            // Generic format (object with videos property)
+            videos = response.videos;
+        } else {
+            console.error('Unexpected response format:', response);
+            videos = [];
+        }
+        
+        console.log(`Processed ${videos.length} ${status} videos:`, videos);
         
         // Tags are now included in the API response - no need for separate calls
         renderVideos(videos, `${status}-videos`, status);
