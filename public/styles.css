@@ -1589,3 +1589,113 @@ header p {
     border-radius: 6px;
     border: 1px dashed #dee2e6;
 }
+
+/* ===== HOST MANAGEMENT STYLES ===== */
+
+.hosts-instructions {
+    color: #666;
+    margin-bottom: 25px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.hosts-list {
+    margin-top: 30px;
+}
+
+.hosts-list h3 {
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.host-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    transition: background-color 0.2s ease;
+}
+
+.host-item:hover {
+    background: #e9ecef;
+}
+
+.host-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.host-id {
+    font-size: 12px;
+    color: #666;
+    font-weight: 500;
+}
+
+.host-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+.host-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.hosts-empty {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 30px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px dashed #dee2e6;
+    margin-top: 20px;
+}
+
+#hosts-container:empty::after {
+    content: "No additional hosts configured";
+    display: block;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 30px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px dashed #dee2e6;
+}

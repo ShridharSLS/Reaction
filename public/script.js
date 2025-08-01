@@ -2756,19 +2756,29 @@ function loadHosts() {
 // Add new host
 async function addHost(hostName) {
     try {
-        // For now, this is a placeholder - in full implementation this would:
-        // 1. Add to database
-        // 2. Create new database columns
-        // 3. Update HOST_CONFIG
-        // 4. Refresh navigation
+        // Find next available host ID
+        const existingIds = Object.keys(HOST_CONFIG).map(id => parseInt(id));
+        const nextId = Math.max(...existingIds) + 1;
         
-        showNotification(`Host "${hostName}" would be added (implementation pending)`, 'info');
+        // Add to HOST_CONFIG
+        HOST_CONFIG[nextId] = {
+            name: hostName,
+            statusColumn: `status_${nextId}`,
+            noteColumn: `note_${nextId}`,
+            videoIdColumn: `video_id_text_${nextId}`,
+            apiPath: `host${nextId}`
+        };
+        
+        showNotification(`Host "${hostName}" added successfully! (Note: Database columns need to be created manually)`, 'success');
         
         // Clear form
         document.getElementById('host-name').value = '';
         
         // Reload hosts display
         loadHosts();
+        
+        // Update navigation (basic implementation)
+        updateNavigation();
         
     } catch (error) {
         console.error('Failed to add host:', error);
@@ -2779,28 +2789,43 @@ async function addHost(hostName) {
 // Edit host name
 function editHost(hostId, currentName) {
     const newName = prompt(`Edit host name:`, currentName);
-    if (newName && newName !== currentName) {
-        // For now, this is a placeholder - in full implementation this would:
-        // 1. Update database
-        // 2. Update HOST_CONFIG
-        // 3. Refresh navigation
-        
-        showNotification(`Host ${hostId} would be renamed to "${newName}" (implementation pending)`, 'info');
-        loadHosts();
+    if (newName && newName !== currentName && newName.trim()) {
+        // Update HOST_CONFIG
+        if (HOST_CONFIG[hostId]) {
+            HOST_CONFIG[hostId].name = newName.trim();
+            
+            showNotification(`Host ${hostId} renamed to "${newName}" successfully!`, 'success');
+            
+            // Reload hosts display
+            loadHosts();
+            
+            // Update navigation
+            updateNavigation();
+        } else {
+            showNotification('Host not found', 'error');
+        }
     }
 }
 
 // Delete host
 function deleteHost(hostId) {
-    if (confirm(`Are you sure you want to delete Host ${hostId}? This will remove all associated data.`)) {
-        // For now, this is a placeholder - in full implementation this would:
-        // 1. Remove from database
-        // 2. Drop database columns
-        // 3. Update HOST_CONFIG
-        // 4. Refresh navigation
-        
-        showNotification(`Host ${hostId} would be deleted (implementation pending)`, 'info');
-        loadHosts();
+    const hostName = HOST_CONFIG[hostId]?.name || `Host ${hostId}`;
+    
+    if (confirm(`Are you sure you want to delete ${hostName}? This will remove the host from the interface (Note: Database columns will need to be dropped manually).`)) {
+        // Remove from HOST_CONFIG
+        if (HOST_CONFIG[hostId]) {
+            delete HOST_CONFIG[hostId];
+            
+            showNotification(`${hostName} deleted successfully!`, 'success');
+            
+            // Reload hosts display
+            loadHosts();
+            
+            // Update navigation
+            updateNavigation();
+        } else {
+            showNotification('Host not found', 'error');
+        }
     }
 }
 
@@ -2818,6 +2843,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Update navigation dropdowns with current host names
+function updateNavigation() {
+    // Update Host 2 dropdown button text if it exists
+    const host2Dropdown = document.querySelector('.dropdown-btn');
+    if (host2Dropdown && HOST_CONFIG[2]) {
+        // Find the Host 2 dropdown specifically
+        const dropdowns = document.querySelectorAll('.dropdown');
+        dropdowns.forEach(dropdown => {
+            const btn = dropdown.querySelector('.dropdown-btn');
+            if (btn && btn.textContent.includes('Host 2')) {
+                btn.innerHTML = `👩‍💼 ${HOST_CONFIG[2].name} ▼`;
+            }
+        });
+    }
+    
+    // For newly added hosts (Host 3+), we would need to create new dropdown elements
+    // This is a basic implementation - full implementation would rebuild navigation
+    console.log('Navigation updated with current host names');
+}
 
 // Add to switchTab function to load hosts when manage-hosts tab is opened
 const originalSwitchTab = switchTab;
