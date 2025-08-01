@@ -576,7 +576,38 @@ function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
     });
-    document.getElementById(tabId).classList.add('active');
+    
+    // Check if the target content container exists
+    const targetContent = document.getElementById(tabId);
+    if (!targetContent) {
+        console.error(`Content container not found for tab: ${tabId}`);
+        console.log('Available content containers:', Array.from(document.querySelectorAll('.tab-content')).map(el => el.id));
+        
+        // Try to create the content container if it's a host tab
+        const hostMatch = tabId.match(/^host(\d+)-(.+)$/);
+        if (hostMatch) {
+            console.log(`Attempting to create missing content container for ${tabId}`);
+            createHostContentContainers().then(() => {
+                // Retry switching to the tab after creating containers
+                const retryTarget = document.getElementById(tabId);
+                if (retryTarget) {
+                    retryTarget.classList.add('active');
+                    currentTab = tabId;
+                    loadVideos(tabId);
+                } else {
+                    console.error(`Still could not find content container for ${tabId} after creation attempt`);
+                }
+            }).catch(err => {
+                console.error('Error creating content containers:', err);
+            });
+            return; // Exit early, will retry after container creation
+        } else {
+            console.error(`Cannot create content container for non-host tab: ${tabId}`);
+            return; // Exit early to prevent further errors
+        }
+    }
+    
+    targetContent.classList.add('active');
     
     currentTab = tabId;
     
@@ -3414,8 +3445,16 @@ async function updateNavigation() {
         // Step 7: Reload the current view to reflect changes
         if (currentTabId) {
             console.log('[Phase 4.3] Reloading current tab after navigation rebuild:', currentTabId);
-            // Call switchTab with the current tab to reload the view
-            switchTab(currentTabId);
+            
+            // Ensure the content container exists before switching
+            const targetContent = document.getElementById(currentTabId);
+            if (targetContent) {
+                // Content container exists, safe to switch
+                switchTab(currentTabId);
+            } else {
+                console.log(`[Phase 4.3] Content container for ${currentTabId} not found, will be created on demand`);
+                // Don't call switchTab here - it will be handled when user clicks the tab
+            }
         }
         
         console.log('[Phase 4.3] Navigation fully rebuilt after host changes');
