@@ -361,6 +361,12 @@ function showSuccessNotification(message) {
     }, 3000);
 }
 
+// Missing showNotification function - unified notification system
+function showNotification(message, type = 'info') {
+    // Use the existing showTemporaryMessage function for consistency
+    showTemporaryMessage(message, type);
+}
+
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
     console.log('App initializing... currentTab:', currentTab);
