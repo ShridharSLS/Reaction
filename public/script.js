@@ -903,7 +903,7 @@ function createVideoCard(video, status) {
                     </a>
                 </div>
                 
-                ${status === 'relevance' ? `
+                ${(status === 'relevance' || status === 'trash') ? `
                     <div class="detail-item likes-item">
                         <span class="detail-label">Likes</span>
                         <span class="detail-value">${video.likes_count || 0}</span>
