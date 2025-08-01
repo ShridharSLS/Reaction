@@ -1266,9 +1266,9 @@ function setupModals() {
     console.log('Setting up modals...');
     
     // Confirmation Modal - with null checks
-    const modalCancel = document.getElementById('modal-cancel');
-    const modalConfirm = document.getElementById('modal-confirm');
-    const confirmationModal = document.getElementById('confirmation-modal');
+    const modalCancel = document.getElementById('confirmNo');
+    const modalConfirm = document.getElementById('confirmYes');
+    const confirmationModal = document.getElementById('confirmModal');
     
     if (modalCancel && confirmationModal) {
         modalCancel.addEventListener('click', function() {
@@ -1750,9 +1750,9 @@ function showHost2NoteModal(videoId, action) {
 
 // Modal Functions
 function showConfirmation(title, message, callback) {
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-message').textContent = message;
-    document.getElementById('confirmation-modal').style.display = 'block';
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmModal').style.display = 'block';
     confirmationCallback = callback;
 }
 
