@@ -718,6 +718,13 @@ function updateArchivedPeopleList(archivedPeople) {
 // Load Videos
 async function loadVideos(status) {
     try {
+        // Skip video loading for non-video tabs (host management, etc.)
+        const nonVideoTabs = ['manage-hosts', 'manage-people', 'manage-admins', 'bulk-import'];
+        if (nonVideoTabs.includes(status)) {
+            console.log(`Skipping video loading for non-video tab: ${status}`);
+            return;
+        }
+        
         console.log(`Loading ${status} videos...`);
         
         // Determine API endpoint based on status
@@ -3081,13 +3088,34 @@ async function editHost(hostId, currentName) {
         try {
             console.log(`[Phase 4.3] Editing host ${hostId} name to:`, newName);
             
-            // Send PUT request to update host
+            // First, get the current host data to preserve all fields
+            const hostsResponse = await fetch('/api/hosts');
+            if (!hostsResponse.ok) {
+                throw new Error('Failed to fetch current host data');
+            }
+            
+            const hosts = await hostsResponse.json();
+            const currentHost = hosts.find(h => h.host_id === hostId);
+            
+            if (!currentHost) {
+                throw new Error('Host not found');
+            }
+            
+            // Send PUT request with all required fields
             const response = await fetch(`/api/hosts/${hostId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ name: newName.trim() })
+                body: JSON.stringify({
+                    name: newName.trim(),
+                    prefix: currentHost.prefix,
+                    status_column: currentHost.status_column,
+                    note_column: currentHost.note_column,
+                    video_id_column: currentHost.video_id_column,
+                    api_path: currentHost.api_path,
+                    count_prefix: currentHost.count_prefix
+                })
             });
             
             if (!response.ok) {
