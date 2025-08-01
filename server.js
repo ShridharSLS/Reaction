@@ -338,9 +338,9 @@ app.get('/api/videos/all/entries', async (req, res) => {
 // Get counts for all video statuses in a single call (performance optimization)
 app.get('/api/videos/counts', async (req, res) => {
     try {
-        // Dynamic column selection for all hosts
-        const allStatusColumns = getAllStatusColumns();
-        const selectColumns = Object.values(allStatusColumns).join(', ') + ', relevance_rating';
+        // Now we need to include the system-wide relevance_status column
+        const allStatusColumns = await getAllStatusColumns();
+        const selectColumns = Object.values(allStatusColumns).join(', ') + ', relevance_rating, relevance_status';
         
         console.log(`[Dynamic Counts] Selecting columns: ${selectColumns}`);
         
@@ -356,7 +356,7 @@ app.get('/api/videos/counts', async (req, res) => {
         
         // ===== UNIFIED DYNAMIC COUNT SYSTEM =====
         // Generate count keys dynamically for all hosts
-        const statusTypes = ['relevance', 'pending', 'accepted', 'rejected', 'assigned'];
+        const hostSpecificStatusTypes = ['pending', 'accepted', 'rejected', 'assigned'];
         const hostStatusColumns = await getAllStatusColumns();
         const hostIds = Object.keys(hostStatusColumns).map(key => key.replace('host', ''));
         
@@ -364,12 +364,14 @@ app.get('/api/videos/counts', async (req, res) => {
         
         // Dynamic count initialization for all hosts
         const counts = {
-            all: videos.length
+            all: videos.length,
+            // System-wide relevance count (new)
+            system_relevance: 0
         };
         
-        // Initialize count keys dynamically for all hosts
+        // Initialize count keys dynamically for all hosts (now without 'relevance' since it's system-wide)
         hostIds.forEach(hostId => {
-            statusTypes.forEach(status => {
+            hostSpecificStatusTypes.forEach(status => {
                 const countKey = getCountKey(parseInt(hostId), status);
                 counts[countKey] = 0;
             });
@@ -379,16 +381,19 @@ app.get('/api/videos/counts', async (req, res) => {
         
         // Count videos dynamically for all hosts
         videos.forEach(video => {
+            // Count system-wide relevance first (new)
+            if (video.relevance_status === 'relevance') {
+                counts.system_relevance++;
+            }
+            
+            // Count host-specific statuses
             hostIds.forEach(hostId => {
                 const hostIdNum = parseInt(hostId);
                 const statusColumn = getStatusColumn(hostIdNum);
                 const videoStatus = video[statusColumn];
                 
-                // Count based on status with relevance special handling
-                if (videoStatus === 'relevance' && video.relevance_rating === -1) {
-                    const countKey = getCountKey(hostIdNum, 'relevance');
-                    counts[countKey]++;
-                } else if (statusTypes.includes(videoStatus)) {
+                // Only count host-specific statuses now (not relevance)
+                if (hostSpecificStatusTypes.includes(videoStatus)) {
                     const countKey = getCountKey(hostIdNum, videoStatus);
                     counts[countKey]++;
                 }
@@ -729,30 +734,28 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
         // Prepare update data
         const updateData = { relevance_rating };
         
-        // If relevance rating is 0-3, move from 'relevance' to 'pending' status
+        // If relevance rating is 0-3, move from system-wide 'relevance' to host-specific 'pending' status
         if (relevance_rating >= 0 && relevance_rating <= 3) {
-            // Dynamic column selection for status check
-            const allStatusColumns = getAllStatusColumns();
-            const selectColumns = Object.values(allStatusColumns).join(', ');
+            // Get all active host status columns for mass update
+            const allStatusColumns = await getAllStatusColumns();
             
-            // Check if video is currently in relevance status
+            // First check if video is currently in system-wide relevance status
             const { data: video } = await supabase
                 .from('videos')
-                .select(selectColumns)
+                .select('relevance_status')
                 .eq('id', id)
                 .single();
                 
-            // Check if any host has the video in 'relevance' status and update all to 'pending'
-            if (video) {
-                const host1StatusColumn = getStatusColumn(1);
-                if (video[host1StatusColumn] === 'relevance') {
-                    console.log(`[Dynamic Relevance] Moving video ${id} from relevance to pending for all hosts`);
-                    
-                    // Update all hosts' status columns to 'pending' simultaneously
-                    Object.values(allStatusColumns).forEach(statusColumn => {
-                        updateData[statusColumn] = 'pending';
-                    });
-                }
+            if (video && video.relevance_status === 'relevance') {
+                console.log(`[System-wide Relevance] Moving video ${id} from system relevance to host-specific pending`);
+                
+                // Clear system-wide relevance status
+                updateData.relevance_status = null;
+                
+                // Set all host-specific status columns to 'pending'
+                Object.values(allStatusColumns).forEach(statusColumn => {
+                    updateData[statusColumn] = 'pending';
+                });
             }
         }
         
@@ -894,6 +897,42 @@ app.put('/api/videos/:id/host/:hostId/status', async (req, res) => {
 });
 
 // Get videos by status for any host (replaces host-specific endpoints)
+// System-wide relevance endpoint (new endpoint for system-wide relevance status)
+app.get('/api/videos/system/relevance', async (req, res) => {
+    try {
+        // Get all videos with relevance_status = 'relevance'
+        const { data: videos, error: videosError } = await supabase
+            .from('videos')
+            .select('*, people(name)')
+            .eq('relevance_status', 'relevance')
+            .order('type', { ascending: false }) // Trending first
+            .order('score', { ascending: false, nullsFirst: false })
+            .order('likes_count', { ascending: false, nullsFirst: false });
+        
+        if (videosError) {
+            console.error('Error fetching system-wide relevance videos:', videosError);
+            return res.status(500).json({ error: 'Failed to fetch relevance videos' });
+        }
+        
+        // Format response to match host-specific endpoint
+        const response = {
+            videos: videos.map(video => ({
+                ...video,
+                // Add person_name from joined people table
+                added_by_name: video.people ? video.people.name : 'Unknown',
+            })),
+            status: 'relevance',
+            count: videos.length,
+            isSystemWide: true
+        };
+        
+        res.json(response);
+    } catch (error) {
+        console.error('Error in /api/videos/system/relevance:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 app.get('/api/videos/host/:hostId/:status', async (req, res) => {
     try {
         const { hostId, status } = req.params;

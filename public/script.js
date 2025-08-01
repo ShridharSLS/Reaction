@@ -761,25 +761,35 @@ async function loadVideos(status) {
         // Determine API endpoint based on status
         let apiEndpoint;
         let hostId;
+        let isSystemWide = false;
         
-        // Check if this is a host-specific tab (format: host{id}-{status})
-        const hostMatch = status.match(/^host(\d+)-(.+)$/);
-        
-        if (hostMatch) {
-            // Host-specific tabs: use generic host API endpoint for ALL hosts
-            hostId = hostMatch[1];
-            const hostStatus = hostMatch[2];
-            apiEndpoint = `/api/videos/host/${hostId}/${hostStatus}`;
+        // Special handling for system-wide relevance
+        if (status === 'relevance') {
+            // Use the new system-wide relevance endpoint
+            apiEndpoint = '/api/videos/system/relevance';
+            isSystemWide = true;
+            console.log('Using system-wide relevance endpoint');
         } else {
-            // Regular tabs (Host 1): also use generic endpoint for consistency
-            hostId = '1';
-            apiEndpoint = `/api/videos/host/1/${status}`;
+            // Check if this is a host-specific tab (format: host{id}-{status})
+            const hostMatch = status.match(/^host(\d+)-(.+)$/);
+            
+            if (hostMatch) {
+                // Host-specific tabs: use generic host API endpoint for ALL hosts
+                hostId = hostMatch[1];
+                const hostStatus = hostMatch[2];
+                apiEndpoint = `/api/videos/host/${hostId}/${hostStatus}`;
+            } else {
+                // Regular tabs (Host 1): also use generic endpoint for consistency
+                hostId = '1';
+                apiEndpoint = `/api/videos/host/1/${status}`;
+            }
         }
         
         const response = await apiCall(apiEndpoint);
         console.log(`Received response for ${status}:`, response);
         
         // Handle different response formats:
+        // System-wide relevance returns: { videos: [...], status: 'relevance', count: ..., isSystemWide: true }
         // Generic endpoint returns: { videos: [...], hostId: ..., status: ..., count: ... }
         // Legacy endpoints return: [...] (direct array)
         let videos;
@@ -789,6 +799,7 @@ async function loadVideos(status) {
         } else if (response && Array.isArray(response.videos)) {
             // Generic format (object with videos property)
             videos = response.videos;
+            isSystemWide = response.isSystemWide || false;
         } else {
             console.error('Unexpected response format:', response);
             videos = [];
@@ -1293,26 +1304,52 @@ function setupModals() {
 // Video Actions
 async function updateRelevance(videoId, relevanceRating) {
     try {
+        // Show spinner or indicator
+        showNotification('Updating relevance...', 'info');
+        
+        // Call the API to update relevance
         await apiCall(`/api/videos/${videoId}/relevance`, {
             method: 'PUT',
             body: JSON.stringify({ relevance_rating: parseInt(relevanceRating) })
         });
         
-        // Refresh current view
-        loadVideos(currentTab);
-        
-        // If we're in relevance view and rating is 0-3, also refresh pending view
-        // since the video may have moved there
-        if (currentTab === 'relevance' && relevanceRating >= 0 && relevanceRating <= 3) {
-            // Small delay to ensure backend processing is complete
+        // If rating is 0-3, the video will disappear from relevance and appear in all hosts' pending
+        if (relevanceRating >= 0 && relevanceRating <= 3) {
+            // Update relevance count immediately
+            updateRelevanceCount();
+            
+            // If we're in the relevance view, we need to refresh it to remove the rated video
+            if (currentTab === 'relevance') {
+                loadVideos('relevance');
+            }
+            
+            // Also load all host pending views to show the newly rated video
+            // This should happen regardless of which tab we're in
             setTimeout(() => {
+                // Refresh the pending view for Host 1
                 if (currentTab === 'pending') {
                     loadVideos('pending');
                 }
-            }, 500);
+                
+                // Refresh pending views for all other hosts
+                const hostTabs = Object.keys(hosts).map(hostId => `host${hostId}-pending`);
+                if (hostTabs.includes(currentTab)) {
+                    loadVideos(currentTab);
+                }
+                
+                // Update button counts for all sections
+                updateButtonCounts();
+                
+                showNotification('Relevance updated! Video moved to pending for all hosts.', 'success');
+            }, 300);
+        } else {
+            // Just refresh the current view
+            loadVideos(currentTab);
+            showNotification('Relevance updated!', 'success');
         }
     } catch (error) {
         console.error('Failed to update relevance:', error);
+        showNotification('Failed to update relevance. Please try again.', 'error');
     }
 }
 
@@ -2624,6 +2661,40 @@ function renderNoteDisplay(note, videoId) {
             </button>
         </span>
     `;
+}
+
+// Function to specifically update the relevance count
+async function updateRelevanceCount() {
+    try {
+        // Fetch only the relevance count from the API
+        const response = await apiCall('/api/videos/system/relevance');
+        
+        // Update the count in the UI for relevance section
+        if (response && typeof response.count === 'number') {
+            const relevanceCount = response.count;
+            
+            // Update relevance button count
+            const relevanceButtonCountEl = document.getElementById('relevance-count');
+            if (relevanceButtonCountEl) {
+                relevanceButtonCountEl.textContent = relevanceCount;
+                if (relevanceCount > 0) {
+                    relevanceButtonCountEl.style.display = 'inline';
+                } else {
+                    relevanceButtonCountEl.style.display = 'none';
+                }
+            }
+            
+            // Update relevance view count header if applicable
+            const relevanceViewCountEl = document.getElementById('relevance-view-count');
+            if (relevanceViewCountEl) {
+                relevanceViewCountEl.textContent = `(${relevanceCount})`;
+            }
+            
+            console.log('Relevance count updated successfully:', relevanceCount);
+        }
+    } catch (error) {
+        console.error('Failed to update relevance count:', error);
+    }
 }
 
 // Update button counts in navigation - simplified and faster
