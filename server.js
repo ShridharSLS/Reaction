@@ -924,7 +924,7 @@ app.get('/api/videos/system/relevance', async (req, res) => {
         try {
             const { data: simpleVideos, error: simpleError } = await supabase
                 .from('videos')
-                .select('id, topic, link, relevance_rating, type')
+                .select('*')
                 .eq('relevance_rating', -1)
                 .limit(50);
             
