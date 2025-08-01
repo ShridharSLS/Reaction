@@ -897,48 +897,68 @@ app.put('/api/videos/:id/host/:hostId/status', async (req, res) => {
 });
 
 // Get videos by status for any host (replaces host-specific endpoints)
-// System-wide relevance endpoint (new endpoint for system-wide relevance status)
+// System-wide relevance endpoint (new endpoint for system-wide relevance status) - SIMPLIFIED FOR DEBUGGING
 app.get('/api/videos/system/relevance', async (req, res) => {
     try {
-        console.log('Fetching system-wide relevance videos...');
+        console.log('Attempting to fetch system-wide relevance videos (SIMPLIFIED VERSION)...');
         
-        // First, log the schema to debug any column name issues
-        console.log('Checking videos table schema...');
-        const { data: schemaData, error: schemaError } = await supabase
-            .from('videos')
-            .select('*')
-            .limit(1);
+        // First try to get any videos at all - most basic query possible
+        try {
+            const { data: anyVideos, error: anyVideosError } = await supabase
+                .from('videos')
+                .select('id')
+                .limit(1);
+                
+            if (anyVideosError) {
+                console.error('CRITICAL ERROR: Cannot access videos table at all:', anyVideosError);
+                return res.status(500).json({ error: 'Cannot access videos table: ' + anyVideosError.message });
+            }
             
-        if (schemaError) {
-            console.error('Error accessing videos table:', schemaError);
-            return res.status(500).json({ error: 'Error accessing videos table' });
+            console.log('Basic videos query succeeded, found:', anyVideos ? anyVideos.length : 0);
+        } catch (basicQueryError) {
+            console.error('CRITICAL ERROR: Basic query exception:', basicQueryError);
+            return res.status(500).json({ error: 'Exception in basic query: ' + basicQueryError.message });
         }
         
-        // Log the first row to inspect column names
-        if (schemaData && schemaData.length > 0) {
-            console.log('Video table columns:', Object.keys(schemaData[0]));
-        } else {
-            console.log('No video records found for schema inspection');
+        // Try a simple query for relevance videos without joins or complex conditions
+        try {
+            const { data: simpleVideos, error: simpleError } = await supabase
+                .from('videos')
+                .select('id, title, link, relevance_rating, type')
+                .eq('relevance_rating', -1)
+                .limit(50);
+            
+            console.log('Simple relevance query result:', simpleError ? 'ERROR' : 'SUCCESS');
+            console.log(`Found ${simpleVideos ? simpleVideos.length : 0} videos with relevance_rating = -1`);
+            
+            if (simpleError) {
+                console.error('ERROR in simple relevance query:', simpleError);
+                return res.status(500).json({ error: 'Failed in simple relevance query: ' + simpleError.message });
+            }
+            
+            // If we got this far, just return these simple results as a workaround
+            const response = {
+                videos: simpleVideos.map(video => ({
+                    ...video,
+                    // Add placeholder for person name since we're skipping the join
+                    added_by_name: 'Unknown', // Simplified - no join with people
+                })),
+                status: 'relevance',
+                count: simpleVideos.length,
+                isSystemWide: true,
+                simplified: true // Indicate this is using the simplified query
+            };
+            
+            console.log('Returning simplified response with', response.count, 'videos');
+            return res.json(response);
+        } catch (simpleQueryError) {
+            console.error('ERROR: Simple query exception:', simpleQueryError);
+            return res.status(500).json({ error: 'Exception in simple query: ' + simpleQueryError.message });
         }
         
-        // Get all videos with relevance_rating = -1 instead of checking relevance_status
-        // This is a fallback approach since we're not sure if the column migration worked
-        const { data: videos, error: videosError } = await supabase
-            .from('videos')
-            .select('*, people(name)')
-            .eq('relevance_rating', -1)
-            .order('type', { ascending: false }) // Trending first
-            .order('score', { ascending: false, nullsFirst: false })
-            .order('likes_count', { ascending: false, nullsFirst: false });
-        
-        console.log(`Found ${videos ? videos.length : 0} videos with relevance_rating = -1`);
-        
-        if (videosError) {
-            console.error('Error fetching system-wide relevance videos:', videosError);
-            return res.status(500).json({ error: 'Failed to fetch relevance videos' });
-        }
-        
-        // Format response to match host-specific endpoint
+        // Note: The code below is no longer reached due to the early return in the try-catch block above
+        // Keeping it commented for reference only
+        /*
         const response = {
             videos: videos.map(video => ({
                 ...video,
@@ -951,6 +971,7 @@ app.get('/api/videos/system/relevance', async (req, res) => {
         };
         
         res.json(response);
+        */
     } catch (error) {
         console.error('Error in /api/videos/system/relevance:', error);
         res.status(500).json({ error: 'Internal server error' });
