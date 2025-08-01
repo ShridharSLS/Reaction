@@ -1394,7 +1394,11 @@ async function updateRelevance(videoId, relevanceRating) {
 
 async function updateVideoId(videoId, videoIdText) {
     try {
-        await apiCall(`/api/videos/${videoId}/status`, {
+        // Detect host from current tab to use unified endpoint
+        const hostId = getHostFromTab(currentTab);
+        const endpoint = getHostStatusEndpoint(videoId, hostId);
+        
+        await apiCall(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ 
                 status: 'assigned',
@@ -1411,7 +1415,11 @@ async function updateVideoId(videoId, videoIdText) {
 
 async function clearVideoId(videoId) {
     try {
-        await apiCall(`/api/videos/${videoId}/status`, {
+        // Detect host from current tab to use unified endpoint
+        const hostId = getHostFromTab(currentTab);
+        const endpoint = getHostStatusEndpoint(videoId, hostId);
+        
+        await apiCall(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ 
                 status: 'accepted',
@@ -1429,7 +1437,10 @@ async function clearVideoId(videoId) {
 // Host 2 Clear Video ID (only updates status_2 and video_id_text_2)
 async function host2ClearVideoId(videoId) {
     try {
-        await apiCall(`/api/videos/${videoId}/host2/status`, {
+        // Use unified generic endpoint for Host 2
+        const endpoint = getHostStatusEndpoint(videoId, 2);
+        
+        await apiCall(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ 
                 status: 'accepted',
@@ -1589,7 +1600,11 @@ async function rejectVideo(videoId) {
 function assignVideoId(videoId) {
     showVideoIdInput(async (videoIdText) => {
         try {
-            await apiCall(`/api/videos/${videoId}/status`, {
+            // Detect host from current tab to use unified endpoint
+            const hostId = getHostFromTab(currentTab);
+            const endpoint = getHostStatusEndpoint(videoId, hostId);
+            
+            await apiCall(endpoint, {
                 method: 'PUT',
                 body: JSON.stringify({ 
                     status: 'assigned',
@@ -1607,7 +1622,11 @@ function assignVideoId(videoId) {
 
 async function revertToPending(videoId) {
     try {
-        await apiCall(`/api/videos/${videoId}/status`, {
+        // Detect host from current tab to use unified endpoint
+        const hostId = getHostFromTab(currentTab);
+        const endpoint = getHostStatusEndpoint(videoId, hostId);
+        
+        await apiCall(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ status: 'pending' })
         });
@@ -1620,7 +1639,11 @@ async function revertToPending(videoId) {
 
 async function revertToAccepted(videoId) {
     try {
-        await apiCall(`/api/videos/${videoId}/status`, {
+        // Detect host from current tab to use unified endpoint
+        const hostId = getHostFromTab(currentTab);
+        const endpoint = getHostStatusEndpoint(videoId, hostId);
+        
+        await apiCall(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ status: 'accepted' })
         });
@@ -1668,7 +1691,10 @@ async function host2RejectVideo(videoId) {
 function host2AssignVideoId(videoId) {
     showVideoIdInput(async (videoIdText) => {
         try {
-            await apiCall(`/api/videos/${videoId}/host2/status`, {
+            // Use unified generic endpoint for Host 2
+            const endpoint = getHostStatusEndpoint(videoId, 2);
+            
+            await apiCall(endpoint, {
                 method: 'PUT',
                 body: JSON.stringify({ 
                     status: 'assigned',
@@ -1730,7 +1756,10 @@ function showHost2NoteModal(videoId, action) {
         }
         
         try {
-            await apiCall(`/api/videos/${videoId}/host2/status`, {
+            // Use unified generic endpoint for Host 2
+            const endpoint = getHostStatusEndpoint(videoId, 2);
+            
+            await apiCall(endpoint, {
                 method: 'PUT',
                 body: JSON.stringify({ 
                     status: action,
@@ -2644,7 +2673,11 @@ async function saveNote() {
         if (currentNoteAction === 'accept' || currentNoteAction === 'reject') {
             // Accept or reject with note
             const status = currentNoteAction === 'accept' ? 'accepted' : 'rejected';
-            await apiCall(`/api/videos/${currentNoteVideoId}/status`, {
+            // Use unified generic endpoint
+            const hostId = getHostFromTab(currentTab);
+            const endpoint = getHostStatusEndpoint(currentNoteVideoId, hostId);
+            
+            await apiCall(endpoint, {
                 method: 'PUT',
                 body: JSON.stringify({ status, note })
             });
@@ -2654,8 +2687,11 @@ async function saveNote() {
             updateButtonCounts(); // Update navigation counts
             showNotification(`Video ${currentNoteAction}ed with note successfully!`, 'success');
         } else {
-            // Edit existing note
-            await apiCall(`/api/videos/${currentNoteVideoId}/note`, {
+            // Edit existing note - use unified generic endpoint
+            const hostId = getHostFromTab(currentTab);
+            const endpoint = getHostStatusEndpoint(currentNoteVideoId, hostId);
+            
+            await apiCall(endpoint, {
                 method: 'PUT',
                 body: JSON.stringify({ note })
             });
@@ -2676,7 +2712,11 @@ async function saveNote() {
 
 async function deleteNote() {
     try {
-        await apiCall(`/api/videos/${currentNoteVideoId}/note`, {
+        // Use unified generic endpoint
+        const hostId = getHostFromTab(currentTab);
+        const endpoint = getHostStatusEndpoint(currentNoteVideoId, hostId);
+        
+        await apiCall(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ note: null })
         });
