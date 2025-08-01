@@ -2645,34 +2645,30 @@ async function updateButtonCounts() {
         
         // Update button counts dynamically for all hosts
         const updates = [
-            // Host 1 counts (backward compatibility - uses simple keys)
-            { id: 'relevance-btn-count', count: counts.relevance || 0 },
-            { id: 'pending-btn-count', count: counts.pending || 0 },
-            { id: 'accepted-btn-count', count: counts.accepted || 0 },
-            { id: 'rejected-btn-count', count: counts.rejected || 0 },
-            { id: 'assigned-btn-count', count: counts.assigned || 0 },
-            
             // All videos count
             { id: 'all-btn-count', count: counts.all || 0 }
         ];
         
-        // Dynamically add counts for all hosts (including Host 2 and beyond)
+        // Dynamically add counts for all hosts using consistent format
         Object.keys(counts).forEach(countKey => {
             // Skip non-host counts
-            if (['all', 'relevance', 'pending', 'accepted', 'rejected', 'assigned'].includes(countKey)) {
+            if (countKey === 'all') {
                 return;
             }
             
-            // Parse host-specific count keys (e.g., 'person2_pending', 'person3_accepted', etc.)
-            const hostMatch = countKey.match(/^person(\d+)_(.+)$/);
+            // Parse host-specific count keys (new consistent format: 'host1_pending', 'host2_accepted', etc.)
+            const hostMatch = countKey.match(/^host(\d+)_(.+)$/);
             if (hostMatch) {
                 const hostId = hostMatch[1];
                 const status = hostMatch[2];
                 
-                // Generate the corresponding button ID
+                // Generate the corresponding button ID using consistent format
                 let buttonId;
-                if (hostId === '2') {
-                    // Host 2 backward compatibility
+                if (hostId === '1') {
+                    // Host 1 uses legacy button IDs for backward compatibility
+                    buttonId = `${status}-btn-count`;
+                } else if (hostId === '2') {
+                    // Host 2 uses legacy button IDs for backward compatibility
                     buttonId = `host2-${status}-btn-count`;
                 } else {
                     // Host 3+ uses generic format

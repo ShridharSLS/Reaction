@@ -60,16 +60,11 @@ function getVideoIdColumn(hostId) {
     return hostNum === 1 ? 'video_id_text' : `video_id_text_${hostNum}`;
 }
 
-// Get count key for a specific host and status (for backward compatibility with frontend)
+// Get count key for a specific host and status (now fully dynamic for all hosts)
 function getCountKey(hostId, status) {
     const hostNum = parseInt(hostId);
-    if (hostNum === 1) {
-        // Host 1 uses the original count keys
-        return status; // e.g., 'pending', 'accepted'
-    } else {
-        // Other hosts use prefixed count keys
-        return `person${hostNum}_${status}`; // e.g., 'person2_pending'
-    }
+    // Use consistent format for ALL hosts: host{id}_{status}
+    return `host${hostNum}_${status}`; // e.g., 'host1_pending', 'host2_pending', 'host3_pending'
 }
 
 // Video code extraction function for duplicate detection
