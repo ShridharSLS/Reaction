@@ -1,151 +1,145 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - Video Topic Review System</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css" />
     <style>
-        .login-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        .login-card {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-        
-        .login-header h1 {
-            color: #333;
-            margin-bottom: 8px;
-            font-size: 28px;
-        }
-        
-        .login-header p {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 16px;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #333;
-            font-weight: 500;
-        }
-        
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
-        }
-        
-        .login-btn {
-            width: 100%;
-            padding: 12px 20px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        
-        .login-btn:hover {
-            background: #5a67d8;
-        }
-        
-        .login-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        
-        .error-message {
-            background: #fee;
-            color: #c33;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            border: 1px solid #fcc;
-            display: none;
-        }
-        
-        .loading {
-            display: none;
-            color: #666;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-        
-        .footer-text {
-            color: #999;
-            font-size: 12px;
-            margin-top: 20px;
-        }
+      .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      .login-card {
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+      }
+
+      .login-header h1 {
+        color: #333;
+        margin-bottom: 8px;
+        font-size: 28px;
+      }
+
+      .login-header p {
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 16px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+        text-align: left;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #333;
+        font-weight: 500;
+      }
+
+      .form-group input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 16px;
+        box-sizing: border-box;
+      }
+
+      .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+      }
+
+      .login-btn {
+        width: 100%;
+        padding: 12px 20px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+      }
+
+      .login-btn:hover {
+        background: #5a67d8;
+      }
+
+      .login-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+
+      .error-message {
+        background: #fee;
+        color: #c33;
+        padding: 12px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        border: 1px solid #fcc;
+        display: none;
+      }
+
+      .loading {
+        display: none;
+        color: #666;
+        font-size: 14px;
+        margin-top: 10px;
+      }
+
+      .footer-text {
+        color: #999;
+        font-size: 12px;
+        margin-top: 20px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="login-container">
-        <div class="login-card">
-            <div class="login-header">
-                <h1>🎥 Video Topic Review</h1>
-                <p>Sign in to access the admin dashboard</p>
-            </div>
-            
-            <div id="error-message" class="error-message"></div>
-            
-            <form id="login-form">
-                <div class="form-group">
-                    <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
-                </div>
-                
-                <button type="submit" id="login-btn" class="login-btn">
-                    Sign In
-                </button>
-            </form>
-            
-            <div id="loading" class="loading">
-                Signing you in...
-            </div>
-            
-            <div class="footer-text">
-                Only authorized administrators can access this system
-            </div>
+      <div class="login-card">
+        <div class="login-header">
+          <h1>🎥 Video Topic Review</h1>
+          <p>Sign in to access the admin dashboard</p>
         </div>
+
+        <div id="error-message" class="error-message"></div>
+
+        <form id="login-form">
+          <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required />
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required />
+          </div>
+
+          <button type="submit" id="login-btn" class="login-btn">Sign In</button>
+        </form>
+
+        <div id="loading" class="loading">Signing you in...</div>
+
+        <div class="footer-text">Only authorized administrators can access this system</div>
+      </div>
     </div>
 
     <script src="simple-auth.js"></script>
-</body>
+  </body>
 </html>

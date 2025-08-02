@@ -1,386 +1,397 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Submit Video Topic</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
 
+      .container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        padding: 40px;
+        width: 100%;
+        max-width: 600px;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .header h1 {
+        color: #333;
+        font-size: 2rem;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        color: #666;
+        font-size: 1.1rem;
+      }
+
+      .form-group {
+        margin-bottom: 25px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+        font-size: 1rem;
+      }
+
+      .form-group input,
+      .form-group select,
+      .form-group textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e1e5e9;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+        font-family: inherit;
+      }
+
+      .form-group textarea {
+        resize: vertical;
+        min-height: 120px;
+      }
+
+      .form-group input:focus,
+      .form-group select:focus,
+      .form-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .form-help {
+        display: block;
+        margin-top: 6px;
+        font-size: 0.875rem;
+        color: #6b7280;
+        font-style: italic;
+      }
+
+      .submit-btn {
+        width: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .submit-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .message {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-weight: 500;
+        text-align: center;
+      }
+
+      .message.success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      .message.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+
+      .required {
+        color: #e74c3c;
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+        color: #666;
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 768px) {
         .container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            padding: 40px;
-            width: 100%;
-            max-width: 600px;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
+          padding: 30px 20px;
         }
 
         .header h1 {
-            color: #333;
-            font-size: 2rem;
-            margin-bottom: 10px;
+          font-size: 1.5rem;
         }
-
-        .header p {
-            color: #666;
-            font-size: 1.1rem;
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-            font-size: 1rem;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-            font-family: inherit;
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 120px;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .form-help {
-            display: block;
-            margin-top: 6px;
-            font-size: 0.875rem;
-            color: #6b7280;
-            font-style: italic;
-        }
-
-        .submit-btn {
-            width: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .submit-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .message {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-weight: 500;
-            text-align: center;
-        }
-
-        .message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .required {
-            color: #e74c3c;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 30px 20px;
-            }
-            
-            .header h1 {
-                font-size: 1.5rem;
-            }
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <div class="header">
-            <h1>🎥 Submit Video Topic</h1>
-            <p>Share an interesting video topic for review</p>
+      <div class="header">
+        <h1>🎥 Submit Video Topic</h1>
+        <p>Share an interesting video topic for review</p>
+      </div>
+
+      <div id="message" class="message" style="display: none"></div>
+
+      <form id="submitForm">
+        <div class="form-group">
+          <label for="submitterName">Your Name <span class="required">*</span></label>
+          <select id="submitterName" name="submitterName" required>
+            <option value="">Select your name</option>
+          </select>
         </div>
 
-        <div id="message" class="message" style="display: none;"></div>
-
-        <form id="submitForm">
-            <div class="form-group">
-                <label for="submitterName">Your Name <span class="required">*</span></label>
-                <select id="submitterName" name="submitterName" required>
-                    <option value="">Select your name</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="videoLink">Video Link <span class="required">*</span></label>
-                <input type="url" id="videoLink" name="videoLink" required 
-                       placeholder="https://www.youtube.com/watch?v=...">
-            </div>
-
-            <div class="form-group">
-                <label for="likesCount">Likes count (in thousands)</label>
-                <input type="number" id="likesCount" name="likesCount" min="0" 
-                       placeholder="Number of likes in thousands (optional)">
-            </div>
-
-            <div class="form-group">
-                <label for="videoType">Video Type <span class="required">*</span></label>
-                <select id="videoType" name="videoType" required>
-                    <option value="">Select video type</option>
-                    <option value="Trending">Trending</option>
-                    <option value="General">General</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="pitch">Pitch (Optional)</label>
-                <textarea id="pitch" name="pitch" rows="6" 
-                         placeholder="Describe why this video topic would be valuable, interesting, or relevant. What makes it worth reviewing? Share your thoughts, context, or reasoning here..."></textarea>
-                <small class="form-help">Help reviewers understand why this video topic is worth considering by sharing your perspective.</small>
-            </div>
-
-            <button type="submit" class="submit-btn" id="submitBtn">
-                Submit Video Topic
-            </button>
-        </form>
-
-        <div class="footer">
-            <p>Your submission will be reviewed by our team</p>
+        <div class="form-group">
+          <label for="videoLink">Video Link <span class="required">*</span></label>
+          <input
+            type="url"
+            id="videoLink"
+            name="videoLink"
+            required
+            placeholder="https://www.youtube.com/watch?v=..."
+          />
         </div>
+
+        <div class="form-group">
+          <label for="likesCount">Likes count (in thousands)</label>
+          <input
+            type="number"
+            id="likesCount"
+            name="likesCount"
+            min="0"
+            placeholder="Number of likes in thousands (optional)"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="videoType">Video Type <span class="required">*</span></label>
+          <select id="videoType" name="videoType" required>
+            <option value="">Select video type</option>
+            <option value="Trending">Trending</option>
+            <option value="General">General</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="pitch">Pitch (Optional)</label>
+          <textarea
+            id="pitch"
+            name="pitch"
+            rows="6"
+            placeholder="Describe why this video topic would be valuable, interesting, or relevant. What makes it worth reviewing? Share your thoughts, context, or reasoning here..."
+          ></textarea>
+          <small class="form-help"
+            >Help reviewers understand why this video topic is worth considering by sharing your perspective.</small
+          >
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">Submit Video Topic</button>
+      </form>
+
+      <div class="footer">
+        <p>Your submission will be reviewed by our team</p>
+      </div>
     </div>
 
     <script>
-        const form = document.getElementById('submitForm');
-        const submitBtn = document.getElementById('submitBtn');
-        const messageDiv = document.getElementById('message');
-        const nameSelect = document.getElementById('submitterName');
+      const form = document.getElementById('submitForm');
+      const submitBtn = document.getElementById('submitBtn');
+      const messageDiv = document.getElementById('message');
+      const nameSelect = document.getElementById('submitterName');
 
-        // Load people list when page loads
-        async function loadPeople() {
-            try {
-                const response = await fetch('/api/people');
-                const people = await response.json();
-                
-                // Clear existing options except the default
-                nameSelect.innerHTML = '<option value="">Select your name</option>';
-                
-                // Add people to dropdown
-                people.forEach(person => {
-                    const option = document.createElement('option');
-                    option.value = person.id;
-                    option.textContent = person.name;
-                    nameSelect.appendChild(option);
-                });
-                
-                // Pre-fill form after people are loaded
-                prefillForm();
-            } catch (error) {
-                console.error('Failed to load people:', error);
-                showMessage('Failed to load names. Please refresh the page.', 'error');
-            }
+      // Load people list when page loads
+      async function loadPeople() {
+        try {
+          const response = await fetch('/api/people');
+          const people = await response.json();
+
+          // Clear existing options except the default
+          nameSelect.innerHTML = '<option value="">Select your name</option>';
+
+          // Add people to dropdown
+          people.forEach(person => {
+            const option = document.createElement('option');
+            option.value = person.id;
+            option.textContent = person.name;
+            nameSelect.appendChild(option);
+          });
+
+          // Pre-fill form after people are loaded
+          prefillForm();
+        } catch (error) {
+          console.error('Failed to load people:', error);
+          showMessage('Failed to load names. Please refresh the page.', 'error');
+        }
+      }
+
+      // Parse URL parameters and pre-fill form
+      function parseURLParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const name = urlParams.get('name');
+        const type = urlParams.get('type');
+
+        // Store parameters to use after people are loaded
+        window.prefilledData = { name, type };
+      }
+
+      // Pre-fill form fields after people are loaded
+      function prefillForm() {
+        if (!window.prefilledData) return;
+
+        const { name, type } = window.prefilledData;
+
+        // Pre-fill name if provided
+        if (name) {
+          // Find the person by name (case-insensitive)
+          const nameOptions = Array.from(nameSelect.options);
+          const matchingOption = nameOptions.find(option => option.textContent.toLowerCase() === name.toLowerCase());
+          if (matchingOption) {
+            nameSelect.value = matchingOption.value;
+          }
         }
 
-        // Parse URL parameters and pre-fill form
-        function parseURLParams() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const name = urlParams.get('name');
-            const type = urlParams.get('type');
-            
-            // Store parameters to use after people are loaded
-            window.prefilledData = { name, type };
+        // Pre-fill video type if provided
+        if (type) {
+          const videoTypeSelect = document.getElementById('videoType');
+          const typeOptions = Array.from(videoTypeSelect.options);
+          const matchingTypeOption = typeOptions.find(option => option.value.toLowerCase() === type.toLowerCase());
+          if (matchingTypeOption) {
+            videoTypeSelect.value = matchingTypeOption.value;
+          }
         }
-        
-        // Pre-fill form fields after people are loaded
-        function prefillForm() {
-            if (!window.prefilledData) return;
-            
-            const { name, type } = window.prefilledData;
-            
-            // Pre-fill name if provided
-            if (name) {
-                // Find the person by name (case-insensitive)
-                const nameOptions = Array.from(nameSelect.options);
-                const matchingOption = nameOptions.find(option => 
-                    option.textContent.toLowerCase() === name.toLowerCase()
-                );
-                if (matchingOption) {
-                    nameSelect.value = matchingOption.value;
-                }
-            }
-            
-            // Pre-fill video type if provided
-            if (type) {
-                const videoTypeSelect = document.getElementById('videoType');
-                const typeOptions = Array.from(videoTypeSelect.options);
-                const matchingTypeOption = typeOptions.find(option => 
-                    option.value.toLowerCase() === type.toLowerCase()
-                );
-                if (matchingTypeOption) {
-                    videoTypeSelect.value = matchingTypeOption.value;
-                }
-            }
-        }
-        
-        // Parse URL parameters on page load
-        parseURLParams();
-        
-        // Load people when page loads
-        loadPeople();
+      }
 
-        function showMessage(text, type) {
-            messageDiv.textContent = text;
-            messageDiv.className = `message ${type}`;
-            messageDiv.style.display = 'block';
-            
-            // Auto-hide success messages after 5 seconds
-            if (type === 'success') {
-                setTimeout(() => {
-                    messageDiv.style.display = 'none';
-                }, 5000);
-            }
-        }
+      // Parse URL parameters on page load
+      parseURLParams();
 
-        function hideMessage() {
+      // Load people when page loads
+      loadPeople();
+
+      function showMessage(text, type) {
+        messageDiv.textContent = text;
+        messageDiv.className = `message ${type}`;
+        messageDiv.style.display = 'block';
+
+        // Auto-hide success messages after 5 seconds
+        if (type === 'success') {
+          setTimeout(() => {
             messageDiv.style.display = 'none';
+          }, 5000);
         }
+      }
 
-        async function submitVideo(formData) {
-            const response = await fetch('/api/videos', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData)
-            });
+      function hideMessage() {
+        messageDiv.style.display = 'none';
+      }
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || `HTTP error! status: ${response.status}`);
-            }
-
-            return data;
-        }
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            hideMessage();
-
-            // Disable submit button
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
-
-            try {
-                const formData = new FormData(form);
-                const videoData = {
-                    added_by: formData.get('submitterName'), // This is now the person ID
-                    link: formData.get('videoLink').trim(),
-                    likes_count: formData.get('likesCount') ? parseInt(formData.get('likesCount')) : 0,
-                    type: formData.get('videoType'),
-                    pitch: formData.get('pitch')?.trim() || null
-                };
-
-                // Basic validation
-                if (!videoData.added_by) {
-                    throw new Error('Please select your name');
-                }
-                if (!videoData.link) {
-                    throw new Error('Video link is required');
-                }
-                if (!videoData.type) {
-                    throw new Error('Video type is required');
-                }
-
-                // Validate URL format
-                try {
-                    new URL(videoData.link);
-                } catch {
-                    throw new Error('Please enter a valid URL');
-                }
-
-                await submitVideo(videoData);
-                
-                showMessage('✅ Video topic submitted successfully! Thank you for your contribution.', 'success');
-                form.reset();
-
-            } catch (error) {
-                console.error('Submission failed:', error);
-                showMessage(`❌ ${error.message}`, 'error');
-            } finally {
-                // Re-enable submit button
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit Video Topic';
-            }
+      async function submitVideo(formData) {
+        const response = await fetch('/api/videos', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
         });
 
-        // Clear error messages when user starts typing
-        form.addEventListener('input', hideMessage);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        }
+
+        return data;
+      }
+
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        hideMessage();
+
+        // Disable submit button
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        try {
+          const formData = new FormData(form);
+          const videoData = {
+            added_by: formData.get('submitterName'), // This is now the person ID
+            link: formData.get('videoLink').trim(),
+            likes_count: formData.get('likesCount') ? parseInt(formData.get('likesCount')) : 0,
+            type: formData.get('videoType'),
+            pitch: formData.get('pitch')?.trim() || null,
+          };
+
+          // Basic validation
+          if (!videoData.added_by) {
+            throw new Error('Please select your name');
+          }
+          if (!videoData.link) {
+            throw new Error('Video link is required');
+          }
+          if (!videoData.type) {
+            throw new Error('Video type is required');
+          }
+
+          // Validate URL format
+          try {
+            new URL(videoData.link);
+          } catch {
+            throw new Error('Please enter a valid URL');
+          }
+
+          await submitVideo(videoData);
+
+          showMessage('✅ Video topic submitted successfully! Thank you for your contribution.', 'success');
+          form.reset();
+        } catch (error) {
+          console.error('Submission failed:', error);
+          showMessage(`❌ ${error.message}`, 'error');
+        } finally {
+          // Re-enable submit button
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Video Topic';
+        }
+      });
+
+      // Clear error messages when user starts typing
+      form.addEventListener('input', hideMessage);
     </script>
-</body>
+  </body>
 </html>

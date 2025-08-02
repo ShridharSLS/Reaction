@@ -1,0 +1,13 @@
+node_modules/
+*.min.js
+*.bundle.js
+dist/
+build/
+coverage/
+.git/
+*.sql
+*.md
+*.json
+*.db
+migrations/
+video_review.db
