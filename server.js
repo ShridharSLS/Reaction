@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const { supabase, initializeDatabase, updateScore } = require('./supabase');
+const QueryBuilder = require('./query-builder');
 const { migrateForNewHost } = require('./schema-utils');
 require('dotenv').config();
 
@@ -220,30 +221,14 @@ app.post('/api/people', asyncHandler(async (req, res) => {
     }
     
     // Check for duplicate name
-    const { data: existingPeople, error: checkError } = await supabase
-        .from('people')
-        .select('id')
-        .eq('name', name.trim())
-        .maybeSingle();
-        
-    if (checkError) {
-        throw checkError;
-    }
+    const existingPerson = await QueryBuilder.findBy('people', 'name', name.trim(), 'id');
     
-    if (existingPeople) {
+    if (existingPerson) {
         res.status(409).json({ error: 'A person with this name already exists' });
         return;
     }
     
-    const { data, error } = await supabase
-        .from('people')
-        .insert([{ name: name.trim() }])
-        .select()
-        .single();
-        
-    if (error) {
-        throw error;
-    }
+    const data = await QueryBuilder.create('people', { name: name.trim() });
     
     res.status(201).json(data);
 }));
@@ -254,15 +239,7 @@ app.put('/api/people/:id', async (req, res) => {
         const { id } = req.params;
         const { name } = req.body;
         
-        const { error } = await supabase
-            .from('people')
-            .update({ name })
-            .eq('id', id);
-            
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
+        await QueryBuilder.updateById('people', id, { name: name.trim() });
         
         res.json({ message: 'Person updated successfully' });
     } catch (err) {
@@ -297,19 +274,9 @@ app.put('/api/people/:id/archive', async (req, res) => {
     try {
         const { id } = req.params;
         
-        const { data, error } = await supabase
-            .from('people')
-            .update({ archived: true })
-            .eq('id', id)
-            .select()
-            .single();
-            
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
+        await QueryBuilder.updateById('people', id, { is_archived: true });
         
-        res.json({ message: 'Person archived successfully', person: data });
+        res.json({ message: 'Person archived successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
