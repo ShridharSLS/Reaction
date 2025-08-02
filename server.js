@@ -1459,4 +1459,183 @@ app.post('/api/schema/test', async (req, res) => {
     }
 });
 
+// ===== TAG MANAGEMENT API ENDPOINTS =====
+
+// Get all tags
+app.get('/api/tags', asyncHandler(async (req, res) => {
+    const { data, error } = await supabase
+        .from('tags')
+        .select('*')
+        .order('name');
+        
+    if (error) throw error;
+    res.json(data);
+}));
+
+// Create a new tag
+app.post('/api/tags', asyncHandler(async (req, res) => {
+    const { name, color } = req.body;
+    
+    if (!name || !color) {
+        return res.status(400).json({ error: 'Name and color are required' });
+    }
+    
+    const { data, error } = await supabase
+        .from('tags')
+        .insert({ name, color, created_at: new Date().toISOString() })
+        .select();
+        
+    if (error) throw error;
+    res.status(201).json(data[0]);
+}));
+
+// Update an existing tag
+app.put('/api/tags/:id', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { name, color } = req.body;
+    
+    if (!name || !color) {
+        return res.status(400).json({ error: 'Name and color are required' });
+    }
+    
+    const { data, error } = await supabase
+        .from('tags')
+        .update({ name, color })
+        .eq('id', id)
+        .select();
+        
+    if (error) throw error;
+    
+    if (!data || data.length === 0) {
+        return res.status(404).json({ error: 'Tag not found' });
+    }
+    
+    res.json(data[0]);
+}));
+
+// Delete a tag
+app.delete('/api/tags/:id', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    // First, remove all associations with videos
+    const { error: junctionError } = await supabase
+        .from('video_tags')
+        .delete()
+        .eq('tag_id', id);
+        
+    if (junctionError) throw junctionError;
+    
+    // Then delete the tag itself
+    const { data, error } = await supabase
+        .from('tags')
+        .delete()
+        .eq('id', id)
+        .select();
+        
+    if (error) throw error;
+    
+    if (!data || data.length === 0) {
+        return res.status(404).json({ error: 'Tag not found' });
+    }
+    
+    res.json({ message: 'Tag deleted successfully', tag: data[0] });
+}));
+
+// ===== VIDEO TAGS API ENDPOINTS =====
+
+// Get all tags for a video
+app.get('/api/videos/:id/tags', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    // Get video tags with tag details in a single query for efficiency
+    const { data, error } = await supabase
+        .from('video_tags')
+        .select(`
+            tag_id,
+            tags (id, name, color)
+        `)
+        .eq('video_id', id);
+        
+    if (error) throw error;
+    
+    // Transform to a more frontend-friendly format
+    const formattedTags = data.map(item => ({
+        id: item.tag_id,
+        ...item.tags
+    }));
+    
+    res.json(formattedTags);
+}));
+
+// Add tags to a video
+app.post('/api/videos/:id/tags', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { tagIds } = req.body;
+    
+    if (!tagIds || !Array.isArray(tagIds) || tagIds.length === 0) {
+        return res.status(400).json({ error: 'Tag IDs array is required' });
+    }
+    
+    // Check if video exists
+    const { data: videoData, error: videoError } = await supabase
+        .from('videos')
+        .select('id')
+        .eq('id', id)
+        .single();
+        
+    if (videoError || !videoData) {
+        return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    // First, remove existing tags for this video to avoid duplicates
+    const { error: deleteError } = await supabase
+        .from('video_tags')
+        .delete()
+        .eq('video_id', id);
+        
+    if (deleteError) throw deleteError;
+    
+    // Create tag associations
+    const tagAssociations = tagIds.map(tagId => ({
+        video_id: id,
+        tag_id: tagId,
+        created_at: new Date().toISOString()
+    }));
+    
+    const { data: insertData, error: insertError } = await supabase
+        .from('video_tags')
+        .insert(tagAssociations)
+        .select();
+        
+    if (insertError) throw insertError;
+    
+    res.status(201).json({
+        message: 'Tags updated successfully',
+        tags: insertData
+    });
+}));
+
+// Delete a specific tag from a video
+app.delete('/api/videos/:videoId/tags/:tagId', asyncHandler(async (req, res) => {
+    const { videoId, tagId } = req.params;
+    
+    const { data, error } = await supabase
+        .from('video_tags')
+        .delete()
+        .eq('video_id', videoId)
+        .eq('tag_id', tagId)
+        .select();
+        
+    if (error) throw error;
+    
+    if (!data || data.length === 0) {
+        return res.status(404).json({ error: 'Tag association not found' });
+    }
+    
+    res.json({
+        message: 'Tag removed from video successfully',
+        deleted: data[0]
+    });
+}));
+
 module.exports = app;
