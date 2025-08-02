@@ -1618,8 +1618,8 @@ async function hostActionAccept(hostId, videoId) {
         // Use existing Shridhar modal system (uses 'accept')
         showNoteModal(videoId, 'accept');
     } else {
-        // Use host-specific modal system (uses 'accepted')
-        showHost2NoteModal(videoId, 'accepted');
+        // Use unified modal system for all other hosts (uses 'accept')
+        showNoteModal(videoId, 'accept');
     }
 }
 
@@ -1631,8 +1631,8 @@ async function hostActionReject(hostId, videoId) {
         // Use existing Shridhar modal system (uses 'reject')
         showNoteModal(videoId, 'reject');
     } else {
-        // Use host-specific modal system (uses 'rejected')
-        showHost2NoteModal(videoId, 'rejected');
+        // Use unified modal system for all other hosts (uses 'reject')
+        showNoteModal(videoId, 'reject');
     }
 }
 
