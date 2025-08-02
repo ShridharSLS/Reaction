@@ -21,7 +21,14 @@ function asyncHandler(fn) {
             await fn(req, res, next);
         } catch (err) {
             console.error(`API Error: ${req.method} ${req.path}`, err);
-            res.status(500).json({ error: err.message });
+            
+            // Safe error response handling
+            const errorMessage = err && err.message ? err.message : 'Internal server error';
+            
+            // Only attempt to send response if headers haven't been sent yet
+            if (!res.headersSent) {
+                res.status(500).json({ error: errorMessage });
+            }
         }
     };
 }
@@ -1150,22 +1157,20 @@ app.get('/api/videos/host/:hostId/:status', async (req, res) => {
 });
 
 // Update video note
-app.put('/api/videos/:id/note', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { note } = req.body;
+app.put('/api/videos/:id/note', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { note } = req.body;
+    
+    const { error } = await supabase
+        .from('videos')
+        .update({ note: note || null })
+        .eq('id', id);
         
-        const { error } = await supabase
-            .from('videos')
-            .update({ note: note || null })
-            .eq('id', id);
-            
-        if (error) {
-            throw error;
-        }
-        
-        res.json({ message: 'Note updated successfully' });
+    if (error) {
+        throw error;
     }
+    
+    res.json({ message: 'Note updated successfully' });
 }));
 
 // Archive/unarchive a person
