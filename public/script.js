@@ -20,12 +20,7 @@ async function loadHostConfiguration() {
     try {
         console.log('[Phase 4.2] Loading host configuration from database...');
         
-        const response = await fetch('/api/hosts');
-        if (!response.ok) {
-            throw new Error(`Failed to fetch hosts: ${response.status}`);
-        }
-        
-        const hosts = await response.json();
+        const hosts = await ApiService.getHosts();
         console.log('[Phase 4.2] Loaded hosts from database:', hosts);
         
         // Transform database format to frontend HOST_CONFIG format
@@ -646,33 +641,153 @@ function switchTab(tabId) {
     }
 }
 
-// API Functions
-async function apiCall(url, options = {}) {
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-            // Create an error with the server's error message
-            const error = new Error(data.error || `HTTP error! status: ${response.status}`);
-            error.status = response.status;
-            error.data = data;
+// ===== API SERVICE CLASS =====
+// Centralized API service to eliminate code duplication and provide consistent error handling
+class ApiService {
+    static async request(url, options = {}) {
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                const error = new Error(data.error || `HTTP error! status: ${response.status}`);
+                error.status = response.status;
+                error.data = data;
+                throw error;
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('API call failed:', error);
             throw error;
         }
-        
-        return data;
-    } catch (error) {
-        console.error('API call failed:', error);
-        // Don't show generic alert here - let the calling function handle it
-        throw error;
     }
+
+    // GET request
+    static async get(url) {
+        return this.request(url, { method: 'GET' });
+    }
+
+    // POST request
+    static async post(url, data = null) {
+        const options = { method: 'POST' };
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
+        return this.request(url, options);
+    }
+
+    // PUT request
+    static async put(url, data = null) {
+        const options = { method: 'PUT' };
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
+        return this.request(url, options);
+    }
+
+    // DELETE request
+    static async delete(url) {
+        return this.request(url, { method: 'DELETE' });
+    }
+
+    // PATCH request
+    static async patch(url, data = null) {
+        const options = { method: 'PATCH' };
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
+        return this.request(url, options);
+    }
+
+    // Specialized methods for common API patterns
+    static async getHosts() {
+        return this.get('/api/hosts');
+    }
+
+    static async getVideos(endpoint) {
+        return this.get(endpoint);
+    }
+
+    static async getVideoCounts() {
+        return this.get('/api/videos/counts');
+    }
+
+    static async getPeople() {
+        return this.get('/api/people');
+    }
+
+    static async getAdmins() {
+        return this.get('/api/admins');
+    }
+
+    static async getTags() {
+        return this.get('/api/tags');
+    }
+
+    static async createVideo(videoData) {
+        return this.post('/api/videos', videoData);
+    }
+
+    static async updateVideo(videoId, updateData) {
+        return this.put(`/api/videos/${videoId}`, updateData);
+    }
+
+    static async deleteVideo(videoId) {
+        return this.delete(`/api/videos/${videoId}`);
+    }
+
+    static async createPerson(personData) {
+        return this.post('/api/people', personData);
+    }
+
+    static async updatePerson(personId, updateData) {
+        return this.put(`/api/people/${personId}`, updateData);
+    }
+
+    static async deletePerson(personId) {
+        return this.delete(`/api/people/${personId}`);
+    }
+
+    static async createAdmin(adminData) {
+        return this.post('/api/admins', adminData);
+    }
+
+    static async updateAdminPassword(adminId, passwordData) {
+        return this.put(`/api/admins/${adminId}/password`, passwordData);
+    }
+
+    static async deleteAdmin(adminId) {
+        return this.delete(`/api/admins/${adminId}`);
+    }
+
+    static async createHost(hostData) {
+        return this.post('/api/hosts', hostData);
+    }
+
+    static async updateHost(hostId, hostData) {
+        return this.put(`/api/hosts/${hostId}`, hostData);
+    }
+
+    static async deleteHost(hostId) {
+        return this.delete(`/api/hosts/${hostId}`);
+    }
+
+    static async checkDuplicateVideo(url) {
+        return this.get(`/api/videos/check-duplicate?url=${encodeURIComponent(url)}`);
+    }
+}
+
+// Legacy apiCall function - kept for backward compatibility during transition
+async function apiCall(url, options = {}) {
+    return ApiService.request(url, options);
 }
 
 // Load People
@@ -695,7 +810,7 @@ async function loadPeople() {
 
 async function loadArchivedPeople() {
     try {
-        const archivedPeople = await apiCall('/api/people?archived=true');
+        const archivedPeople = await ApiService.get('/api/people?archived=true');
         updateArchivedPeopleList(archivedPeople);
     } catch (error) {
         console.error('Failed to load archived people:', error);
@@ -1141,20 +1256,8 @@ async function performDelete(personId) {
     try {
         console.log('Calling API:', `/api/people/${personId}`);
         
-        const response = await fetch(`/api/people/${personId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        console.log('Response status:', response.status);
-        const data = await response.json();
+        const data = await ApiService.deletePerson(personId);
         console.log('Response data:', data);
-        
-        if (!response.ok) {
-            throw new Error(data.error || `HTTP error! status: ${response.status}`);
-        }
         
         console.log('API call successful:', data);
         
@@ -1988,27 +2091,9 @@ async function submitBulkData() {
             if (!person) {
                 // Create new person automatically
                 try {
-                    const response = await fetch('/api/people', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ name: row.name })
-                    });
-                    
-                    if (response.ok) {
-                        const newPerson = await response.json();
-                        person = { id: newPerson.id, name: row.name };
-                        people.push(person); // Add to local people array for subsequent rows
-                    } else {
-                        results.push({
-                            row: row.rowNum,
-                            status: 'error',
-                            message: `Failed to create person '${row.name}': ${await response.text()}`
-                        });
-                        errorCount++;
-                        continue;
-                    }
+                    const newPerson = await ApiService.createPerson({ name: row.name });
+                    person = { id: newPerson.id, name: row.name };
+                    people.push(person); // Add to local people array for subsequent rows
                 } catch (createError) {
                     results.push({
                         row: row.rowNum,
@@ -2032,26 +2117,17 @@ async function submitBulkData() {
                 // relevance_rating 0-3 -> relevance_status = null, host columns = 'pending'
             };
             
-            const response = await fetch('/api/videos', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(videoData)
-            });
-            
-            if (response.ok) {
+            try {
+                await ApiService.createVideo(videoData);
                 results.push({
                     row: row.rowNum,
                     status: 'success',
                     message: `Successfully added video for ${row.name}`
                 });
                 successCount++;
-            } else {
-                const errorData = await response.json();
-                
+            } catch (error) {
                 // Handle duplicate URLs as "skipped" rather than "error"
-                if (response.status === 409 && errorData.error && errorData.error.includes('already exists')) {
+                if (error.status === 409 && error.message && error.message.includes('already exists')) {
                     results.push({
                         row: row.rowNum,
                         status: 'skipped',
@@ -2062,7 +2138,7 @@ async function submitBulkData() {
                     results.push({
                         row: row.rowNum,
                         status: 'error',
-                        message: errorData.error || 'Failed to add video'
+                        message: error.message || 'Failed to add video'
                     });
                     errorCount++;
                 }
@@ -2118,8 +2194,7 @@ async function submitBulkData() {
 // Load and display admins
 async function loadAdmins() {
     try {
-        const response = await fetch('/api/admins');
-        const admins = await response.json();
+        const admins = await ApiService.getAdmins();
         
         const adminList = document.getElementById('admin-list');
         
@@ -2161,31 +2236,17 @@ async function loadAdmins() {
 // Add new admin
 async function addAdmin(email, name, password) {
     try {
-        const response = await fetch('/api/admins', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, name, password })
-        });
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-            if (response.status === 409) {
-                showNotification('Admin with this email already exists', 'error');
-            } else {
-                showNotification(result.error || 'Failed to add admin', 'error');
-            }
-            return false;
-        }
-        
+        await ApiService.createAdmin({ email, name, password });
         showNotification('Admin added successfully', 'success');
         loadAdmins();
         return true;
     } catch (error) {
+        if (error.status === 409) {
+            showNotification('Admin with this email already exists', 'error');
+        } else {
+            showNotification(error.message || 'Failed to add admin', 'error');
+        }
         console.error('Error adding admin:', error);
-        showNotification('Failed to add admin', 'error');
         return false;
     }
 }
@@ -2202,20 +2263,7 @@ async function changePassword(adminId, email) {
     }
     
     try {
-        const response = await fetch(`/api/admins/${adminId}/password`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ password: newPassword })
-        });
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-            showNotification(result.error || 'Failed to change password', 'error');
-            return;
-        }
+        await ApiService.updateAdminPassword(adminId, { password: newPassword });
         
         showNotification('Password changed successfully', 'success');
     } catch (error) {
@@ -2234,17 +2282,7 @@ async function removeAdmin(adminId, email) {
     if (!confirmed) return;
     
     try {
-        const response = await fetch(`/api/admins/${adminId}`, {
-            method: 'DELETE'
-        });
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-            showNotification(result.error || 'Failed to remove admin', 'error');
-            return;
-        }
-        
+        await ApiService.deleteAdmin(adminId);
         showNotification('Admin removed successfully', 'success');
         loadAdmins();
     } catch (error) {
@@ -2885,15 +2923,8 @@ async function updateButtonCounts() {
         console.log('Attempting to fetch button counts...');
         
         // Single API call to get all counts at once
-        const response = await fetch('/api/videos/counts');
-        console.log('Counts API response status:', response.status, response.ok);
-        
-        if (!response.ok) {
-            console.warn('Counts API not available, using fallback. Status:', response.status);
-            return updateButtonCountsFallback();
-        }
-        
-        const counts = await response.json();
+        const counts = await ApiService.getVideoCounts();
+        console.log('Counts API response received successfully');
         console.log('Button counts received:', counts);
         
         // Update button counts dynamically for all hosts
