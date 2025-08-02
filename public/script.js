@@ -2821,8 +2821,7 @@ async function checkForDuplicates(url, inputElement) {
                 checkUrl = `/api/videos/check-duplicate?url=${encodeURIComponent(url)}`;
             }
             
-            const response = await fetch(checkUrl);
-            const result = await response.json();
+            const result = await ApiService.get(checkUrl);
             
             if (result.isDuplicate) {
                 // Show duplicate warning
@@ -3366,8 +3365,7 @@ async function updateButtonCountsFallback() {
             const element = document.getElementById(id);
             if (element) {
                 try {
-                    const response = await fetch(endpoint);
-                    const data = await response.json();
+                    const data = await ApiService.get(endpoint);
                     element.textContent = `(${data.length})`;
                     element.style.display = 'inline-block';
                 } catch (err) {
@@ -3684,12 +3682,7 @@ async function loadHosts() {
         hostsContainer.innerHTML = '<div class="loading">Loading hosts...</div>';
         
         // Fetch hosts from database
-        const response = await fetch('/api/hosts');
-        if (!response.ok) {
-            throw new Error(`Failed to fetch hosts: ${response.status}`);
-        }
-        
-        const hosts = await response.json();
+        const hosts = await ApiService.getHosts();
         console.log('[Phase 4.3] Loaded hosts for management:', hosts);
         
         // Clear container
@@ -3734,12 +3727,7 @@ async function addHost(hostName) {
     
     try {
         // Get ALL hosts (including inactive) to determine next available ID
-        const allHostsResponse = await fetch('/api/hosts?include_inactive=true');
-        if (!allHostsResponse.ok) {
-            throw new Error('Failed to fetch existing hosts');
-        }
-        
-        const allHosts = await allHostsResponse.json();
+        const allHosts = await ApiService.get('/api/hosts?include_inactive=true');
         const allIds = allHosts.map(host => host.host_id);
         const nextId = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
         
@@ -3758,20 +3746,10 @@ async function addHost(hostName) {
         };
         
         // Send POST request to create host
-        const response = await fetch('/api/hosts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(newHost)
+        const createdHost = await ApiService.post('/api/hosts', {
+            host_id: nextId,
+            name: hostName.trim()
         });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `Server error: ${response.status}`);
-        }
-        
-        const createdHost = await response.json();
         console.log('[Phase 4.3] Host created successfully:', createdHost);
         
         showNotification(`Host "${hostName}" added successfully!`, 'success');
@@ -3802,12 +3780,7 @@ async function editHost(hostId, currentName) {
             console.log(`[Phase 4.3] Editing host ${hostId} name to:`, newName);
             
             // First, get the current host data to preserve all fields
-            const hostsResponse = await fetch('/api/hosts');
-            if (!hostsResponse.ok) {
-                throw new Error('Failed to fetch current host data');
-            }
-            
-            const hosts = await hostsResponse.json();
+            const hosts = await ApiService.getHosts();
             const currentHost = hosts.find(h => h.host_id === hostId);
             
             if (!currentHost) {
@@ -3815,28 +3788,16 @@ async function editHost(hostId, currentName) {
             }
             
             // Send PUT request with all required fields
-            const response = await fetch(`/api/hosts/${hostId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: newName.trim(),
-                    prefix: currentHost.prefix,
-                    status_column: currentHost.status_column,
-                    note_column: currentHost.note_column,
-                    video_id_column: currentHost.video_id_column,
-                    api_path: currentHost.api_path,
-                    count_prefix: currentHost.count_prefix
-                })
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `Server error: ${response.status}`);
-            }
-            
-            const updatedHost = await response.json();
+            const updateData = {
+                name: newName.trim(),
+                prefix: currentHost.prefix,
+                status_column: currentHost.status_column,
+                note_column: currentHost.note_column,
+                video_id_column: currentHost.video_id_column,
+                api_path: currentHost.api_path,
+                count_prefix: currentHost.count_prefix
+            };
+            const updatedHost = await ApiService.put(`/api/hosts/${hostId}`, updateData);
             console.log('[Phase 4.3] Host updated successfully:', updatedHost);
             
             showNotification(`Host ${hostId} renamed to "${newName}" successfully!`, 'success');
@@ -3859,12 +3820,7 @@ async function editHost(hostId, currentName) {
 async function deleteHost(hostId) {
     try {
         // Get host details first
-        const hostsResponse = await fetch('/api/hosts');
-        if (!hostsResponse.ok) {
-            throw new Error('Failed to fetch host details');
-        }
-        
-        const hosts = await hostsResponse.json();
+        const hosts = await ApiService.getHosts();
         const host = hosts.find(h => h.host_id === hostId);
         const hostName = host?.name || `Host ${hostId}`;
         
@@ -3875,14 +3831,7 @@ async function deleteHost(hostId) {
             console.log(`[Phase 4.3] Deleting host ${hostId}:`, hostName);
             
             // Send DELETE request
-            const response = await fetch(`/api/hosts/${hostId}`, {
-                method: 'DELETE'
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `Server error: ${response.status}`);
-            }
+            const result = await ApiService.delete(`/api/hosts/${hostId}`);
             
             console.log('[Phase 4.3] Host deleted successfully');
             
