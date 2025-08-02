@@ -790,49 +790,42 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
 
 // ===== UNIFIED GENERIC HOST API ENDPOINT =====
 // Update video status for any host (replaces host-specific endpoints)
-app.put('/api/videos/:id/host/:hostId/status', async (req, res) => {
-    try {
-        const { id, hostId } = req.params;
-        const { status, video_id_text, note } = req.body;
-        
-        // Use centralized dynamic column mapping system
-        const columns = getHostColumns(hostId);
-        
-        // Build update data dynamically
-        const updateData = {};
-        updateData[columns.statusColumn] = status;
-        
-        if (video_id_text !== undefined) {
-            updateData[columns.videoIdColumn] = video_id_text;
-        }
-        if (note !== undefined) {
-            updateData[columns.noteColumn] = note;
-        }
-        
-        console.log(`[Generic API] Updating video ${id} for host ${hostId}:`, updateData);
-        
-        const { error } = await supabase
-            .from('videos')
-            .update(updateData)
-            .eq('id', id);
-            
-        if (error) {
-            console.error(`[Generic API] Error updating video ${id} for host ${hostId}:`, error);
-            res.status(500).json({ error: error.message });
-            return;
-        }
-        
-        res.json({ 
-            message: `Host ${hostId} video status updated successfully`,
-            hostId: hostId,
-            columns: columns,
-            updateData: updateData
-        });
-    } catch (err) {
-        console.error(`[Generic API] Exception:`, err);
-        res.status(500).json({ error: err.message });
+app.put('/api/videos/:id/host/:hostId/status', asyncHandler(async (req, res) => {
+    const { id, hostId } = req.params;
+    const { status, video_id_text, note } = req.body;
+    
+    // Use centralized dynamic column mapping system
+    const columns = await getHostColumns(hostId);
+    
+    // Build update data dynamically
+    const updateData = {};
+    updateData[columns.statusColumn] = status;
+    
+    if (video_id_text !== undefined) {
+        updateData[columns.videoIdColumn] = video_id_text;
     }
-});
+    if (note !== undefined) {
+        updateData[columns.noteColumn] = note;
+    }
+    
+    console.log(`[Generic API] Updating video ${id} for host ${hostId}:`, updateData);
+    
+    const { error } = await supabase
+        .from('videos')
+        .update(updateData)
+        .eq('id', id);
+        
+    if (error) {
+        throw error;
+    }
+    
+    res.json({ 
+        message: `Host ${hostId} video status updated successfully`,
+        hostId: hostId,
+        columns: columns,
+        updateData: updateData
+    });
+}));
 
 // Get videos by status for any host (replaces host-specific endpoints)
 // System-wide trash endpoint (new endpoint for system-wide trash status)
