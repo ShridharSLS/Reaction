@@ -116,12 +116,11 @@ function getCountKey(hostId, status) {
     const config = getHostConfig(hostId);
     if (!config) return null;
     
-    if (hostId === 1) {
-        // Shridhar uses the original count keys
-        return status; // e.g., 'pending', 'accepted'
-    } else {
-        // Other hosts use prefixed count keys
+    // Use count prefix for all hosts consistently
+    if (config.countPrefix) {
         return `${config.countPrefix}${status}`; // e.g., 'person2_pending'
+    } else {
+        return status; // For hosts with no count prefix (like Host 1)
     }
 }
 
@@ -407,10 +406,11 @@ function getButtonCountId(hostId, status) {
     const config = getHostConfig(hostId);
     if (!config) return null;
     
-    if (hostId === 1) {
-        return `${status}-btn-count`; // e.g., 'pending-btn-count'
-    } else {
+    // Use prefix for all hosts consistently
+    if (config.prefix) {
         return `${config.prefix}${status}-btn-count`; // e.g., 'host2-pending-btn-count'
+    } else {
+        return `${status}-btn-count`; // For hosts with no prefix (like Host 1)
     }
 }
 
@@ -419,10 +419,11 @@ function getViewCountId(hostId, status) {
     const config = getHostConfig(hostId);
     if (!config) return null;
     
-    if (hostId === 1) {
-        return `${status}-count`; // e.g., 'pending-count'
-    } else {
+    // Use prefix for all hosts consistently
+    if (config.prefix) {
         return `${config.prefix}${status}-count`; // e.g., 'host2-pending-count'
+    } else {
+        return `${status}-count`; // For hosts with no prefix (like Host 1)
     }
 }
 
@@ -2046,26 +2047,16 @@ async function hostAction(hostId, videoId, action, options = {}) {
 async function hostActionAccept(hostId, videoId) {
     const config = getHostConfig(hostId);
     
-    if (hostId === 1) {
-        // Use existing Shridhar modal system (uses 'accept')
-        showNoteModal(videoId, 'accept');
-    } else {
-        // Use unified modal system for all other hosts (uses 'accept')
-        showNoteModal(videoId, 'accept');
-    }
+    // Use unified modal system for all hosts (uses 'accept')
+    showNoteModal(videoId, 'accept');
 }
 
 // Helper function for reject action
 async function hostActionReject(hostId, videoId) {
     const config = getHostConfig(hostId);
     
-    if (hostId === 1) {
-        // Use existing Shridhar modal system (uses 'reject')
-        showNoteModal(videoId, 'reject');
-    } else {
-        // Use unified modal system for all other hosts (uses 'reject')
-        showNoteModal(videoId, 'reject');
-    }
+    // Use unified modal system for all hosts (uses 'reject')
+    showNoteModal(videoId, 'reject');
 }
 
 // Helper function for assign action
@@ -2136,7 +2127,7 @@ async function hostActionClearVideoId(hostId, videoId) {
 // ===== UNIFIED HOST ACTION FUNCTIONS =====
 // All legacy duplicate functions replaced with unified hostAction() calls
 
-// Host 1 (Shridhar) Action Functions - now use unified system
+// Host 1 Action Functions - now use unified system
 async function acceptVideo(videoId) {
     return hostActionAccept(1, videoId);
 }
@@ -3842,11 +3833,8 @@ async function deleteHost(hostId) {
         const host = hosts.find(h => h.host_id === hostId);
         const hostName = host?.name || `Host ${hostId}`;
         
-        // Prevent deletion of primary host
-        if (hostId === 1) {
-            showNotification('Cannot delete the primary host', 'error');
-            return;
-        }
+        // No hardcoded host deletion protection - system is fully dynamic
+        // Host deletion protection should be handled by business logic, not hardcoded host IDs
         
         if (confirm(`Are you sure you want to delete ${hostName}? This will remove the host from the system permanently.`)) {
             console.log(`[Phase 4.3] Deleting host ${hostId}:`, hostName);
@@ -3938,8 +3926,9 @@ async function createHostContentContainers() {
         hosts.forEach(host => {
             const hostId = host.host_id;
             
-            // Skip Host 1 (uses regular tab IDs without host prefix)
-            if (hostId === 1) return;
+            // Skip hosts that use regular tab IDs without host prefix
+            const config = getHostConfig(hostId);
+            if (!config || !config.prefix) return;
             
             statusTypes.forEach(status => {
                 const tabId = `host${hostId}-${status}`;
