@@ -791,8 +791,7 @@ app.get('/api/videos/system/trash', async (req, res) => {
         // First, get all people to create a name map
         const { data: people, error: peopleError } = await supabase
             .from('people')
-            .select('id, name')
-            .eq('is_archived', false);
+            .select('id, name');
         
         if (peopleError) {
             console.error('ERROR fetching people:', peopleError);
@@ -868,8 +867,7 @@ app.get('/api/videos/system/relevance', async (req, res) => {
             // First, get all people to create a name map
             const { data: people, error: peopleError } = await supabase
                 .from('people')
-                .select('id, name')
-                .eq('is_archived', false);
+                .select('id, name');
             
             if (peopleError) {
                 console.error('ERROR fetching people:', peopleError);
