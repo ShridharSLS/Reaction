@@ -2978,7 +2978,7 @@ function handleSelectionChange(selectionState) {
 /**
  * Handle bulk delete operation
  */
-async function handleBulkDelete() {
+function handleBulkDelete() {
     if (!multiSelectManager || !multiSelectManager.hasSelection()) {
         return;
     }
@@ -2986,54 +2986,54 @@ async function handleBulkDelete() {
     const selectedIds = multiSelectManager.getSelectedIds();
     const selectedCount = selectedIds.length;
     
-    // Show confirmation modal
-    const confirmed = await Modal.confirm(
+    console.log('Bulk delete called for IDs:', selectedIds);
+    
+    // Use the same showConfirmation pattern as the working deleteVideo function
+    showConfirmation(
         'Confirm Bulk Delete',
         `Are you sure you want to delete ${selectedCount} selected video${selectedCount !== 1 ? 's' : ''}? This action cannot be undone.`,
-        'Delete All',
-        'Cancel'
+        async () => {
+            try {
+                console.log('Performing bulk delete for IDs:', selectedIds);
+                
+                // Set loading state
+                if (bulkActionBar) {
+                    bulkActionBar.setLoading(true);
+                }
+                
+                // Perform bulk delete using the same API pattern as single delete
+                const result = await ApiService.request('/api/videos/bulk', {
+                    method: 'DELETE',
+                    body: JSON.stringify({ ids: selectedIds })
+                });
+                
+                console.log('Bulk delete response:', result);
+                
+                // Show success message using the same pattern as single delete
+                showSuccessNotification(
+                    `Successfully deleted ${result.deletedCount} video${result.deletedCount !== 1 ? 's' : ''}`
+                );
+                
+                // Reset selection and reload data
+                if (multiSelectManager) {
+                    multiSelectManager.reset();
+                }
+                
+                // Reload the table data (same as single delete reloads current tab)
+                await loadAllEntries();
+                updateButtonCounts(); // Update counts after deletion
+                
+            } catch (error) {
+                console.error('Failed to bulk delete videos:', error);
+                alert(`Error deleting videos: ${error.message || 'Unknown error'}`);
+            } finally {
+                // Clear loading state
+                if (bulkActionBar) {
+                    bulkActionBar.setLoading(false);
+                }
+            }
+        }
     );
-    
-    if (!confirmed) return;
-    
-    try {
-        // Set loading state
-        if (bulkActionBar) {
-            bulkActionBar.setLoading(true);
-        }
-        
-        // Perform bulk delete
-        const result = await ApiService.request('/api/videos/bulk', {
-            method: 'DELETE',
-            body: JSON.stringify({ ids: selectedIds })
-        });
-        
-        // Show success message
-        showNotification(
-            `Successfully deleted ${result.deletedCount} video${result.deletedCount !== 1 ? 's' : ''}`,
-            'success'
-        );
-        
-        // Reset selection and reload data
-        if (multiSelectManager) {
-            multiSelectManager.reset();
-        }
-        
-        // Reload the table data
-        await loadAllEntries();
-        
-    } catch (error) {
-        console.error('Bulk delete failed:', error);
-        showNotification(
-            `Failed to delete videos: ${error.message}`,
-            'error'
-        );
-    } finally {
-        // Clear loading state
-        if (bulkActionBar) {
-            bulkActionBar.setLoading(false);
-        }
-    }
 }
 
 /**
