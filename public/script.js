@@ -78,14 +78,22 @@ function getHostConfig(hostId) {
 
 // Helper function to detect host from tab/status string
 function getHostFromStatus(status) {
-    if (status.startsWith('host2-')) return 2;
-    return 1; // Default to Shridhar
+    // Parse host ID from status string (e.g., 'host11-pending' -> 11)
+    const hostMatch = status.match(/^host(\d+)-/);
+    if (hostMatch) {
+        return parseInt(hostMatch[1]);
+    }
+    return 1; // Default to Shridhar (Host 1)
 }
 
 // Helper function to get host from tab ID
 function getHostFromTab(tabId) {
-    if (tabId.startsWith('host2-')) return 2;
-    return 1; // Default to Shridhar
+    // Parse host ID from tab ID (e.g., 'host11-pending' -> 11)
+    const hostMatch = tabId.match(/^host(\d+)-/);
+    if (hostMatch) {
+        return parseInt(hostMatch[1]);
+    }
+    return 1; // Default to Shridhar (Host 1)
 }
 
 // Unified Helper Functions (Phase 1.2: Non-Breaking)
