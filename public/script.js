@@ -2187,6 +2187,9 @@ function deleteVideo(videoId) {
 // Modal Functions
 // Refactored modal functions using unified Modal component
 function showConfirmation(title, message, callback) {
+    // Set global callback for legacy event handlers
+    confirmationCallback = callback;
+    
     if (confirmModal) {
         confirmModal.show({ title, message, callback });
     } else {
