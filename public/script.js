@@ -71,70 +71,90 @@ function getHostFromStatus(status) {
     return 1; // Default to Shridhar (Host 1)
 }
 
-// Helper function to get host from tab ID
-function getHostFromTab(tabId) {
-    // Parse host ID from tab ID (e.g., 'host11-pending' -> 11)
-    const hostMatch = tabId.match(/^host(\d+)-/);
-    if (hostMatch) {
-        return parseInt(hostMatch[1]);
+// ===== HOST UTILITIES MODULE =====
+// Consolidated host helper functions following DRY, KISS, and SOLID principles
+const HostUtils = {
+    // Get host configuration (Single source of truth)
+    getConfig(hostId) {
+        return HOST_CONFIG[hostId] || null;
+    },
+    
+    // Get video column value for any host (DRY implementation)
+    getVideoColumn(video, hostId, columnType) {
+        const config = this.getConfig(hostId);
+        if (!config) return null;
+        
+        const columnMap = {
+            'status': config.statusCol,
+            'note': config.noteCol,
+            'videoId': config.videoIdCol
+        };
+        
+        const column = columnMap[columnType];
+        return column ? video[column] : null;
+    },
+    
+    // Get API endpoint for host operations (Unified endpoint pattern)
+    getApiEndpoint(hostId, videoId, action = 'status') {
+        const config = this.getConfig(hostId);
+        if (!config) return null;
+        
+        // All hosts use the same unified API pattern
+        return `/api/videos/${videoId}/host/${hostId}/status`;
+    },
+    
+    // Get count key for any host and status (Consistent naming)
+    getCountKey(hostId, status) {
+        const config = this.getConfig(hostId);
+        if (!config) return null;
+        
+        return config.countPrefix ? `${config.countPrefix}${status}` : status;
+    },
+    
+    // Get tab ID for any host and status (Dynamic tab generation)
+    getTabId(hostId, status) {
+        const config = this.getConfig(hostId);
+        if (!config) return null;
+        
+        return config.prefix ? `${config.prefix}${status}` : status;
+    },
+    
+    // Parse host ID from tab ID (Utility for reverse lookup)
+    parseHostFromTab(tabId) {
+        const hostMatch = tabId.match(/^host(\d+)-/);
+        return hostMatch ? parseInt(hostMatch[1]) : 1; // Default to Host 1
+    },
+    
+    // Validate host exists and is active (Error prevention)
+    isValidHost(hostId) {
+        const config = this.getConfig(hostId);
+        return config !== null;
     }
-    return 1; // Default to Shridhar (Host 1)
-}
+};
 
-// Unified Helper Functions (Phase 1.2: Non-Breaking)
-// These provide host-agnostic access to data and endpoints
-
-// Get the correct video column value for any host
+// Legacy function wrappers for backward compatibility (will be removed in future steps)
 function getVideoColumn(video, hostId, columnType) {
-    const config = getHostConfig(hostId);
-    if (!config) return null;
-    
-    switch(columnType) {
-        case 'status': return video[config.statusCol];
-        case 'note': return video[config.noteCol];
-        case 'videoId': return video[config.videoIdCol];
-        default: return null;
-    }
+    return HostUtils.getVideoColumn(video, hostId, columnType);
 }
 
-// Get the correct API endpoint for any host and action
 function getHostApiEndpoint(hostId, videoId, action) {
-    const config = getHostConfig(hostId);
-    if (!config) return null;
-    
-    // Use unified generic API endpoint for all hosts
-    return `/api/videos/${videoId}/host/${hostId}/status`;
+    return HostUtils.getApiEndpoint(hostId, videoId, action);
 }
 
-// Get the correct status endpoint for any host (alias for getHostApiEndpoint)
 function getHostStatusEndpoint(videoId, hostId) {
-    return getHostApiEndpoint(hostId, videoId, 'status');
+    return HostUtils.getApiEndpoint(hostId, videoId, 'status');
 }
 
-// Get the correct count key for any host and status
 function getCountKey(hostId, status) {
-    const config = getHostConfig(hostId);
-    if (!config) return null;
-    
-    // Use count prefix for all hosts consistently
-    if (config.countPrefix) {
-        return `${config.countPrefix}${status}`; // e.g., 'person2_pending'
-    } else {
-        return status; // For hosts with no count prefix (like Host 1)
-    }
+    return HostUtils.getCountKey(hostId, status);
 }
 
-// Get the correct tab ID for any host and status - fully dynamic
 function getTabId(hostId, status) {
-    const config = getHostConfig(hostId);
-    if (!config) return null;
-    
-    // Use prefix for all hosts consistently
-    if (config.prefix) {
-        return `${config.prefix}${status}`; // e.g., 'host2-pending', 'host11-pending'
-    } else {
-        return status; // For hosts with no prefix (like Host 1)
-    }
+    return HostUtils.getTabId(hostId, status);
+}
+
+function getHostFromTab(tabId) {
+    return HostUtils.parseHostFromTab(tabId);
 }
 
 // ===== PHASE 3.1: DYNAMIC BUTTON GENERATION SYSTEM =====
@@ -791,10 +811,7 @@ class ApiService {
     }
 }
 
-// Legacy apiCall function - kept for backward compatibility during transition
-async function apiCall(url, options = {}) {
-    return ApiService.request(url, options);
-}
+
 
 // ===== MODAL COMPONENT CLASS =====
 // Unified modal system to eliminate code duplication and provide consistent modal behavior
@@ -1259,7 +1276,7 @@ class FormValidator {
 async function loadPeople() {
     try {
         // Load active people for forms and main list
-        people = await apiCall('/api/people');
+        people = await ApiService.request('/api/people');
         updatePersonSelect();
         updatePeopleList();
         
@@ -1390,7 +1407,7 @@ async function loadVideos(status) {
             }
         }
         
-        const response = await apiCall(apiEndpoint);
+        const response = await ApiService.request(apiEndpoint);
         console.log(`Received response for ${status}:`, response);
         
         // Handle different response formats:
@@ -1562,9 +1579,7 @@ function getVideoActions(video, status) {
     return getUnifiedVideoActions(video, status);
 }
 
-// Legacy Host 2 function - now redirects to unified system for backward compatibility
-// Legacy getHost2VideoActions function removed - now using getUnifiedVideoActions directly
-// All video actions now use: getUnifiedVideoActions(video, statusWithPrefix)
+
 
 // Form Setup
 function setupForms() {
@@ -1581,7 +1596,7 @@ function setupForms() {
         };
         
         try {
-            await apiCall('/api/videos', {
+            await ApiService.request('/api/videos', {
                 method: 'POST',
                 body: JSON.stringify(formData)
             });
@@ -1622,7 +1637,7 @@ function setupForms() {
         const name = document.getElementById('person-name').value.trim();
         
         try {
-            await apiCall('/api/people', {
+            await ApiService.request('/api/people', {
                 method: 'POST',
                 body: JSON.stringify({ name })
             });
@@ -1665,7 +1680,7 @@ async function updatePersonName(personId, newName) {
     }
     
     try {
-        await apiCall(`/api/people/${personId}`, {
+        await ApiService.request(`/api/people/${personId}`, {
             method: 'PUT',
             body: JSON.stringify({ name: trimmedName })
         });
@@ -1776,7 +1791,7 @@ async function archivePerson(personId) {
     }
     
     try {
-        await apiCall(`/api/people/${personId}/archive`, {
+        await ApiService.request(`/api/people/${personId}/archive`, {
             method: 'PUT'
         });
         
@@ -1791,7 +1806,7 @@ async function archivePerson(personId) {
 // Unarchive person
 async function unarchivePerson(personId) {
     try {
-        await apiCall(`/api/people/${personId}/unarchive`, {
+        await ApiService.request(`/api/people/${personId}/unarchive`, {
             method: 'PUT'
         });
         
@@ -1907,7 +1922,7 @@ async function updateRelevance(videoId, relevanceRating) {
         showNotification('Updating relevance...', 'info');
         
         // Call the API to update relevance
-        await apiCall(`/api/videos/${videoId}/relevance`, {
+        await ApiService.request(`/api/videos/${videoId}/relevance`, {
             method: 'PUT',
             body: JSON.stringify({ relevance_rating: parseInt(relevanceRating) })
         });
@@ -1972,7 +1987,7 @@ async function updateVideoId(videoId, videoIdText) {
         const hostId = getHostFromTab(currentTab);
         const endpoint = getHostStatusEndpoint(videoId, hostId);
         
-        await apiCall(endpoint, {
+        await ApiService.request(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ 
                 status: 'assigned',
@@ -1993,7 +2008,7 @@ async function clearVideoId(videoId) {
         const hostId = getHostFromTab(currentTab);
         const endpoint = getHostStatusEndpoint(videoId, hostId);
         
-        await apiCall(endpoint, {
+        await ApiService.request(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ 
                 status: 'accepted',
@@ -2008,8 +2023,7 @@ async function clearVideoId(videoId) {
     }
 }
 
-// Legacy Host 2 functions removed - now using unified hostAction system
-// All host-specific actions now use hostAction(hostId, videoId, action)
+
 
 // Generic Host Action Function (Phase 1.3: Parallel Implementation)
 // This function can handle accept/reject/assign actions for any host
@@ -2078,7 +2092,7 @@ async function hostActionAssign(hostId, videoId) {
                 video_id_text: videoIdText
             };
             
-            await apiCall(endpoint, {
+            await ApiService.request(endpoint, {
                 method: 'PUT',
                 body: JSON.stringify(updateData)
             });
@@ -2097,7 +2111,7 @@ async function hostActionPending(hostId, videoId) {
     const endpoint = getHostApiEndpoint(hostId, videoId);
     
     try {
-        await apiCall(endpoint, {
+        await ApiService.request(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ status: 'pending' })
         });
@@ -2115,7 +2129,7 @@ async function hostActionClearVideoId(hostId, videoId) {
     const endpoint = getHostApiEndpoint(hostId, videoId);
     
     try {
-        await apiCall(endpoint, {
+        await ApiService.request(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ 
                 status: 'accepted',
@@ -2162,7 +2176,7 @@ function deleteVideo(videoId) {
         async () => {
             try {
                 console.log('Deleting video with ID:', videoId);
-                const response = await apiCall(`/api/videos/${videoId}`, {
+                const response = await ApiService.request(`/api/videos/${videoId}`, {
                     method: 'DELETE'
                 });
                 console.log('Delete response:', response);
@@ -2176,13 +2190,6 @@ function deleteVideo(videoId) {
         }
     );
 }
-
-// Host 2 Action Functions - now use unified system
-// Legacy Host 2 action functions removed - now using unified hostAction system
-// All host actions now use: hostActionAccept(hostId, videoId), hostActionReject(hostId, videoId), etc.
-
-// ===== DUPLICATE FUNCTION REMOVAL COMPLETE =====
-// showHost2NoteModal removed - now using unified hostAction system
 
 // Modal Functions
 // Refactored modal functions using unified Modal component
@@ -2666,7 +2673,7 @@ function toggleTypePill(videoId) {
 
 async function updateVideoType(videoId, newType) {
     try {
-        const response = await apiCall(`/api/videos/${videoId}/type`, {
+        const response = await ApiService.request(`/api/videos/${videoId}/type`, {
             method: 'PUT',
             body: JSON.stringify({ type: newType })
         });
@@ -2793,7 +2800,7 @@ let currentSortDirection = 'asc';
 
 async function loadAllEntries() {
     try {
-        allEntriesData = await apiCall('/api/videos/all/entries');
+        allEntriesData = await ApiService.request('/api/videos/all/entries');
         renderAllEntriesTable(allEntriesData);
         setupAllViewSearch();
     } catch (error) {
@@ -3061,7 +3068,7 @@ async function saveNote() {
             const hostId = getHostFromTab(currentTab);
             const endpoint = getHostStatusEndpoint(currentNoteVideoId, hostId);
             
-            await apiCall(endpoint, {
+            await ApiService.request(endpoint, {
                 method: 'PUT',
                 body: JSON.stringify({ status, note })
             });
@@ -3075,7 +3082,7 @@ async function saveNote() {
             const hostId = getHostFromTab(currentTab);
             const endpoint = getHostStatusEndpoint(currentNoteVideoId, hostId);
             
-            await apiCall(endpoint, {
+            await ApiService.request(endpoint, {
                 method: 'PUT',
                 body: JSON.stringify({ note })
             });
@@ -3100,7 +3107,7 @@ async function deleteNote() {
         const hostId = getHostFromTab(currentTab);
         const endpoint = getHostStatusEndpoint(currentNoteVideoId, hostId);
         
-        await apiCall(endpoint, {
+        await ApiService.request(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ note: null })
         });
@@ -3190,7 +3197,7 @@ function closePitchModal() {
 async function updateRelevanceCount() {
     try {
         // Fetch relevance count from the API
-        const relevanceResponse = await apiCall('/api/videos/system/relevance');
+        const relevanceResponse = await ApiService.request('/api/videos/system/relevance');
         
         // Update the count in the UI for relevance section
         if (relevanceResponse && typeof relevanceResponse.count === 'number') {
@@ -3217,7 +3224,7 @@ async function updateRelevanceCount() {
         }
         
         // Also fetch and update trash count
-        const trashResponse = await apiCall('/api/videos/system/trash');
+        const trashResponse = await ApiService.request('/api/videos/system/trash');
         
         if (trashResponse && typeof trashResponse.count === 'number') {
             const trashCount = trashResponse.count;
@@ -3347,7 +3354,7 @@ async function updateButtonCountsFallback() {
 // Load all tags from the server
 async function loadTags() {
     try {
-        tags = await apiCall('/api/tags');
+        tags = await ApiService.request('/api/tags');
         if (currentTab === 'manage-tags') {
             renderTagsList();
         }
@@ -3384,7 +3391,7 @@ function renderTagsList() {
 // Add new tag
 async function addTag(name, color) {
     try {
-        const newTag = await apiCall('/api/tags', {
+        const newTag = await ApiService.request('/api/tags', {
             method: 'POST',
             body: JSON.stringify({ name, color })
         });
@@ -3413,7 +3420,7 @@ async function editTag(tagId, currentName, currentColor) {
     if (!newColor) return;
     
     try {
-        const updatedTag = await apiCall(`/api/tags/${tagId}`, {
+        const updatedTag = await ApiService.request(`/api/tags/${tagId}`, {
             method: 'PUT',
             body: JSON.stringify({ name: newName.trim(), color: newColor })
         });
@@ -3442,7 +3449,7 @@ async function deleteTag(tagId, tagName) {
     }
     
     try {
-        await apiCall(`/api/tags/${tagId}`, {
+        await ApiService.request(`/api/tags/${tagId}`, {
             method: 'DELETE'
         });
         
@@ -3492,7 +3499,7 @@ async function showTagModal(videoId) {
     
     try {
         // Load current video tags
-        const videoTags = await apiCall(`/api/videos/${videoId}/tags`);
+        const videoTags = await ApiService.request(`/api/videos/${videoId}/tags`);
         const videoTagIds = videoTags.map(tag => tag.id);
         
         // Render tag options
@@ -3531,7 +3538,7 @@ async function saveVideoTags() {
         .map(cb => parseInt(cb.value));
     
     try {
-        await apiCall(`/api/videos/${currentVideoId}/tags`, {
+        await ApiService.request(`/api/videos/${currentVideoId}/tags`, {
             method: 'PUT',
             body: JSON.stringify({ tag_ids: selectedTagIds })
         });
@@ -3559,7 +3566,7 @@ function renderVideoTags(videoTags) {
 // Load tags for a specific video (used when rendering video cards)
 async function loadVideoTags(videoId) {
     try {
-        return await apiCall(`/api/videos/${videoId}/tags`);
+        return await ApiService.request(`/api/videos/${videoId}/tags`);
     } catch (error) {
         console.error('Failed to load video tags:', error);
         return [];
@@ -3929,7 +3936,7 @@ async function createHostContentContainers() {
         }
         
         // Get all active hosts
-        const hosts = await apiCall('/api/hosts');
+        const hosts = await ApiService.request('/api/hosts');
         const statusTypes = ['pending', 'accepted', 'rejected', 'assigned'];
         
         hosts.forEach(host => {
