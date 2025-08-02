@@ -187,7 +187,11 @@ function generateButton(buttonTemplate, hostId, videoId, video) {
         case 'reject':
         case 'assign':
         case 'pending':
-            onclick = `hostAction(${hostId}, ${videoId}, '${type}')`;
+            // Get current note from video object for the specific host
+            const config = getHostConfig(hostId);
+            const currentNote = config && video[config.noteColumn] ? video[config.noteColumn] : '';
+            const escapedNote = currentNote.replace(/'/g, "\\'").replace(/"/g, '\\"');
+            onclick = `hostAction(${hostId}, ${videoId}, '${type}', {currentNote: '${escapedNote}'})`;
             break;
             
         case 'delete':
@@ -2021,10 +2025,10 @@ async function hostAction(hostId, videoId, action, options = {}) {
 
         switch(action) {
             case 'accept':
-                await hostActionAccept(hostId, videoId);
+                await hostActionAccept(hostId, videoId, options.currentNote || '');
                 break;
             case 'reject':
-                await hostActionReject(hostId, videoId);
+                await hostActionReject(hostId, videoId, options.currentNote || '');
                 break;
             case 'assign':
                 await hostActionAssign(hostId, videoId);
@@ -2044,39 +2048,19 @@ async function hostAction(hostId, videoId, action, options = {}) {
 }
 
 // Helper function for accept action
-async function hostActionAccept(hostId, videoId) {
+async function hostActionAccept(hostId, videoId, currentNote = '') {
     const config = getHostConfig(hostId);
     
-    try {
-        // Fetch current video data to get existing note
-        const videoData = await ApiService.request(`/api/videos/${videoId}`);
-        const currentNote = videoData[config.noteColumn] || '';
-        
-        // Use unified modal system for all hosts with existing note pre-filled
-        showNoteModal(videoId, 'accept', currentNote);
-    } catch (error) {
-        console.error('Failed to fetch video data for note:', error);
-        // Fallback to empty note if fetch fails
-        showNoteModal(videoId, 'accept', '');
-    }
+    // Use unified modal system for all hosts with existing note pre-filled
+    showNoteModal(videoId, 'accept', currentNote);
 }
 
 // Helper function for reject action
-async function hostActionReject(hostId, videoId) {
+async function hostActionReject(hostId, videoId, currentNote = '') {
     const config = getHostConfig(hostId);
     
-    try {
-        // Fetch current video data to get existing note
-        const videoData = await ApiService.request(`/api/videos/${videoId}`);
-        const currentNote = videoData[config.noteColumn] || '';
-        
-        // Use unified modal system for all hosts with existing note pre-filled
-        showNoteModal(videoId, 'reject', currentNote);
-    } catch (error) {
-        console.error('Failed to fetch video data for note:', error);
-        // Fallback to empty note if fetch fails
-        showNoteModal(videoId, 'reject', '');
-    }
+    // Use unified modal system for all hosts with existing note pre-filled
+    showNoteModal(videoId, 'reject', currentNote);
 }
 
 // Helper function for assign action
