@@ -113,6 +113,11 @@ function getHostApiEndpoint(hostId, videoId, action) {
     return `/api/videos/${videoId}/host/${hostId}/status`;
 }
 
+// Get the correct status endpoint for any host (alias for getHostApiEndpoint)
+function getHostStatusEndpoint(videoId, hostId) {
+    return getHostApiEndpoint(hostId, videoId, 'status');
+}
+
 // Get the correct count key for any host and status
 function getCountKey(hostId, status) {
     const config = getHostConfig(hostId);
