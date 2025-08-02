@@ -14,6 +14,18 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
+// Error handling middleware
+function asyncHandler(fn) {
+    return async (req, res, next) => {
+        try {
+            await fn(req, res, next);
+        } catch (err) {
+            console.error(`API Error: ${req.method} ${req.path}`, err);
+            res.status(500).json({ error: err.message });
+        }
+    };
+}
+
 // ===== DYNAMIC COLUMN MAPPING SYSTEM =====
 // Centralized column mapping for all hosts (removes hardcoded column references)
 function getHostColumns(hostId) {
@@ -145,56 +157,67 @@ app.get('/submit', (req, res) => {
 // API Routes
 
 // Get all people
-app.get('/api/people', async (req, res) => {
-    try {
-        const { archived } = req.query;
+app.get('/api/people', asyncHandler(async (req, res) => {
+    const { archived } = req.query;
+    
+    let query = supabase
+        .from('people')
+        .select('*');
         
-        let query = supabase
-            .from('people')
-            .select('*');
-            
-        // Filter by archived status
-        if (archived === 'true') {
-            query = query.eq('archived', true);
-        } else {
-            // Default: only show non-archived people
-            query = query.eq('archived', false);
-        }
-        
-        const { data, error } = await query.order('name');
-            
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
-        
-        res.json(data || []);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    // Filter by archived status
+    if (archived === 'true') {
+        query = query.eq('archived', true);
+    } else {
+        // Default: only show non-archived people
+        query = query.eq('archived', false);
     }
-});
+    
+    const { data, error } = await query.order('name');
+        
+    if (error) {
+        throw error;
+    }
+    
+    res.json(data || []);
+}));
 
 // Add new person
-app.post('/api/people', async (req, res) => {
-    try {
-        const { name } = req.body;
-        
-        const { data, error } = await supabase
-            .from('people')
-            .insert([{ name }])
-            .select()
-            .single();
-            
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
-        
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+app.post('/api/people', asyncHandler(async (req, res) => {
+    const { name } = req.body;
+    
+    if (!name || name.trim() === '') {
+        res.status(400).json({ error: 'Name is required' });
+        return;
     }
-});
+    
+    // Check for duplicate name
+    const { data: existingPeople, error: checkError } = await supabase
+        .from('people')
+        .select('id')
+        .eq('name', name.trim())
+        .maybeSingle();
+        
+    if (checkError) {
+        throw checkError;
+    }
+    
+    if (existingPeople) {
+        res.status(409).json({ error: 'A person with this name already exists' });
+        return;
+    }
+    
+    const { data, error } = await supabase
+        .from('people')
+        .insert([{ name: name.trim() }])
+        .select()
+        .single();
+        
+    if (error) {
+        throw error;
+    }
+    
+    res.status(201).json(data);
+}));
 
 // Update person name
 app.put('/api/people/:id', async (req, res) => {
@@ -1138,507 +1161,58 @@ app.put('/api/videos/:id/note', async (req, res) => {
             .eq('id', id);
             
         if (error) {
-            res.status(500).json({ error: error.message });
-            return;
+            throw error;
         }
         
         res.json({ message: 'Note updated successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
     }
-});
+}));
 
-// Delete video
-app.delete('/api/videos/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        const { error } = await supabase
-            .from('videos')
-            .delete()
-            .eq('id', id);
-            
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
-        
-        res.json({ message: 'Video deleted successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+// Archive/unarchive a person
+app.patch('/api/people/:id', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { archived } = req.body;
+    
+    if (archived === undefined) {
+        res.status(400).json({ error: 'Archived status is required' });
+        return;
     }
-});
-
-// Update video type
-app.put('/api/videos/:id/type', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { type } = req.body;
+    
+    const { data, error } = await supabase
+        .from('people')
+        .update({ archived: Boolean(archived) })
+        .eq('id', id)
+        .select()
+        .single();
         
-        // Validate type
-        if (!['Trending', 'General'].includes(type)) {
-            res.status(400).json({ error: 'Invalid video type. Must be Trending or General.' });
-            return;
-        }
-        
-        const { error } = await supabase
-            .from('videos')
-            .update({ type })
-            .eq('id', id);
-            
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
-        
-        res.json({ message: 'Video type updated successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    if (error) {
+        throw error;
     }
-});
-
-// Legacy Host 1 CSV export endpoint removed - now using unified /api/export/host/:hostId/:status endpoint
-// All host-specific CSV exports now use the dynamic host endpoint system
-
-// Export all database entries as CSV
-app.get('/api/export/all', async (req, res) => {
-    try {
-        // Get all videos without JOIN since we removed the foreign key constraint
-        const { data: videos, error: videosError } = await supabase
-            .from('videos')
-            .select('*')
-            .order('created_at', { ascending: false });
-            
-        if (videosError) {
-            res.status(500).json({ error: videosError.message });
-            return;
-        }
-        
-        // Get all people to map names
-        const { data: people, error: peopleError } = await supabase
-            .from('people')
-            .select('*')
-            .eq('archived', false);
-            
-        if (peopleError) {
-            res.status(500).json({ error: peopleError.message });
-            return;
-        }
-        
-        // Create a map of people by ID
-        const peopleMap = {};
-        people.forEach(person => {
-            peopleMap[person.id] = person.name;
-        });
-        
-        // Create CSV content
-        const csvRows = [];
-        
-        // Header row
-        csvRows.push([
-            'ID',
-            'Person Name',
-            'Video Link',
-            'Type',
-            'Status',
-            'Likes Count',
-            'Relevance Rating',
-            'Score',
-            'Video ID Text',
-            'Video Code',
-            'Created At',
-            'Updated At'
-        ].map(header => `"${header}"`).join(','));
-        
-        // Data rows
-        videos.forEach(video => {
-            const csvRow = [
-                `"${video.id || ''}"`,
-                `"${peopleMap[video.added_by] || 'Unknown'}"`,
-                `"${video.link || ''}"`,
-                `"${video.type || ''}"`,
-                `"${video.status || ''}"`,
-                `"${video.likes_count || 0}"`,
-                `"${video.relevance_rating !== null ? video.relevance_rating : ''}"`,
-                `"${video.score !== null ? video.score.toFixed(2) : ''}"`,
-                `"${video.video_id_text || ''}"`,
-                `"${video.video_code || ''}"`,
-                `"${video.created_at || ''}"`,
-                `"${video.updated_at || ''}"`
-            ];
-            csvRows.push(csvRow.join(','));
-        });
-        
-        const csvContent = csvRows.join('\n');
-        
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', 'attachment; filename="all_database_entries.csv"');
-        res.send(csvContent);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Simple Authentication endpoints
-
-// Login with email and password
-app.post('/api/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        
-        if (!email || !password) {
-            return res.status(400).json({ error: 'Email and password are required' });
-        }
-        
-        // Check if email and password match in admins table
-        const { data: admin, error } = await supabase
-            .from('admins')
-            .select('id, email, name, password')
-            .eq('email', email.toLowerCase())
-            .eq('password', password)
-            .single();
-            
-        if (error || !admin) {
-            return res.status(401).json({ error: 'Invalid email or password' });
-        }
-        
-        // Update last login
-        await supabase
-            .from('admins')
-            .update({ last_login: new Date().toISOString() })
-            .eq('id', admin.id);
-        
-        res.json({ 
-            success: true, 
-            admin: { 
-                id: admin.id, 
-                email: admin.email, 
-                name: admin.name 
-            } 
-        });
-    } catch (err) {
-        console.error('Login failed:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Get all admins (for admin management)
-app.get('/api/admins', async (req, res) => {
-    try {
-        const { data: admins, error } = await supabase
-            .from('admins')
-            .select('id, email, name, created_at, last_login')
-            .order('created_at', { ascending: false });
-            
-        if (error) {
-            console.error('Get admins error:', error);
-            return res.status(500).json({ error: 'Failed to fetch admins' });
-        }
-        
-        res.json(admins);
-    } catch (err) {
-        console.error('Get admins failed:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Add new admin
-app.post('/api/admins', async (req, res) => {
-    try {
-        const { email, name, password } = req.body;
-        
-        if (!email || !password) {
-            return res.status(400).json({ error: 'Email and password are required' });
-        }
-        
-        const { data: admin, error } = await supabase
-            .from('admins')
-            .insert([{
-                email: email.toLowerCase(),
-                name: name || null,
-                password: password
-            }])
-            .select('id, email, name')
-            .single();
-            
-        if (error) {
-            if (error.code === '23505') { // Unique constraint violation
-                return res.status(409).json({ error: 'Admin with this email already exists' });
-            }
-            console.error('Add admin error:', error);
-            return res.status(500).json({ error: 'Failed to add admin' });
-        }
-        
-        res.json({ id: admin.id, message: 'Admin added successfully' });
-    } catch (err) {
-        console.error('Add admin failed:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Remove admin
-app.delete('/api/admins/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        const { error } = await supabase
-            .from('admins')
-            .delete()
-            .eq('id', id);
-            
-        if (error) {
-            console.error('Remove admin error:', error);
-            return res.status(500).json({ error: 'Failed to remove admin' });
-        }
-        
-        res.json({ message: 'Admin removed successfully' });
-    } catch (err) {
-        console.error('Remove admin failed:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Change admin password
-app.put('/api/admins/:id/password', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { password } = req.body;
-        
-        if (!password) {
-            return res.status(400).json({ error: 'Password is required' });
-        }
-        
-        const { error } = await supabase
-            .from('admins')
-            .update({ password: password })
-            .eq('id', id);
-            
-        if (error) {
-            console.error('Change password error:', error);
-            return res.status(500).json({ error: 'Failed to change password' });
-        }
-        
-        res.json({ message: 'Password changed successfully' });
-    } catch (err) {
-        console.error('Change password failed:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Serve main page (protected)
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Tags Management Endpoints
-
-// Get all tags
-app.get('/api/tags', async (req, res) => {
-    try {
-        const { data: tags, error } = await supabase
-            .from('tags')
-            .select('*')
-            .order('name');
-            
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
-        
-        res.json(tags || []);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Add new tag
-app.post('/api/tags', async (req, res) => {
-    try {
-        const { name, color } = req.body;
-        
-        if (!name) {
-            res.status(400).json({ error: 'Tag name is required' });
-            return;
-        }
-        
-        const { data, error } = await supabase
-            .from('tags')
-            .insert({ name: name.trim(), color: color || '#007bff' })
-            .select()
-            .single();
-            
-        if (error) {
-            if (error.code === '23505') { // Unique constraint violation
-                res.status(409).json({ error: 'Tag name already exists' });
-            } else {
-                res.status(500).json({ error: error.message });
-            }
-            return;
-        }
-        
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Update tag
-app.put('/api/tags/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { name, color } = req.body;
-        
-        if (!name) {
-            res.status(400).json({ error: 'Tag name is required' });
-            return;
-        }
-        
-        const { data, error } = await supabase
-            .from('tags')
-            .update({ name: name.trim(), color: color || '#007bff' })
-            .eq('id', id)
-            .select()
-            .single();
-            
-        if (error) {
-            if (error.code === '23505') { // Unique constraint violation
-                res.status(409).json({ error: 'Tag name already exists' });
-            } else {
-                res.status(500).json({ error: error.message });
-            }
-            return;
-        }
-        
-        res.json(data);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Delete tag
-app.delete('/api/tags/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        const { error } = await supabase
-            .from('tags')
-            .delete()
-            .eq('id', id);
-            
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
-        
-        res.json({ message: 'Tag deleted successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Get tags for a specific video
-app.get('/api/videos/:id/tags', async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        const { data: videoTags, error } = await supabase
-            .from('video_tags')
-            .select(`
-                tag_id,
-                tags (id, name, color)
-            `)
-            .eq('video_id', id);
-            
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
-        
-        const tags = videoTags?.map(vt => vt.tags) || [];
-        res.json(tags);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Update tags for a video
-app.put('/api/videos/:id/tags', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { tag_ids } = req.body;
-        
-        if (!Array.isArray(tag_ids)) {
-            res.status(400).json({ error: 'tag_ids must be an array' });
-            return;
-        }
-        
-        // Remove existing tags for this video
-        const { error: deleteError } = await supabase
-            .from('video_tags')
-            .delete()
-            .eq('video_id', id);
-            
-        if (deleteError) {
-            res.status(500).json({ error: deleteError.message });
-            return;
-        }
-        
-        // Add new tags if any
-        if (tag_ids.length > 0) {
-            const videoTagsData = tag_ids.map(tag_id => ({
-                video_id: parseInt(id),
-                tag_id: parseInt(tag_id)
-            }));
-            
-            const { error: insertError } = await supabase
-                .from('video_tags')
-                .insert(videoTagsData);
-                
-            if (insertError) {
-                res.status(500).json({ error: insertError.message });
-                return;
-            }
-        }
-        
-        res.json({ message: 'Video tags updated successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Serve login page
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-// ===== PHASE 4: HOST MANAGEMENT SYSTEM API ENDPOINTS =====
-// Backend API for dynamic host configuration management
+    
+    res.json(data);
+}));
 
 // Get all hosts
-app.get('/api/hosts', async (req, res) => {
-    try {
-        const { include_inactive } = req.query;
-        
-        let query = supabase.from('hosts').select('*');
-        
-        // Only filter by is_active if include_inactive is not requested
-        if (!include_inactive || include_inactive !== 'true') {
-            query = query.eq('is_active', true);
-        }
-        
-        const { data: hosts, error } = await query.order('host_id');
-            
-        if (error) {
-            console.error('Error fetching hosts:', error);
-            return res.status(500).json({ error: 'Failed to fetch hosts' });
-        }
-        
-        res.json(hosts);
-    } catch (error) {
-        console.error('Error in /api/hosts:', error);
-        res.status(500).json({ error: 'Internal server error' });
+app.get('/api/hosts', asyncHandler(async (req, res) => {
+    // Query parameter for whether to include inactive hosts
+    const includeInactive = req.query.include_inactive === 'true';
+    
+    let query = supabase.from('hosts').select('*');
+    
+    // Only include active hosts unless specifically requested
+    if (!includeInactive) {
+        query = query.eq('is_active', true);
     }
-});
+    
+    // Order by host_id for consistent display
+    const { data, error } = await query.order('host_id');
+    
+    if (error) {
+        throw error;
+    }
+    
+    res.json(data);
+}));
 
 // Get single host by ID
 app.get('/api/hosts/:hostId', async (req, res) => {
