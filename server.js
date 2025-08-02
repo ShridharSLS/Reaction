@@ -1459,6 +1459,36 @@ app.post('/api/schema/test', async (req, res) => {
     }
 });
 
+// ===== VIDEO DELETE ENDPOINT =====
+
+// Delete a video
+app.delete('/api/videos/:id', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    // First, remove all tag associations
+    const { error: tagError } = await supabase
+        .from('video_tags')
+        .delete()
+        .eq('video_id', id);
+        
+    if (tagError) throw tagError;
+    
+    // Then delete the video itself
+    const { data, error } = await supabase
+        .from('videos')
+        .delete()
+        .eq('id', id)
+        .select();
+        
+    if (error) throw error;
+    
+    if (!data || data.length === 0) {
+        return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    res.json({ message: 'Video deleted successfully', video: data[0] });
+}));
+
 // ===== TAG MANAGEMENT API ENDPOINTS =====
 
 // Get all tags
