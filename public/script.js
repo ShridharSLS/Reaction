@@ -1867,11 +1867,11 @@ function previewBulkData() {
         const rowNum = index + 1;
         
         if (columns.length < 4) {
-            errors.push(`Row ${rowNum}: Expected 4-6 columns (Name, Link, Type, Likes, Relevance, Pitch), found ${columns.length}`);
+            errors.push(`Row ${rowNum}: Expected 4-6 columns (Name, Link, Type, Likes, Pitch, Relevance), found ${columns.length}`);
             return;
         }
         
-        const [name, link, type, likes, relevance, pitch] = columns.map(col => col.trim());
+        const [name, link, type, likes, pitch, relevance] = columns.map(col => col.trim());
         
         // Validation
         if (!name) {
@@ -1918,8 +1918,8 @@ function previewBulkData() {
                         <th>Link</th>
                         <th>Type</th>
                         <th>Likes</th>
-                        <th>Relevance</th>
                         <th>Pitch</th>
+                        <th>Relevance</th>
                         <th>Destination</th>
                     </tr>
                 </thead>
@@ -1937,8 +1937,8 @@ function previewBulkData() {
                     <td><a href="${escapeHtml(row.link)}" target="_blank">${truncateUrl(row.link, 40)}</a></td>
                     <td>${escapeHtml(row.type)}</td>
                     <td>${row.likes}</td>
-                    <td>${relevanceDisplay}</td>
                     <td title="${escapeHtml(row.pitch || '')}">${escapeHtml(pitchDisplay)}</td>
+                    <td>${relevanceDisplay}</td>
                     <td>${destination}</td>
                 </tr>
             `;

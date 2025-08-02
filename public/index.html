@@ -81,7 +81,7 @@
                 <h2>📋 Bulk Import Video Topics</h2>
                 <p class="bulk-import-instructions">
                 <p>
-                    <strong>Format:</strong> Copy and paste data from Google Sheets with columns: <code>Name | Link | Type | Likes count (in thousands) | Relevance (optional) | Pitch (optional)</code>
+                    <strong>Format:</strong> Copy and paste data from Google Sheets with columns: <code>Name | Link | Type | Likes count (in thousands) | Pitch (optional) | Relevance (optional)</code>
                     <br><strong>Relevance Logic:</strong> If relevance column is empty → goes to Relevance section (-1). If relevance has value (0-3) → goes directly to Pending.
                     <br><strong>Pitch Column:</strong> Optional user note explaining why this video topic would be valuable.
                     <br><strong>Auto-Create People:</strong> New names will be automatically added to the people database - no need to pre-create them!
@@ -89,7 +89,7 @@
                 
                 <div class="form-group">
                     <label for="bulk-data">Paste Data from Google Sheets:</label>
-                    <textarea id="bulk-data" placeholder="Paste your copied data here...\nExample:\nJohn Doe\thttps://youtube.com/watch?v=123\tTrending\t500\t2\tGreat educational content\nJane Smith\thttps://youtube.com/watch?v=456\tGeneral\t200\t\tFunny and engaging\nBob Wilson\thttps://youtube.com/watch?v=789\tTrending\t300\t1\t" rows="10"></textarea>
+                    <textarea id="bulk-data" placeholder="Paste your copied data here...\nExample:\nJohn Doe\thttps://youtube.com/watch?v=123\tTrending\t500\tGreat educational content\t2\nJane Smith\thttps://youtube.com/watch?v=456\tGeneral\t200\tFunny and engaging\t\nBob Wilson\thttps://youtube.com/watch?v=789\tTrending\t300\t\t1" rows="10"></textarea>
                 </div>
                 
                 <div class="bulk-actions">
