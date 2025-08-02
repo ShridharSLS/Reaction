@@ -788,27 +788,30 @@ app.get('/api/videos/system/trash', async (req, res) => {
     try {
         console.log('Fetching system-wide trash videos...');
         
-        // Get all videos with relevance_rating = 0 (trash)
+        // Get all videos with relevance_rating = 0 (trash) with proper people table join
         const { data: trashVideos, error: trashError } = await supabase
             .from('videos')
-            .select('*')
+            .select(`
+                *,
+                people(name)
+            `)
             .eq('relevance_rating', 0)
             .limit(50);
         
-        console.log('Trash query result:', trashError ? 'ERROR' : 'SUCCESS');
+        console.log('Trash query with people join result:', trashError ? 'ERROR' : 'SUCCESS');
         console.log(`Found ${trashVideos ? trashVideos.length : 0} videos with relevance_rating = 0 (trash)`);
         
         if (trashError) {
-            console.error('ERROR in trash query:', trashError);
+            console.error('ERROR in trash query with people join:', trashError);
             return res.status(500).json({ error: 'Failed in trash query: ' + trashError.message });
         }
         
-        // Format response to match other endpoints
+        // Format response with proper person names from joined people table (unified with other endpoints)
         const response = {
             videos: trashVideos.map(video => ({
                 ...video,
-                // Add placeholder for person name since we're skipping the join
-                added_by_name: 'Unknown', // Simplified - no join with people
+                // Add person_name from joined people table (unified with other endpoints)
+                added_by_name: video.people ? video.people.name : 'Unknown',
             })),
             status: 'trash',
             count: trashVideos.length,
@@ -846,37 +849,39 @@ app.get('/api/videos/system/relevance', async (req, res) => {
             return res.status(500).json({ error: 'Exception in basic query: ' + basicQueryError.message });
         }
         
-        // Try a simple query for relevance videos using relevance_rating as the primary filter
+        // Query for relevance videos with proper people table join (unified with other endpoints)
         try {
-            // Use relevance_rating as primary filter for the relevance view
-            const { data: simpleVideos, error: simpleError } = await supabase
+            // Use relevance_rating as primary filter for the relevance view with people join
+            const { data: relevanceVideos, error: relevanceError } = await supabase
                 .from('videos')
-                .select('*')
+                .select(`
+                    *,
+                    people(name)
+                `)
                 .eq('relevance_rating', -1)
                 .limit(50);
             
-            console.log('Simple relevance query result:', simpleError ? 'ERROR' : 'SUCCESS');
-            console.log(`Found ${simpleVideos ? simpleVideos.length : 0} videos with relevance_rating = -1`);
+            console.log('Relevance query with people join result:', relevanceError ? 'ERROR' : 'SUCCESS');
+            console.log(`Found ${relevanceVideos ? relevanceVideos.length : 0} videos with relevance_rating = -1`);
             
-            if (simpleError) {
-                console.error('ERROR in simple relevance query:', simpleError);
-                return res.status(500).json({ error: 'Failed in simple relevance query: ' + simpleError.message });
+            if (relevanceError) {
+                console.error('ERROR in relevance query with people join:', relevanceError);
+                return res.status(500).json({ error: 'Failed in relevance query: ' + relevanceError.message });
             }
             
-            // If we got this far, just return these simple results as a workaround
+            // Return results with proper person names from joined people table
             const response = {
-                videos: simpleVideos.map(video => ({
+                videos: relevanceVideos.map(video => ({
                     ...video,
-                    // Add placeholder for person name since we're skipping the join
-                    added_by_name: 'Unknown', // Simplified - no join with people
+                    // Add person_name from joined people table (unified with other endpoints)
+                    added_by_name: video.people ? video.people.name : 'Unknown',
                 })),
                 status: 'relevance',
-                count: simpleVideos.length,
-                isSystemWide: true,
-                simplified: true // Indicate this is using the simplified query
+                count: relevanceVideos.length,
+                isSystemWide: true
             };
             
-            console.log('Returning simplified response with', response.count, 'videos');
+            console.log('Returning unified response with', response.count, 'videos');
             return res.json(response);
         } catch (simpleQueryError) {
             console.error('ERROR: Simple query exception:', simpleQueryError);
