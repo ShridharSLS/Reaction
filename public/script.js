@@ -941,6 +941,7 @@ function createVideoCard(video, status) {
                 </div>
                 
                 <div class="detail-item pitch-item">
+                    <span class="detail-label">Pitch</span>
                     <span class="detail-value pitch-content" id="pitch-${video.id}">
                         ${renderPitchDisplay(video.pitch, video.id)}
                     </span>
@@ -2768,39 +2769,55 @@ function renderPitchDisplay(pitch, videoId) {
         return '<span class="pitch-empty"></span>'; // Blank space for alignment
     }
     
-    const maxLength = 50; // Shorter for better layout
-    const truncated = pitch.length > maxLength;
-    const displayText = truncated ? pitch.substring(0, maxLength) + '...' : pitch;
-    
     return `
-        <span class="pitch-text" title="${escapeHtml(pitch)}" onclick="togglePitchExpansion(${videoId})" style="cursor: pointer;">
-            <span class="pitch-icon">📄</span>
-            <span class="pitch-content" id="pitch-content-${videoId}">${escapeHtml(displayText)}</span>
+        <span class="pitch-icon-btn" onclick="showPitchModal(${videoId}, '${escapeHtml(pitch).replace(/'/g, "\\'")}')" style="cursor: pointer; font-size: 16px;" title="View pitch">
+            📄
         </span>
     `;
 }
 
-function togglePitchExpansion(videoId) {
-    const pitchElement = document.getElementById(`pitch-content-${videoId}`);
-    const pitchContainer = pitchElement?.parentElement;
+function showPitchModal(videoId, pitchText) {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('pitchModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'pitchModal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>📄 Video Pitch</h3>
+                    <span class="close" onclick="closePitchModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="pitchModalContent"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
     
-    if (!pitchElement || !pitchContainer) return;
+    // Set the pitch content
+    document.getElementById('pitchModalContent').textContent = pitchText;
     
-    const fullPitch = pitchContainer.getAttribute('title');
-    if (!fullPitch) return;
-    
-    const maxLength = 50;
-    const isExpanded = pitchElement.textContent.length > maxLength;
-    
-    if (isExpanded) {
-        // Collapse - truncate text
-        const truncatedText = fullPitch.substring(0, maxLength) + '...';
-        pitchElement.textContent = truncatedText;
-    } else {
-        // Expand - show full pitch
-        pitchElement.textContent = fullPitch;
+    // Show the modal
+    modal.style.display = 'block';
+}
+
+function closePitchModal() {
+    const modal = document.getElementById('pitchModal');
+    if (modal) {
+        modal.style.display = 'none';
     }
 }
+
+// Close modal when clicking outside of it
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('pitchModal');
+    if (modal && event.target === modal) {
+        closePitchModal();
+    }
+});
 
 // Function to specifically update the relevance and trash counts
 async function updateRelevanceCount() {
