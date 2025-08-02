@@ -936,9 +936,82 @@ class Modal {
     // ===== STATIC METHODS FOR COMMON MODAL PATTERNS =====
     // Unified modal patterns following DRY, KISS, and SOLID principles
     
-    static confirm(title, message, callback) {
-        const modal = new Modal('confirmModal');
-        return modal.show({ title, message, callback });
+    /**
+     * Show confirmation modal that returns a Promise - integrated with existing Modal class
+     * @param {string} title - Modal title
+     * @param {string} message - Confirmation message
+     * @param {string} confirmText - Text for confirm button (default: 'Delete')
+     * @param {string} cancelText - Text for cancel button (default: 'Cancel')
+     * @returns {Promise<boolean>} Promise that resolves to true if confirmed, false if cancelled
+     */
+    static confirm(title, message, confirmText = 'Delete', cancelText = 'Cancel') {
+        return new Promise((resolve) => {
+            // Use existing Modal class with confirmModal
+            const modal = new Modal('confirmModal');
+            
+            // Update button text in the existing confirmModal
+            const confirmModal = document.getElementById('confirmModal');
+            if (confirmModal) {
+                const confirmBtn = confirmModal.querySelector('#confirmYes');
+                const cancelBtn = confirmModal.querySelector('#confirmNo');
+                
+                if (confirmBtn) confirmBtn.textContent = confirmText;
+                if (cancelBtn) cancelBtn.textContent = cancelText;
+                
+                // Remove existing event listeners by cloning buttons
+                if (confirmBtn) {
+                    const newConfirmBtn = confirmBtn.cloneNode(true);
+                    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                    newConfirmBtn.addEventListener('click', () => {
+                        modal.hide();
+                        resolve(true);
+                    });
+                }
+                
+                if (cancelBtn) {
+                    const newCancelBtn = cancelBtn.cloneNode(true);
+                    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+                    newCancelBtn.addEventListener('click', () => {
+                        modal.hide();
+                        resolve(false);
+                    });
+                }
+                
+                // Handle close button and escape key
+                const closeBtn = confirmModal.querySelector('.close');
+                if (closeBtn) {
+                    const newCloseBtn = closeBtn.cloneNode(true);
+                    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+                    newCloseBtn.addEventListener('click', () => {
+                        modal.hide();
+                        resolve(false);
+                    });
+                }
+                
+                // Handle backdrop click
+                const handleBackdrop = (e) => {
+                    if (e.target === confirmModal) {
+                        modal.hide();
+                        resolve(false);
+                        confirmModal.removeEventListener('click', handleBackdrop);
+                    }
+                };
+                confirmModal.addEventListener('click', handleBackdrop);
+                
+                // Handle escape key
+                const handleEscape = (e) => {
+                    if (e.key === 'Escape') {
+                        modal.hide();
+                        resolve(false);
+                        document.removeEventListener('keydown', handleEscape);
+                    }
+                };
+                document.addEventListener('keydown', handleEscape);
+            }
+            
+            // Show the modal using existing Modal class methods
+            modal.show({ title, message });
+        });
     }
     
     static prompt(title, placeholder = '', callback) {
