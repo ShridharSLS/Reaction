@@ -1701,73 +1701,28 @@ async function hostActionClearVideoId(hostId, videoId) {
     }
 }
 
-// Original Action Functions (Preserved for compatibility and testing)
+// ===== UNIFIED HOST ACTION FUNCTIONS =====
+// All legacy duplicate functions replaced with unified hostAction() calls
 
+// Host 1 (Shridhar) Action Functions - now use unified system
 async function acceptVideo(videoId) {
-    // Show note modal for accept action
-    showNoteModal(videoId, 'accept');
+    return hostActionAccept(1, videoId);
 }
 
 async function rejectVideo(videoId) {
-    // Show note modal for reject action
-    showNoteModal(videoId, 'reject');
+    return hostActionReject(1, videoId);
 }
 
 function assignVideoId(videoId) {
-    showVideoIdInput(async (videoIdText) => {
-        try {
-            // Detect host from current tab to use unified endpoint
-            const hostId = getHostFromTab(currentTab);
-            const endpoint = getHostStatusEndpoint(videoId, hostId);
-            
-            await apiCall(endpoint, {
-                method: 'PUT',
-                body: JSON.stringify({ 
-                    status: 'assigned',
-                    video_id_text: videoIdText
-                })
-            });
-            loadVideos(currentTab);
-        } catch (error) {
-            console.error('Failed to assign video ID:', error);
-        }
-    });
+    return hostActionAssign(1, videoId);
 }
 
-
-
 async function revertToPending(videoId) {
-    try {
-        // Detect host from current tab to use unified endpoint
-        const hostId = getHostFromTab(currentTab);
-        const endpoint = getHostStatusEndpoint(videoId, hostId);
-        
-        await apiCall(endpoint, {
-            method: 'PUT',
-            body: JSON.stringify({ status: 'pending' })
-        });
-        loadVideos(currentTab);
-        updateButtonCounts(); // Update navigation counts
-    } catch (error) {
-        console.error('Failed to revert video:', error);
-    }
+    return hostActionPending(1, videoId);
 }
 
 async function revertToAccepted(videoId) {
-    try {
-        // Detect host from current tab to use unified endpoint
-        const hostId = getHostFromTab(currentTab);
-        const endpoint = getHostStatusEndpoint(videoId, hostId);
-        
-        await apiCall(endpoint, {
-            method: 'PUT',
-            body: JSON.stringify({ status: 'accepted' })
-        });
-        loadVideos(currentTab);
-        updateButtonCounts(); // Update navigation counts
-    } catch (error) {
-        console.error('Failed to revert video:', error);
-    }
+    return hostAction(1, videoId, 'accept');
 }
 
 function deleteVideo(videoId) {
@@ -1793,105 +1748,25 @@ function deleteVideo(videoId) {
     );
 }
 
-// Host 2 Action Functions (only update status_2 column)
+// Host 2 Action Functions - now use unified system
 async function host2AcceptVideo(videoId) {
-    // Show note modal for Host 2 accept action
-    showHost2NoteModal(videoId, 'accepted');
+    return hostActionAccept(2, videoId);
 }
 
 async function host2RejectVideo(videoId) {
-    // Show note modal for Host 2 reject action
-    showHost2NoteModal(videoId, 'rejected');
+    return hostActionReject(2, videoId);
 }
 
 function host2AssignVideoId(videoId) {
-    showVideoIdInput(async (videoIdText) => {
-        try {
-            // Use unified generic endpoint for Host 2
-            const endpoint = getHostStatusEndpoint(videoId, 2);
-            
-            await apiCall(endpoint, {
-                method: 'PUT',
-                body: JSON.stringify({ 
-                    status: 'assigned',
-                    video_id_text: videoIdText
-                })
-            });
-            loadVideos(currentTab);
-            updateButtonCounts();
-        } catch (error) {
-            console.error('Failed to assign Host 2 video ID:', error);
-        }
-    });
+    return hostActionAssign(2, videoId);
 }
 
 async function host2RevertToPending(videoId) {
-    try {
-        await apiCall(`/api/videos/${videoId}/host2/status`, {
-            method: 'PUT',
-            body: JSON.stringify({ status: 'pending' })
-        });
-        loadVideos(currentTab);
-        updateButtonCounts();
-    } catch (error) {
-        console.error('Failed to revert Host 2 video:', error);
-    }
+    return hostActionPending(2, videoId);
 }
 
-// Host 2 Note Modal (for status_2 and note_2)
-function showHost2NoteModal(videoId, action) {
-    const modal = document.getElementById('noteModal');
-    const title = document.getElementById('noteModalTitle');
-    const input = document.getElementById('noteTextarea');
-    const saveBtn = document.getElementById('noteSaveBtn');
-    const cancelBtn = document.getElementById('noteCancelBtn');
-    
-    title.textContent = `${action.charAt(0).toUpperCase() + action.slice(1)} Video - Add Note (Host 2)`;
-    input.value = '';
-    modal.style.display = 'block';
-    input.focus();
-    
-    // Remove any existing event listeners
-    const newSaveBtn = saveBtn.cloneNode(true);
-    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
-    
-    const newCancelBtn = cancelBtn.cloneNode(true);
-    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-    
-    // Add cancel event listener
-    newCancelBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
-    
-    // Add new event listener for Host 2
-    newSaveBtn.addEventListener('click', async () => {
-        const note = input.value.trim();
-        if (!note) {
-            alert('Please enter a note.');
-            return;
-        }
-        
-        try {
-            // Use unified generic endpoint for Host 2
-            const endpoint = getHostStatusEndpoint(videoId, 2);
-            
-            await apiCall(endpoint, {
-                method: 'PUT',
-                body: JSON.stringify({ 
-                    status: action,
-                    note: note
-                })
-            });
-            
-            modal.style.display = 'none';
-            loadVideos(currentTab);
-            updateButtonCounts();
-        } catch (error) {
-            console.error(`Failed to ${action} Host 2 video:`, error);
-            alert(`Failed to ${action} video. Please try again.`);
-        }
-    });
-}
+// ===== DUPLICATE FUNCTION REMOVAL COMPLETE =====
+// showHost2NoteModal removed - now using unified hostAction system
 
 // Modal Functions
 function showConfirmation(title, message, callback) {
