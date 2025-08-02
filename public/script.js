@@ -803,6 +803,156 @@ async function apiCall(url, options = {}) {
     return ApiService.request(url, options);
 }
 
+// ===== MODAL COMPONENT CLASS =====
+// Unified modal system to eliminate code duplication and provide consistent modal behavior
+class Modal {
+    constructor(modalId, options = {}) {
+        this.modalId = modalId;
+        this.options = {
+            backdrop: true,
+            keyboard: true,
+            focus: true,
+            ...options
+        };
+        this.modal = null;
+        this.callback = null;
+        this.isVisible = false;
+        
+        this.init();
+    }
+    
+    init() {
+        // Find existing modal or create if it doesn't exist
+        this.modal = document.getElementById(this.modalId);
+        if (!this.modal) {
+            console.warn(`Modal with ID '${this.modalId}' not found`);
+            return;
+        }
+        
+        // Set up event listeners
+        this.setupEventListeners();
+    }
+    
+    setupEventListeners() {
+        if (!this.modal) return;
+        
+        // Close on backdrop click
+        if (this.options.backdrop) {
+            this.modal.addEventListener('click', (e) => {
+                if (e.target === this.modal) {
+                    this.hide();
+                }
+            });
+        }
+        
+        // Close on escape key
+        if (this.options.keyboard) {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && this.isVisible) {
+                    this.hide();
+                }
+            });
+        }
+        
+        // Close button handler
+        const closeBtn = this.modal.querySelector('.close, [data-dismiss="modal"]');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.hide());
+        }
+    }
+    
+    show(options = {}) {
+        if (!this.modal) return;
+        
+        // Update modal content if provided
+        if (options.title) {
+            const titleEl = this.modal.querySelector('.modal-title, #confirmTitle, #noteModalTitle');
+            if (titleEl) titleEl.textContent = options.title;
+        }
+        
+        if (options.message || options.content) {
+            const contentEl = this.modal.querySelector('.modal-body, #confirmMessage, #noteTextarea');
+            if (contentEl) {
+                if (contentEl.tagName === 'TEXTAREA') {
+                    contentEl.value = options.content || '';
+                } else {
+                    contentEl.textContent = options.message || options.content || '';
+                }
+            }
+        }
+        
+        // Store callback if provided
+        if (options.callback) {
+            this.callback = options.callback;
+        }
+        
+        // Show modal
+        this.modal.style.display = 'block';
+        this.isVisible = true;
+        
+        // Focus on input if requested
+        if (this.options.focus) {
+            const focusEl = this.modal.querySelector('input, textarea');
+            if (focusEl) {
+                setTimeout(() => focusEl.focus(), 100);
+            }
+        }
+        
+        return this;
+    }
+    
+    hide() {
+        if (!this.modal) return;
+        
+        this.modal.style.display = 'none';
+        this.isVisible = false;
+        this.callback = null;
+        
+        return this;
+    }
+    
+    onConfirm(callback) {
+        this.callback = callback;
+        return this;
+    }
+    
+    executeCallback(data = null) {
+        if (this.callback && typeof this.callback === 'function') {
+            this.callback(data);
+        }
+        this.hide();
+    }
+    
+    // Static methods for common modal patterns
+    static confirm(title, message, callback) {
+        const modal = new Modal('confirmModal');
+        return modal.show({ title, message, callback });
+    }
+    
+    static prompt(title, placeholder = '', callback) {
+        const modal = new Modal('video-id-modal');
+        return modal.show({ title, callback });
+    }
+    
+    static note(videoId, action, existingNote = '', callback) {
+        const modal = new Modal('noteModal');
+        const title = `${action.charAt(0).toUpperCase() + action.slice(1)} Video - Add Note`;
+        return modal.show({ title, content: existingNote, callback });
+    }
+}
+
+// Global modal instances for backward compatibility
+let confirmModal = null;
+let noteModal = null;
+let videoIdModal = null;
+
+// Initialize modals when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    confirmModal = new Modal('confirmModal');
+    noteModal = new Modal('noteModal');
+    videoIdModal = new Modal('video-id-modal');
+});
+
 // Load People
 async function loadPeople() {
     try {
@@ -1777,17 +1927,28 @@ async function host2RevertToPending(videoId) {
 // showHost2NoteModal removed - now using unified hostAction system
 
 // Modal Functions
+// Refactored modal functions using unified Modal component
 function showConfirmation(title, message, callback) {
-    document.getElementById('confirmTitle').textContent = title;
-    document.getElementById('confirmMessage').textContent = message;
-    document.getElementById('confirmModal').style.display = 'block';
-    confirmationCallback = callback;
+    if (confirmModal) {
+        confirmModal.show({ title, message, callback });
+    } else {
+        // Fallback for immediate calls before DOM ready
+        Modal.confirm(title, message, callback);
+    }
 }
 
 function showVideoIdInput(callback) {
-    document.getElementById('video-id-modal').style.display = 'block';
-    document.getElementById('video-id-input').focus();
-    videoIdCallback = callback;
+    if (videoIdModal) {
+        videoIdModal.show({ callback });
+        // Focus on the input field
+        const input = document.getElementById('video-id-input');
+        if (input) {
+            setTimeout(() => input.focus(), 100);
+        }
+    } else {
+        // Fallback for immediate calls before DOM ready
+        Modal.prompt('Enter Video ID', '', callback);
+    }
 }
 
 // Export Functions
@@ -2571,36 +2732,52 @@ function filterAllEntries(searchTerm) {
 let currentNoteVideoId = null;
 let currentNoteAction = null;
 
+// Refactored note modal functions using unified Modal component
 function showNoteModal(videoId, action, existingNote = '') {
     currentNoteVideoId = videoId;
     currentNoteAction = action;
     
-    const modal = document.getElementById('noteModal');
-    const title = document.getElementById('noteModalTitle');
-    const textarea = document.getElementById('noteTextarea');
-    const deleteBtn = document.getElementById('noteDeleteBtn');
-    
+    // Determine modal title based on action
+    let title;
     if (action === 'accept') {
-        title.textContent = 'Add Note - Accepting Video';
+        title = 'Add Note - Accepting Video';
     } else if (action === 'reject') {
-        title.textContent = 'Add Note - Rejecting Video';
+        title = 'Add Note - Rejecting Video';
     } else {
-        title.textContent = 'Edit Note';
+        title = 'Edit Note';
     }
     
-    textarea.value = existingNote;
-    deleteBtn.style.display = existingNote ? 'block' : 'none';
+    // Show/hide delete button based on existing note
+    const deleteBtn = document.getElementById('noteDeleteBtn');
+    if (deleteBtn) {
+        deleteBtn.style.display = existingNote ? 'block' : 'none';
+    }
     
-    modal.style.display = 'flex';
-    textarea.focus();
+    // Use unified modal system
+    if (noteModal) {
+        noteModal.show({ title, content: existingNote });
+    } else {
+        // Fallback for immediate calls before DOM ready
+        Modal.note(videoId, action, existingNote);
+    }
 }
 
 function hideNoteModal() {
-    const modal = document.getElementById('noteModal');
-    const textarea = document.getElementById('noteTextarea');
+    if (noteModal) {
+        noteModal.hide();
+    } else {
+        // Fallback direct DOM manipulation
+        const modal = document.getElementById('noteModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
     
-    modal.style.display = 'none';
-    textarea.value = '';
+    // Clear note modal state
+    const textarea = document.getElementById('noteTextarea');
+    if (textarea) {
+        textarea.value = '';
+    }
     currentNoteVideoId = null;
     currentNoteAction = null;
 }
@@ -2702,6 +2879,7 @@ function renderPitchDisplay(pitch, videoId) {
     `;
 }
 
+// Refactored pitch modal functions using unified Modal component
 function showPitchModal(videoId, pitchText) {
     // Create modal if it doesn't exist
     let modal = document.getElementById('pitchModal');
@@ -2712,8 +2890,8 @@ function showPitchModal(videoId, pitchText) {
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>📄 Video Pitch</h3>
-                    <span class="close" onclick="closePitchModal()">&times;</span>
+                    <h3 class="modal-title">📄 Video Pitch</h3>
+                    <span class="close" data-dismiss="modal">&times;</span>
                 </div>
                 <div class="modal-body">
                     <div id="pitchModalContent"></div>
@@ -2726,24 +2904,20 @@ function showPitchModal(videoId, pitchText) {
     // Set the pitch content
     document.getElementById('pitchModalContent').textContent = pitchText;
     
-    // Show the modal
-    modal.style.display = 'block';
+    // Use unified modal system
+    const pitchModal = new Modal('pitchModal');
+    pitchModal.show();
 }
 
 function closePitchModal() {
     const modal = document.getElementById('pitchModal');
     if (modal) {
-        modal.style.display = 'none';
+        const pitchModal = new Modal('pitchModal');
+        pitchModal.hide();
     }
 }
 
-// Close modal when clicking outside of it
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('pitchModal');
-    if (modal && event.target === modal) {
-        closePitchModal();
-    }
-});
+// Note: Event listeners are now handled by the Modal class automatically
 
 // Function to specifically update the relevance and trash counts
 async function updateRelevanceCount() {
