@@ -730,41 +730,8 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
     }
 });
 
-// Update video status (Legacy endpoint for Host 1 - now uses dynamic column mapping)
-app.put('/api/videos/:id/status', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status, video_id_text, note } = req.body;
-        
-        // Use dynamic column mapping for Host 1 (backward compatibility)
-        const host1Columns = getHostColumns(1);
-        const updateData = {};
-        updateData[host1Columns.statusColumn] = status;
-        
-        if (video_id_text !== undefined) {
-            updateData[host1Columns.videoIdColumn] = video_id_text;
-        }
-        if (note !== undefined) {
-            updateData[host1Columns.noteColumn] = note;
-        }
-        
-        console.log(`[Legacy Endpoint] Updating Host 1 with dynamic columns:`, updateData);
-        
-        const { error } = await supabase
-            .from('videos')
-            .update(updateData)
-            .eq('id', id);
-            
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
-        
-        res.json({ message: 'Video status updated successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+// Legacy Host 1 endpoint removed - now using unified /api/videos/:id/host/:hostId/:status endpoint
+// All host-specific video updates now use the dynamic host endpoint system
 
 // Legacy Host 2 endpoint removed - now using unified /api/videos/:id/host/:hostId/:status endpoint
 // All host-specific video updates now use the dynamic host endpoint system
@@ -1139,81 +1106,8 @@ app.put('/api/videos/:id/type', async (req, res) => {
     }
 });
 
-// Export videos to CSV (Legacy endpoint for Host 1 - now uses dynamic column mapping)
-app.get('/api/videos/:status/export', async (req, res) => {
-    try {
-        const { status } = req.params;
-        
-        // Use dynamic column mapping for Host 1 (backward compatibility)
-        const host1StatusColumn = getStatusColumn(1);
-        
-        console.log(`[Legacy CSV Export] Exporting Host 1 videos with status ${status} using column ${host1StatusColumn}`);
-        
-        // Get videos without JOIN since we removed the foreign key constraint
-        const { data: videos, error: videosError } = await supabase
-            .from('videos')
-            .select('*')
-            .eq(host1StatusColumn, status)
-            .order('type', { ascending: false }) // Trending first
-            .order('score', { ascending: false, nullsFirst: false })
-            .order('likes_count', { ascending: false, nullsFirst: false });
-            
-        if (videosError) {
-            res.status(500).json({ error: videosError.message });
-            return;
-        }
-        
-        // Get all people to map names
-        const { data: people, error: peopleError } = await supabase
-            .from('people')
-            .select('id, name');
-            
-        if (peopleError) {
-            res.status(500).json({ error: peopleError.message });
-            return;
-        }
-        
-        // Create a lookup map for people names
-        const peopleMap = {};
-        people?.forEach(person => {
-            peopleMap[person.id] = person.name;
-        });
-        
-        // Transform the data to include person names
-        const rows = videos?.map(video => ({
-            ...video,
-            added_by_name: peopleMap[video.added_by] || 'Unknown'
-        })) || [];
-        
-        // Convert to CSV
-        const headers = ['ID', 'Added By', 'Link', 'Type', 'Likes Count', 'Relevance Rating', 'Score', 'Status', 'Video ID', 'Date Added'];
-        const csvRows = [headers.join(',')];
-        
-        rows.forEach(row => {
-            const csvRow = [
-                row.id,
-                `"${row.added_by_name}"`,
-                `"${row.link}"`,
-                `"${row.type}"`,
-                row.likes_count || 0,
-                row.relevance_rating || 0,
-                row.score || 0,
-                `"${row.status}"`,
-                `"${row.video_id_text || ''}"`,
-                `"${row.link_added_on}"`
-            ];
-            csvRows.push(csvRow.join(','));
-        });
-        
-        const csvContent = csvRows.join('\n');
-        
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename="${status}_videos.csv"`);
-        res.send(csvContent);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+// Legacy Host 1 CSV export endpoint removed - now using unified /api/export/host/:hostId/:status endpoint
+// All host-specific CSV exports now use the dynamic host endpoint system
 
 // Export all database entries as CSV
 app.get('/api/export/all', async (req, res) => {
@@ -1804,10 +1698,8 @@ app.delete('/api/hosts/:hostId', async (req, res) => {
     try {
         const { hostId } = req.params;
         
-        // Don't allow deleting Host 1 (Shridhar) as it's the primary host
-        if (parseInt(hostId) === 1) {
-            return res.status(400).json({ error: 'Cannot delete primary host (Shridhar)' });
-        }
+        // No hardcoded host deletion protection - system is fully dynamic
+        // Host deletion protection should be handled by business logic, not hardcoded host IDs
         
         const { data: deletedHost, error } = await supabase
             .from('hosts')

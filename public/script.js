@@ -3275,17 +3275,15 @@ async function updateButtonCounts() {
                 const hostId = hostMatch[1];
                 const status = hostMatch[2];
                 
-                // Generate the corresponding button ID using consistent format
+                // Generate the corresponding button ID using fully dynamic format
+                const config = getHostConfig(parseInt(hostId));
                 let buttonId;
-                if (hostId === '1') {
-                    // Host 1 uses legacy button IDs for backward compatibility
-                    buttonId = `${status}-btn-count`;
-                } else if (hostId === '2') {
-                    // Host 2 uses legacy button IDs for backward compatibility
-                    buttonId = `host2-${status}-btn-count`;
+                if (config && config.prefix) {
+                    // Use host prefix for button ID
+                    buttonId = `${config.prefix}${status}-btn-count`;
                 } else {
-                    // Host 3+ uses generic format
-                    buttonId = `host${hostId}-${status}-btn-count`;
+                    // No prefix (like Host 1)
+                    buttonId = `${status}-btn-count`;
                 }
                 
                 updates.push({
