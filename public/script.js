@@ -43,30 +43,15 @@ async function loadHostConfiguration() {
     } catch (error) {
         console.error('[Phase 4.2] Failed to load host configuration:', error);
         
-        // Fallback to hardcoded configuration for backward compatibility
-        console.log('[Phase 4.2] Using fallback hardcoded configuration');
-        HOST_CONFIG = {
-            1: {
-                id: 1,
-                name: 'Shridhar',
-                prefix: '',
-                statusCol: 'status_1',
-                noteCol: 'note',
-                videoIdCol: 'video_id_text',
-                apiPath: '',
-                countPrefix: ''
-            },
-            2: {
-                id: 2,
-                name: 'Host 2',
-                prefix: 'host2-',
-                statusCol: 'status_2',
-                noteCol: 'note_2',
-                videoIdCol: 'video_id_text_2',
-                apiPath: 'host2',
-                countPrefix: 'person2_'
-            }
-        };
+        // No hardcoded fallback - system must be fully dynamic
+        console.error('[ERROR] Failed to load host configuration from API. System requires dynamic host management.');
+        console.error('Please ensure the /api/hosts endpoint is working and hosts are properly configured in the database.');
+        
+        // Initialize empty config to prevent errors
+        HOST_CONFIG = {};
+        
+        // Show user-friendly error
+        showNotification('Failed to load host configuration. Please refresh the page or contact administrator.', 'error');
         return false;
     }
 }
@@ -140,15 +125,16 @@ function getCountKey(hostId, status) {
     }
 }
 
-// Get the correct tab ID for any host and status
+// Get the correct tab ID for any host and status - fully dynamic
 function getTabId(hostId, status) {
     const config = getHostConfig(hostId);
     if (!config) return null;
     
-    if (hostId === 1) {
-        return status; // e.g., 'pending', 'accepted'
+    // Use prefix for all hosts consistently
+    if (config.prefix) {
+        return `${config.prefix}${status}`; // e.g., 'host2-pending', 'host11-pending'
     } else {
-        return `${config.prefix}${status}`; // e.g., 'host2-pending'
+        return status; // For hosts with no prefix (like Host 1)
     }
 }
 
@@ -1570,10 +1556,8 @@ function getVideoActions(video, status) {
 }
 
 // Legacy Host 2 function - now redirects to unified system for backward compatibility
-function getHost2VideoActions(video, status) {
-    // Use the unified system with host2- prefix to maintain compatibility
-    return getUnifiedVideoActions(video, `host2-${status}`);
-}
+// Legacy getHost2VideoActions function removed - now using getUnifiedVideoActions directly
+// All video actions now use: getUnifiedVideoActions(video, statusWithPrefix)
 
 // Form Setup
 function setupForms() {
@@ -2017,27 +2001,8 @@ async function clearVideoId(videoId) {
     }
 }
 
-// Host 2 Clear Video ID (only updates status_2 and video_id_text_2)
-async function host2ClearVideoId(videoId) {
-    try {
-        // Use unified generic endpoint for Host 2
-        const endpoint = getHostStatusEndpoint(videoId, 2);
-        
-        await apiCall(endpoint, {
-            method: 'PUT',
-            body: JSON.stringify({ 
-                status: 'accepted',
-                video_id_text: null
-            })
-        });
-        
-        // Refresh current view
-        loadVideos(currentTab);
-        updateButtonCounts();
-    } catch (error) {
-        console.error('Failed to clear Host 2 video ID:', error);
-    }
-}
+// Legacy Host 2 functions removed - now using unified hostAction system
+// All host-specific actions now use hostAction(hostId, videoId, action)
 
 // Generic Host Action Function (Phase 1.3: Parallel Implementation)
 // This function can handle accept/reject/assign actions for any host
@@ -2216,21 +2181,8 @@ function deleteVideo(videoId) {
 }
 
 // Host 2 Action Functions - now use unified system
-async function host2AcceptVideo(videoId) {
-    return hostActionAccept(2, videoId);
-}
-
-async function host2RejectVideo(videoId) {
-    return hostActionReject(2, videoId);
-}
-
-function host2AssignVideoId(videoId) {
-    return hostActionAssign(2, videoId);
-}
-
-async function host2RevertToPending(videoId) {
-    return hostActionPending(2, videoId);
-}
+// Legacy Host 2 action functions removed - now using unified hostAction system
+// All host actions now use: hostActionAccept(hostId, videoId), hostActionReject(hostId, videoId), etc.
 
 // ===== DUPLICATE FUNCTION REMOVAL COMPLETE =====
 // showHost2NoteModal removed - now using unified hostAction system

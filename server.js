@@ -45,11 +45,8 @@ async function getAllStatusColumns() {
             
         if (error) {
             console.error('Error fetching hosts for status columns:', error);
-            // Fallback to hardcoded hosts if database query fails
-            return {
-                host1: 'status_1',
-                host2: 'status_2'
-            };
+            // No hardcoded fallback - system must be fully dynamic
+            throw new Error('Failed to load host configuration from database. System requires dynamic host management.');
         }
         
         // Build dynamic status columns object
@@ -62,11 +59,8 @@ async function getAllStatusColumns() {
         return statusColumns;
     } catch (error) {
         console.error('Exception in getAllStatusColumns:', error);
-        // Fallback to hardcoded hosts if anything fails
-        return {
-            host1: 'status_1',
-            host2: 'status_2'
-        };
+        // No hardcoded fallback - system must be fully dynamic
+        throw new Error('Failed to load host configuration from database. System requires dynamic host management.');
     }
 }
 
@@ -772,41 +766,8 @@ app.put('/api/videos/:id/status', async (req, res) => {
     }
 });
 
-// Update Host 2 video status (Legacy endpoint for Host 2 - now uses dynamic column mapping)
-app.put('/api/videos/:id/host2/status', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status, video_id_text, note } = req.body;
-        
-        // Use dynamic column mapping for Host 2 (backward compatibility)
-        const host2Columns = getHostColumns(2);
-        const updateData = {};
-        updateData[host2Columns.statusColumn] = status;
-        
-        if (video_id_text !== undefined) {
-            updateData[host2Columns.videoIdColumn] = video_id_text;
-        }
-        if (note !== undefined) {
-            updateData[host2Columns.noteColumn] = note;
-        }
-        
-        console.log(`[Legacy Endpoint] Updating Host 2 with dynamic columns:`, updateData);
-        
-        const { error } = await supabase
-            .from('videos')
-            .update(updateData)
-            .eq('id', id);
-            
-        if (error) {
-            res.status(500).json({ error: error.message });
-            return;
-        }
-        
-        res.json({ message: 'Host 2 video status updated successfully' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+// Legacy Host 2 endpoint removed - now using unified /api/videos/:id/host/:hostId/:status endpoint
+// All host-specific video updates now use the dynamic host endpoint system
 
 // ===== UNIFIED GENERIC HOST API ENDPOINT =====
 // Update video status for any host (replaces host-specific endpoints)
