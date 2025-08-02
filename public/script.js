@@ -953,6 +953,315 @@ document.addEventListener('DOMContentLoaded', function() {
     videoIdModal = new Modal('video-id-modal');
 });
 
+// ===== FORM VALIDATOR UTILITY CLASS =====
+// Unified form validation system to eliminate validation duplication
+class FormValidator {
+    constructor(formElement, options = {}) {
+        this.form = typeof formElement === 'string' ? document.getElementById(formElement) : formElement;
+        this.options = {
+            showErrors: true,
+            errorClass: 'error',
+            successClass: 'success',
+            ...options
+        };
+        this.errors = [];
+        this.rules = new Map();
+    }
+    
+    // Add validation rule for a field
+    addRule(fieldName, validator, errorMessage) {
+        if (!this.rules.has(fieldName)) {
+            this.rules.set(fieldName, []);
+        }
+        this.rules.get(fieldName).push({ validator, errorMessage });
+        return this;
+    }
+    
+    // Built-in validators
+    static validators = {
+        required: (value) => value && value.trim() !== '',
+        email: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+        url: (value) => {
+            try {
+                new URL(value);
+                return true;
+            } catch {
+                return false;
+            }
+        },
+        minLength: (min) => (value) => value && value.length >= min,
+        maxLength: (max) => (value) => !value || value.length <= max,
+        numeric: (value) => !isNaN(value) && !isNaN(parseFloat(value)),
+        integer: (value) => Number.isInteger(Number(value)),
+        range: (min, max) => (value) => {
+            const num = Number(value);
+            return num >= min && num <= max;
+        },
+        pattern: (regex) => (value) => regex.test(value),
+        custom: (fn) => fn
+    };
+    
+    // Convenience methods for common validations
+    required(fieldName, message = `${fieldName} is required`) {
+        return this.addRule(fieldName, FormValidator.validators.required, message);
+    }
+    
+    email(fieldName, message = 'Please enter a valid email address') {
+        return this.addRule(fieldName, FormValidator.validators.email, message);
+    }
+    
+    url(fieldName, message = 'Please enter a valid URL') {
+        return this.addRule(fieldName, FormValidator.validators.url, message);
+    }
+    
+    minLength(fieldName, min, message = `Must be at least ${min} characters`) {
+        return this.addRule(fieldName, FormValidator.validators.minLength(min), message);
+    }
+    
+    maxLength(fieldName, max, message = `Must be no more than ${max} characters`) {
+        return this.addRule(fieldName, FormValidator.validators.maxLength(max), message);
+    }
+    
+    numeric(fieldName, message = 'Must be a valid number') {
+        return this.addRule(fieldName, FormValidator.validators.numeric, message);
+    }
+    
+    integer(fieldName, message = 'Must be a whole number') {
+        return this.addRule(fieldName, FormValidator.validators.integer, message);
+    }
+    
+    range(fieldName, min, max, message = `Must be between ${min} and ${max}`) {
+        return this.addRule(fieldName, FormValidator.validators.range(min, max), message);
+    }
+    
+    pattern(fieldName, regex, message = 'Invalid format') {
+        return this.addRule(fieldName, FormValidator.validators.pattern(regex), message);
+    }
+    
+    custom(fieldName, validator, message) {
+        return this.addRule(fieldName, validator, message);
+    }
+    
+    // Get field value with trimming
+    getFieldValue(fieldName) {
+        const field = this.getField(fieldName);
+        if (!field) return null;
+        
+        if (field.type === 'checkbox') {
+            return field.checked;
+        } else if (field.type === 'radio') {
+            const checked = this.form.querySelector(`input[name="${fieldName}"]:checked`);
+            return checked ? checked.value : null;
+        } else {
+            return field.value.trim();
+        }
+    }
+    
+    // Get field element
+    getField(fieldName) {
+        return this.form.querySelector(`[name="${fieldName}"], #${fieldName}`);
+    }
+    
+    // Validate single field
+    validateField(fieldName) {
+        const rules = this.rules.get(fieldName);
+        if (!rules) return true;
+        
+        const value = this.getFieldValue(fieldName);
+        const field = this.getField(fieldName);
+        
+        // Clear previous errors for this field
+        this.clearFieldError(fieldName);
+        
+        for (const rule of rules) {
+            if (!rule.validator(value)) {
+                this.addFieldError(fieldName, rule.errorMessage);
+                return false;
+            }
+        }
+        
+        this.markFieldSuccess(fieldName);
+        return true;
+    }
+    
+    // Validate entire form
+    validate() {
+        this.errors = [];
+        let isValid = true;
+        
+        for (const fieldName of this.rules.keys()) {
+            if (!this.validateField(fieldName)) {
+                isValid = false;
+            }
+        }
+        
+        return isValid;
+    }
+    
+    // Get form data as object
+    getData() {
+        const data = {};
+        for (const fieldName of this.rules.keys()) {
+            data[fieldName] = this.getFieldValue(fieldName);
+        }
+        return data;
+    }
+    
+    // Get all form data (including non-validated fields)
+    getAllData() {
+        const data = {};
+        const formData = new FormData(this.form);
+        
+        for (const [key, value] of formData.entries()) {
+            data[key] = typeof value === 'string' ? value.trim() : value;
+        }
+        
+        // Also get fields by ID
+        const inputs = this.form.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            if (input.id && !data[input.id]) {
+                if (input.type === 'checkbox') {
+                    data[input.id] = input.checked;
+                } else if (input.type === 'radio') {
+                    if (input.checked) {
+                        data[input.id] = input.value;
+                    }
+                } else {
+                    data[input.id] = input.value.trim();
+                }
+            }
+        });
+        
+        return data;
+    }
+    
+    // Error handling methods
+    addFieldError(fieldName, message) {
+        this.errors.push({ field: fieldName, message });
+        
+        if (this.options.showErrors) {
+            const field = this.getField(fieldName);
+            if (field) {
+                field.classList.add(this.options.errorClass);
+                field.classList.remove(this.options.successClass);
+                
+                // Add error message display
+                this.showFieldError(fieldName, message);
+            }
+        }
+    }
+    
+    clearFieldError(fieldName) {
+        const field = this.getField(fieldName);
+        if (field) {
+            field.classList.remove(this.options.errorClass);
+            this.hideFieldError(fieldName);
+        }
+    }
+    
+    markFieldSuccess(fieldName) {
+        const field = this.getField(fieldName);
+        if (field) {
+            field.classList.add(this.options.successClass);
+            field.classList.remove(this.options.errorClass);
+        }
+    }
+    
+    showFieldError(fieldName, message) {
+        let errorEl = this.form.querySelector(`.error-message[data-field="${fieldName}"]`);
+        if (!errorEl) {
+            errorEl = document.createElement('div');
+            errorEl.className = 'error-message';
+            errorEl.setAttribute('data-field', fieldName);
+            errorEl.style.color = 'red';
+            errorEl.style.fontSize = '12px';
+            errorEl.style.marginTop = '4px';
+            
+            const field = this.getField(fieldName);
+            if (field && field.parentNode) {
+                field.parentNode.insertBefore(errorEl, field.nextSibling);
+            }
+        }
+        errorEl.textContent = message;
+    }
+    
+    hideFieldError(fieldName) {
+        const errorEl = this.form.querySelector(`.error-message[data-field="${fieldName}"]`);
+        if (errorEl) {
+            errorEl.remove();
+        }
+    }
+    
+    // Clear all errors
+    clearErrors() {
+        this.errors = [];
+        this.form.querySelectorAll(`.${this.options.errorClass}`).forEach(el => {
+            el.classList.remove(this.options.errorClass);
+        });
+        this.form.querySelectorAll('.error-message').forEach(el => el.remove());
+    }
+    
+    // Get error messages
+    getErrors() {
+        return this.errors;
+    }
+    
+    getErrorMessages() {
+        return this.errors.map(error => error.message);
+    }
+    
+    // Show all errors as alert (backward compatibility)
+    showErrorAlert() {
+        if (this.errors.length > 0) {
+            alert(this.getErrorMessages().join('\n'));
+        }
+    }
+    
+    // Static helper methods for common validation patterns
+    static validateRequired(value, fieldName) {
+        const trimmed = value ? value.trim() : '';
+        if (!trimmed) {
+            throw new Error(`${fieldName} is required`);
+        }
+        return trimmed;
+    }
+    
+    static validateEmail(email) {
+        const trimmed = email ? email.trim() : '';
+        if (!trimmed) {
+            throw new Error('Email is required');
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+            throw new Error('Please enter a valid email address');
+        }
+        return trimmed;
+    }
+    
+    static validateUrl(url) {
+        const trimmed = url ? url.trim() : '';
+        if (!trimmed) {
+            throw new Error('URL is required');
+        }
+        try {
+            new URL(trimmed);
+            return trimmed;
+        } catch {
+            throw new Error('Please enter a valid URL');
+        }
+    }
+    
+    static validateRange(value, min, max, fieldName = 'Value') {
+        const num = Number(value);
+        if (isNaN(num)) {
+            throw new Error(`${fieldName} must be a number`);
+        }
+        if (num < min || num > max) {
+            throw new Error(`${fieldName} must be between ${min} and ${max}`);
+        }
+        return num;
+    }
+}
+
 // Load People
 async function loadPeople() {
     try {
@@ -2347,25 +2656,31 @@ function initializeAdminManagement() {
         addAdminForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const email = document.getElementById('admin-email').value.trim();
-            const name = document.getElementById('admin-name').value.trim();
-            const password = document.getElementById('admin-password').value;
+            // Create validator for the admin form
+            const validator = new FormValidator(addAdminForm)
+                .required('admin-email', 'Email is required')
+                .email('admin-email', 'Please enter a valid email address')
+                .required('admin-password', 'Password is required')
+                .minLength('admin-password', 4, 'Password must be at least 4 characters long');
             
-            if (!email || !password) {
-                showNotification('Email and password are required', 'error');
-                return;
-            }
-            
-            if (password.length < 4) {
-                showNotification('Password must be at least 4 characters long', 'error');
-                return;
-            }
-            
-            const success = await addAdmin(email, name || null, password);
-            if (success) {
-                document.getElementById('admin-email').value = '';
-                document.getElementById('admin-name').value = '';
-                document.getElementById('admin-password').value = '';
+            if (validator.validate()) {
+                const data = validator.getAllData();
+                const success = await addAdmin(
+                    data['admin-email'], 
+                    data['admin-name'] || null, 
+                    data['admin-password']
+                );
+                if (success) {
+                    // Clear form on success
+                    addAdminForm.reset();
+                    validator.clearErrors();
+                }
+            } else {
+                // Show first error as notification
+                const errors = validator.getErrorMessages();
+                if (errors.length > 0) {
+                    showNotification(errors[0], 'error');
+                }
             }
         });
     }
@@ -3628,15 +3943,21 @@ function initializeHostManagement() {
     }
 }
 
-// Handle add host form submission
+// Handle add host form submission - refactored with FormValidator
 function handleAddHostSubmit(e) {
     e.preventDefault();
     console.log('Add host form submitted');
-    const hostName = document.getElementById('host-name').value.trim();
-    if (hostName) {
-        addHost(hostName);
+    
+    // Create validator for the host form
+    const validator = new FormValidator(e.target)
+        .required('host-name', 'Please enter a host name')
+        .minLength('host-name', 2, 'Host name must be at least 2 characters');
+    
+    if (validator.validate()) {
+        const data = validator.getData();
+        addHost(data['host-name']);
     } else {
-        alert('Please enter a host name');
+        validator.showErrorAlert();
     }
 }
 
