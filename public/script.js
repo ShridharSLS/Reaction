@@ -933,7 +933,9 @@ class Modal {
         this.hide();
     }
     
-    // Static methods for common modal patterns
+    // ===== STATIC METHODS FOR COMMON MODAL PATTERNS =====
+    // Unified modal patterns following DRY, KISS, and SOLID principles
+    
     static confirm(title, message, callback) {
         const modal = new Modal('confirmModal');
         return modal.show({ title, message, callback });
@@ -948,6 +950,84 @@ class Modal {
         const modal = new Modal('noteModal');
         const title = `${action.charAt(0).toUpperCase() + action.slice(1)} Video - Add Note`;
         return modal.show({ title, content: existingNote, callback });
+    }
+    
+    static pitch(videoId, pitchText) {
+        // Create pitch modal dynamically if it doesn't exist
+        let modal = document.getElementById('pitchModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'pitchModal';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title">📄 Video Pitch</h3>
+                        <span class="close" data-dismiss="modal">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div id="pitchModalContent"></div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        // Set content and show
+        document.getElementById('pitchModalContent').textContent = pitchText;
+        const pitchModal = new Modal('pitchModal');
+        return pitchModal.show();
+    }
+    
+    static tags(videoId, availableTags, selectedTagIds = [], callback) {
+        const modal = new Modal('tagSelectionModal');
+        
+        // Render tag options
+        const tagsList = document.getElementById('tagSelectionList');
+        if (tagsList) {
+            tagsList.innerHTML = availableTags.map(tag => `
+                <div class="tag-option">
+                    <input type="checkbox" id="tag-${tag.id}" value="${tag.id}" 
+                           ${selectedTagIds.includes(tag.id) ? 'checked' : ''}>
+                    <label for="tag-${tag.id}">${tag.name}</label>
+                    <span class="tag-option-preview tag-preview" style="background-color: ${tag.color}">${tag.name}</span>
+                </div>
+            `).join('');
+        }
+        
+        return modal.show({ callback });
+    }
+    
+    static message(text, type = 'info', duration = 5000) {
+        // Create temporary message element
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `temp-message temp-message-${type}`;
+        messageDiv.textContent = text;
+        messageDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${type === 'error' ? '#f44336' : '#4CAF50'};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 10000;
+            font-size: 14px;
+            max-width: 300px;
+            word-wrap: break-word;
+        `;
+        
+        document.body.appendChild(messageDiv);
+        
+        // Auto-remove after duration
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.parentNode.removeChild(messageDiv);
+            }
+        }, duration);
+        
+        return messageDiv;
     }
 }
 
@@ -1819,35 +1899,9 @@ async function unarchivePerson(personId) {
     }
 }
 
-// Show temporary message to user
+// Legacy wrapper for backward compatibility
 function showTemporaryMessage(message, type = 'info') {
-    // Create a temporary message element
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `temp-message temp-message-${type}`;
-    messageDiv.textContent = message;
-    messageDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'error' ? '#f44336' : '#4CAF50'};
-        color: white;
-        padding: 12px 20px;
-        border-radius: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        z-index: 10000;
-        font-size: 14px;
-        max-width: 300px;
-        word-wrap: break-word;
-    `;
-    
-    document.body.appendChild(messageDiv);
-    
-    // Remove after 5 seconds
-    setTimeout(() => {
-        if (messageDiv.parentNode) {
-            messageDiv.parentNode.removeChild(messageDiv);
-        }
-    }, 5000);
+    return Modal.message(message, type);
 }
 
 // Modal Setup
@@ -3153,34 +3207,11 @@ function renderPitchDisplay(pitch, videoId) {
     `;
 }
 
-// Refactored pitch modal functions using unified Modal component
+// ===== UNIFIED MODAL FUNCTIONS =====
+// All modal functions now use the unified Modal class
+
 function showPitchModal(videoId, pitchText) {
-    // Create modal if it doesn't exist
-    let modal = document.getElementById('pitchModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'pitchModal';
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 class="modal-title">📄 Video Pitch</h3>
-                    <span class="close" data-dismiss="modal">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <div id="pitchModalContent"></div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    }
-    
-    // Set the pitch content
-    document.getElementById('pitchModalContent').textContent = pitchText;
-    
-    // Use unified modal system
-    const pitchModal = new Modal('pitchModal');
-    pitchModal.show();
+    return Modal.pitch(videoId, pitchText);
 }
 
 function closePitchModal() {
@@ -3492,30 +3523,17 @@ function setupTagModal() {
 // Show tag selection modal for a video
 async function showTagModal(videoId) {
     currentVideoId = videoId;
-    const modal = document.getElementById('tagSelectionModal');
-    const tagsList = document.getElementById('tagSelectionList');
-    
-    if (!modal || !tagsList) return;
     
     try {
         // Load current video tags
         const videoTags = await ApiService.request(`/api/videos/${videoId}/tags`);
         const videoTagIds = videoTags.map(tag => tag.id);
         
-        // Render tag options
-        tagsList.innerHTML = tags.map(tag => `
-            <div class="tag-option">
-                <input type="checkbox" id="tag-${tag.id}" value="${tag.id}" 
-                       ${videoTagIds.includes(tag.id) ? 'checked' : ''}>
-                <label for="tag-${tag.id}">${tag.name}</label>
-                <span class="tag-option-preview tag-preview" style="background-color: ${tag.color}">${tag.name}</span>
-            </div>
-        `).join('');
-        
-        modal.style.display = 'block';
+        // Use unified modal system
+        return Modal.tags(videoId, tags, videoTagIds, saveVideoTags);
     } catch (error) {
         console.error('Failed to load video tags:', error);
-        alert('Failed to load tags. Please try again.');
+        Modal.message('Failed to load tags. Please try again.', 'error');
     }
 }
 
@@ -3523,7 +3541,8 @@ async function showTagModal(videoId) {
 function hideTagModal() {
     const modal = document.getElementById('tagSelectionModal');
     if (modal) {
-        modal.style.display = 'none';
+        const tagModal = new Modal('tagSelectionModal');
+        tagModal.hide();
     }
     currentVideoId = null;
 }
