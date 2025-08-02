@@ -1441,38 +1441,9 @@ app.post('/api/schema/test', async (req, res) => {
     }
 });
 
-// ===== VIDEO DELETE ENDPOINT =====
+// ===== VIDEO DELETE ENDPOINTS =====
 
-// Delete video by ID
-app.delete('/api/videos/:id', asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    
-    // First, delete associated tag relationships
-    const { error: tagError } = await supabase
-        .from('video_tags')
-        .delete()
-        .eq('video_id', id);
-    
-    if (tagError) {
-        throw tagError;
-    }
-    
-    // Then delete the video
-    const { data, error } = await supabase
-        .from('videos')
-        .delete()
-        .eq('id', id)
-        .select()
-        .single();
-        
-    if (error) {
-        throw error;
-    }
-    
-    res.json({ message: 'Video deleted successfully', video: data });
-}));
-
-// Bulk delete videos by IDs
+// Bulk delete videos by IDs (must come before single video delete to avoid routing conflict)
 app.delete('/api/videos/bulk', asyncHandler(async (req, res) => {
     const { ids } = req.body;
     
@@ -1504,6 +1475,35 @@ app.delete('/api/videos/bulk', asyncHandler(async (req, res) => {
         deletedCount: deletedVideos.length,
         deletedVideos: deletedVideos
     });
+}));
+
+// Delete video by ID (must come after bulk delete to avoid routing conflict)
+app.delete('/api/videos/:id', asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    // First, delete associated tag relationships
+    const { error: tagError } = await supabase
+        .from('video_tags')
+        .delete()
+        .eq('video_id', id);
+    
+    if (tagError) {
+        throw tagError;
+    }
+    
+    // Then delete the video
+    const { data, error } = await supabase
+        .from('videos')
+        .delete()
+        .eq('id', id)
+        .select()
+        .single();
+        
+    if (error) {
+        throw error;
+    }
+    
+    res.json({ message: 'Video deleted successfully', video: data });
 }));
 
 // ===== TAG MANAGEMENT API ENDPOINTS =====
