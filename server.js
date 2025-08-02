@@ -1568,11 +1568,11 @@ app.get('/api/videos/:id/tags', asyncHandler(async (req, res) => {
 }));
 
 // Add tags to a video
-app.post('/api/videos/:id/tags', asyncHandler(async (req, res) => {
+app.put('/api/videos/:id/tags', asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { tagIds } = req.body;
+    const { tag_ids } = req.body;
     
-    if (!tagIds || !Array.isArray(tagIds) || tagIds.length === 0) {
+    if (!tag_ids || !Array.isArray(tag_ids) || tag_ids.length === 0) {
         return res.status(400).json({ error: 'Tag IDs array is required' });
     }
     
@@ -1596,7 +1596,7 @@ app.post('/api/videos/:id/tags', asyncHandler(async (req, res) => {
     if (deleteError) throw deleteError;
     
     // Create tag associations
-    const tagAssociations = tagIds.map(tagId => ({
+    const tagAssociations = tag_ids.map(tagId => ({
         video_id: id,
         tag_id: tagId,
         created_at: new Date().toISOString()
