@@ -33,23 +33,45 @@ function asyncHandler(fn) {
     };
 }
 
-// ===== DYNAMIC COLUMN MAPPING SYSTEM =====
-// Centralized column mapping for all hosts (removes hardcoded column references)
-function getHostColumns(hostId) {
-    const hostNum = parseInt(hostId);
-    if (hostNum === 1) {
+// ===== UNIFIED COLUMN ACCESS SYSTEM =====
+// Database-driven column mapping for all hosts (DRY implementation)
+async function getHostColumns(hostId) {
+    try {
+        const { data: host, error } = await supabase
+            .from('hosts')
+            .select('status_column, note_column, video_id_column')
+            .eq('host_id', parseInt(hostId))
+            .eq('is_active', true)
+            .single();
+            
+        if (error || !host) {
+            throw new Error(`Host ${hostId} not found or inactive`);
+        }
+        
         return {
-            statusColumn: 'status_1',
-            noteColumn: 'note',
-            videoIdColumn: 'video_id_text'
+            statusColumn: host.status_column,
+            noteColumn: host.note_column,
+            videoIdColumn: host.video_id_column
         };
-    } else {
-        return {
-            statusColumn: `status_${hostNum}`,
-            noteColumn: `note_${hostNum}`,
-            videoIdColumn: `video_id_text_${hostNum}`
-        };
+    } catch (error) {
+        console.error(`Error getting columns for host ${hostId}:`, error);
+        throw error;
     }
+}
+
+// Synchronous version using cached host config (for performance)
+function getHostColumnsSync(hostId) {
+    // This requires HOST_CONFIG to be loaded first
+    const config = global.HOST_CONFIG_CACHE?.[hostId];
+    if (!config) {
+        throw new Error(`Host ${hostId} configuration not cached. Call loadHostConfigCache() first.`);
+    }
+    
+    return {
+        statusColumn: config.status_column,
+        noteColumn: config.note_column,
+        videoIdColumn: config.video_id_column
+    };
 }
 
 // Get all status columns for operations that need to update multiple hosts (now dynamic)
