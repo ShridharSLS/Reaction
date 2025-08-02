@@ -940,14 +940,11 @@ function createVideoCard(video, status) {
                     </span>
                 </div>
                 
-                ${video.pitch ? `
-                    <div class="detail-item pitch-item">
-                        <span class="detail-label">Pitch</span>
-                        <span class="detail-value pitch-content" id="pitch-${video.id}">
-                            ${renderPitchDisplay(video.pitch, video.id)}
-                        </span>
-                    </div>
-                ` : ''}
+                <div class="detail-item pitch-item">
+                    <span class="detail-value pitch-content" id="pitch-${video.id}">
+                        ${renderPitchDisplay(video.pitch, video.id)}
+                    </span>
+                </div>
                 
                 ${getHostVideoIdValue(video, status) ? `
                     <div class="detail-item">
@@ -2768,46 +2765,40 @@ function renderNoteDisplay(note, videoId) {
 
 function renderPitchDisplay(pitch, videoId) {
     if (!pitch || pitch.trim() === '') {
-        return '<span class="pitch-empty">No pitch provided</span>';
+        return '<span class="pitch-empty"></span>'; // Blank space for alignment
     }
     
-    const maxLength = 100;
+    const maxLength = 50; // Shorter for better layout
     const truncated = pitch.length > maxLength;
     const displayText = truncated ? pitch.substring(0, maxLength) + '...' : pitch;
     
     return `
-        <span class="pitch-text" title="${escapeHtml(pitch)}">
+        <span class="pitch-text" title="${escapeHtml(pitch)}" onclick="togglePitchExpansion(${videoId})" style="cursor: pointer;">
+            <span class="pitch-icon">📄</span>
             <span class="pitch-content" id="pitch-content-${videoId}">${escapeHtml(displayText)}</span>
-            ${truncated ? `
-                <button class="pitch-expand-btn" onclick="togglePitchExpansion(${videoId})" title="Show full pitch">
-                    ▼
-                </button>
-            ` : ''}
         </span>
     `;
 }
 
 function togglePitchExpansion(videoId) {
     const pitchElement = document.getElementById(`pitch-content-${videoId}`);
-    const expandBtn = pitchElement.parentElement.querySelector('.pitch-expand-btn');
+    const pitchContainer = pitchElement?.parentElement;
     
-    if (!pitchElement || !expandBtn) return;
+    if (!pitchElement || !pitchContainer) return;
     
-    const isExpanded = expandBtn.textContent.trim() === '▲';
+    const fullPitch = pitchContainer.getAttribute('title');
+    if (!fullPitch) return;
+    
+    const maxLength = 50;
+    const isExpanded = pitchElement.textContent.length > maxLength;
     
     if (isExpanded) {
-        // Collapse - get original pitch from title attribute and truncate
-        const fullPitch = pitchElement.parentElement.getAttribute('title');
-        const truncatedText = fullPitch.substring(0, 100) + '...';
+        // Collapse - truncate text
+        const truncatedText = fullPitch.substring(0, maxLength) + '...';
         pitchElement.textContent = truncatedText;
-        expandBtn.textContent = '▼';
-        expandBtn.title = 'Show full pitch';
     } else {
         // Expand - show full pitch
-        const fullPitch = pitchElement.parentElement.getAttribute('title');
         pitchElement.textContent = fullPitch;
-        expandBtn.textContent = '▲';
-        expandBtn.title = 'Show less';
     }
 }
 

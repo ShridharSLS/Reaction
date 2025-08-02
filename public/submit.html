@@ -59,20 +59,36 @@
         }
 
         .form-group input,
-        .form-group select {
+        .form-group select,
+        .form-group textarea {
             width: 100%;
             padding: 12px 16px;
             border: 2px solid #e1e5e9;
             border-radius: 8px;
             font-size: 1rem;
             transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
         }
 
         .form-group input:focus,
-        .form-group select:focus {
+        .form-group select:focus,
+        .form-group textarea:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-help {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.875rem;
+            color: #6b7280;
+            font-style: italic;
         }
 
         .submit-btn {
@@ -182,7 +198,12 @@
                 </select>
             </div>
 
-
+            <div class="form-group">
+                <label for="pitch">Pitch (Optional)</label>
+                <textarea id="pitch" name="pitch" rows="6" 
+                         placeholder="Describe why this video topic would be valuable, interesting, or relevant. What makes it worth reviewing? Share your thoughts, context, or reasoning here..."></textarea>
+                <small class="form-help">Help reviewers understand why this video topic is worth considering by sharing your perspective.</small>
+            </div>
 
             <button type="submit" class="submit-btn" id="submitBtn">
                 Submit Video Topic
@@ -321,7 +342,8 @@
                     added_by: formData.get('submitterName'), // This is now the person ID
                     link: formData.get('videoLink').trim(),
                     likes_count: formData.get('likesCount') ? parseInt(formData.get('likesCount')) : 0,
-                    type: formData.get('videoType')
+                    type: formData.get('videoType'),
+                    pitch: formData.get('pitch')?.trim() || null
                 };
 
                 // Basic validation
