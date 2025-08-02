@@ -788,30 +788,44 @@ app.get('/api/videos/system/trash', async (req, res) => {
     try {
         console.log('Fetching system-wide trash videos...');
         
-        // Get all videos with relevance_rating = 0 (trash) with proper people table join
+        // First, get all people to create a name map
+        const { data: people, error: peopleError } = await supabase
+            .from('people')
+            .select('id, name')
+            .eq('is_archived', false);
+        
+        if (peopleError) {
+            console.error('ERROR fetching people:', peopleError);
+            return res.status(500).json({ error: 'Failed to fetch people: ' + peopleError.message });
+        }
+        
+        // Create a map of person_id to person name
+        const peopleMap = {};
+        people.forEach(person => {
+            peopleMap[person.id] = person.name;
+        });
+        
+        // Get all videos with relevance_rating = 0 (trash)
         const { data: trashVideos, error: trashError } = await supabase
             .from('videos')
-            .select(`
-                *,
-                people(name)
-            `)
+            .select('*')
             .eq('relevance_rating', 0)
             .limit(50);
         
-        console.log('Trash query with people join result:', trashError ? 'ERROR' : 'SUCCESS');
+        console.log('Trash query result:', trashError ? 'ERROR' : 'SUCCESS');
         console.log(`Found ${trashVideos ? trashVideos.length : 0} videos with relevance_rating = 0 (trash)`);
         
         if (trashError) {
-            console.error('ERROR in trash query with people join:', trashError);
+            console.error('ERROR in trash query:', trashError);
             return res.status(500).json({ error: 'Failed in trash query: ' + trashError.message });
         }
         
-        // Format response with proper person names from joined people table (unified with other endpoints)
+        // Format response with proper person names from people map (unified with other endpoints)
         const response = {
             videos: trashVideos.map(video => ({
                 ...video,
-                // Add person_name from joined people table (unified with other endpoints)
-                added_by_name: video.people ? video.people.name : 'Unknown',
+                // Add person_name from people map (unified with other endpoints)
+                added_by_name: peopleMap[video.added_by] || 'Unknown',
             })),
             status: 'trash',
             count: trashVideos.length,
@@ -849,32 +863,46 @@ app.get('/api/videos/system/relevance', async (req, res) => {
             return res.status(500).json({ error: 'Exception in basic query: ' + basicQueryError.message });
         }
         
-        // Query for relevance videos with proper people table join (unified with other endpoints)
+        // Query for relevance videos using the working approach (fetch people separately)
         try {
-            // Use relevance_rating as primary filter for the relevance view with people join
+            // First, get all people to create a name map
+            const { data: people, error: peopleError } = await supabase
+                .from('people')
+                .select('id, name')
+                .eq('is_archived', false);
+            
+            if (peopleError) {
+                console.error('ERROR fetching people:', peopleError);
+                return res.status(500).json({ error: 'Failed to fetch people: ' + peopleError.message });
+            }
+            
+            // Create a map of person_id to person name
+            const peopleMap = {};
+            people.forEach(person => {
+                peopleMap[person.id] = person.name;
+            });
+            
+            // Get relevance videos
             const { data: relevanceVideos, error: relevanceError } = await supabase
                 .from('videos')
-                .select(`
-                    *,
-                    people(name)
-                `)
+                .select('*')
                 .eq('relevance_rating', -1)
                 .limit(50);
             
-            console.log('Relevance query with people join result:', relevanceError ? 'ERROR' : 'SUCCESS');
+            console.log('Relevance query result:', relevanceError ? 'ERROR' : 'SUCCESS');
             console.log(`Found ${relevanceVideos ? relevanceVideos.length : 0} videos with relevance_rating = -1`);
             
             if (relevanceError) {
-                console.error('ERROR in relevance query with people join:', relevanceError);
+                console.error('ERROR in relevance query:', relevanceError);
                 return res.status(500).json({ error: 'Failed in relevance query: ' + relevanceError.message });
             }
             
-            // Return results with proper person names from joined people table
+            // Return results with proper person names from people map
             const response = {
                 videos: relevanceVideos.map(video => ({
                     ...video,
-                    // Add person_name from joined people table (unified with other endpoints)
-                    added_by_name: video.people ? video.people.name : 'Unknown',
+                    // Add person_name from people map (unified with other endpoints)
+                    added_by_name: peopleMap[video.added_by] || 'Unknown',
                 })),
                 status: 'relevance',
                 count: relevanceVideos.length,
