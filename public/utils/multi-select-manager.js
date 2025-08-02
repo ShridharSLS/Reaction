@@ -6,16 +6,27 @@
  * - DRY: Reusable across different table views
  * - KISS: Simple API for selection management
  * - SOLID: Clear interface, extensible design
+ * 
+ * Enhanced with:
+ * - Proper lifecycle management
+ * - Event listener cleanup
+ * - Constants-based configuration
+ * - Edge case handling
  */
 
 class MultiSelectManager {
     constructor(options = {}) {
         this.selectedIds = new Set();
         this.totalItems = 0;
+        this.isDestroyed = false;
+        this.boundEventHandlers = new Map(); // Store bound event handlers for cleanup
+        
+        // Use constants with fallback to options
+        const constants = window.APP_CONSTANTS || {};
         this.options = {
-            checkboxSelector: '.row-checkbox',
-            selectAllSelector: '.select-all-checkbox',
-            bulkActionBarSelector: '.bulk-action-bar',
+            checkboxSelector: constants.SELECTORS?.ROW_CHECKBOX || '.row-checkbox',
+            selectAllSelector: constants.SELECTORS?.SELECT_ALL_CHECKBOX || '.select-all-checkbox',
+            bulkActionBarSelector: constants.SELECTORS?.BULK_ACTION_BAR || '.bulk-action-bar',
             onSelectionChange: null,
             ...options
         };
@@ -32,35 +43,50 @@ class MultiSelectManager {
     }
     
     /**
-     * Attach event listeners for checkboxes
+     * Attach event listeners for checkboxes with proper cleanup tracking
      */
     attachEventListeners() {
-        // Individual checkbox change handler
-        document.addEventListener('change', (e) => {
+        // Create bound event handlers for cleanup
+        const individualCheckboxHandler = (e) => {
+            if (this.isDestroyed) return;
             if (e.target.matches(this.options.checkboxSelector)) {
                 this.handleIndividualCheckboxChange(e.target);
             }
-        });
+        };
         
-        // Select all checkbox change handler
-        document.addEventListener('change', (e) => {
+        const selectAllHandler = (e) => {
+            if (this.isDestroyed) return;
             if (e.target.matches(this.options.selectAllSelector)) {
                 this.handleSelectAllChange(e.target);
             }
-        });
+        };
+        
+        // Store handlers for cleanup
+        this.boundEventHandlers.set('individualCheckbox', individualCheckboxHandler);
+        this.boundEventHandlers.set('selectAll', selectAllHandler);
+        
+        // Attach event listeners
+        document.addEventListener('change', individualCheckboxHandler);
+        document.addEventListener('change', selectAllHandler);
     }
     
     /**
-     * Handle individual checkbox change
-     * @param {HTMLInputElement} checkbox - The checkbox element
+     * Handle individual checkbox state change
+     * @param {HTMLElement} checkbox - The checkbox element that changed
      */
     handleIndividualCheckboxChange(checkbox) {
-        const id = parseInt(checkbox.value);
+        if (this.isDestroyed) return;
+        
+        const videoId = checkbox.getAttribute('data-video-id');
+        if (!videoId) {
+            console.warn('[MultiSelectManager] Checkbox missing data-video-id attribute');
+            return;
+        }
         
         if (checkbox.checked) {
-            this.selectedIds.add(id);
+            this.selectedIds.add(videoId);
         } else {
-            this.selectedIds.delete(id);
+            this.selectedIds.delete(videoId);
         }
         
         this.updateUI();
@@ -68,15 +94,34 @@ class MultiSelectManager {
     }
     
     /**
-     * Handle select all checkbox change
-     * @param {HTMLInputElement} selectAllCheckbox - The select all checkbox
+     * Handle select all checkbox state change
+     * @param {HTMLElement} selectAllCheckbox - The select all checkbox element
      */
     handleSelectAllChange(selectAllCheckbox) {
-        if (selectAllCheckbox.checked) {
-            this.selectAll();
-        } else {
-            this.deselectAll();
+        if (this.isDestroyed) return;
+        
+        const checkboxes = document.querySelectorAll(this.options.checkboxSelector);
+        
+        if (checkboxes.length === 0) {
+            console.warn('[MultiSelectManager] No checkboxes found for select all operation');
+            return;
         }
+        
+        checkboxes.forEach(checkbox => {
+            const videoId = checkbox.getAttribute('data-video-id');
+            if (videoId) {
+                checkbox.checked = selectAllCheckbox.checked;
+                
+                if (selectAllCheckbox.checked) {
+                    this.selectedIds.add(videoId);
+                } else {
+                    this.selectedIds.delete(videoId);
+                }
+            }
+        });
+        
+        this.updateUI();
+        this.notifySelectionChange();
     }
     
     /**
@@ -242,26 +287,42 @@ class MultiSelectManager {
      * Reset selection state (useful after bulk operations)
      */
     reset() {
+        if (this.isDestroyed) return;
+        
         this.selectedIds.clear();
-        this.totalItems = 0;
-        
-        // Clear all checkboxes
-        const checkboxes = document.querySelectorAll(this.options.checkboxSelector);
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        
         this.updateUI();
         this.notifySelectionChange();
     }
     
     /**
-     * Destroy the manager and clean up event listeners
+     * Destroy the manager and clean up all event listeners
+     * Call this when the component is no longer needed to prevent memory leaks
      */
     destroy() {
-        // Note: Since we use event delegation, no explicit cleanup needed
-        // But we can reset state
-        this.reset();
+        if (this.isDestroyed) return;
+        
+        // Remove all event listeners
+        this.boundEventHandlers.forEach((handler, key) => {
+            document.removeEventListener('change', handler);
+        });
+        
+        // Clear all references
+        this.boundEventHandlers.clear();
+        this.selectedIds.clear();
+        this.options.onSelectionChange = null;
+        
+        // Mark as destroyed
+        this.isDestroyed = true;
+        
+        console.log('[MultiSelectManager] Destroyed and cleaned up');
+    }
+    
+    /**
+     * Check if the manager has been destroyed
+     * @returns {boolean} True if destroyed
+     */
+    getIsDestroyed() {
+        return this.isDestroyed;
     }
 }
 

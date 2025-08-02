@@ -648,6 +648,13 @@ function switchTab(tabId) {
     
     currentTab = tabId;
     
+    // Clean up multi-select components when switching away from 'all' view
+    if (currentTab === 'all' && tabId !== 'all') {
+        MultiSelectComponents.cleanup();
+        updateLegacyReferences();
+        console.log('[ViewSwitch] Cleaned up multi-select components when leaving all view');
+    }
+    
     // Load data for the new tab
     if (tabId === 'manage-people') {
         loadPeople();
@@ -2924,38 +2931,88 @@ let allEntriesData = [];
 let currentSortColumn = null;
 let currentSortDirection = 'asc';
 
-// Multi-select components for 'all' view
+// Multi-select components for 'all' view - improved lifecycle management
+const MultiSelectComponents = {
+    manager: null,
+    bulkActionBar: null,
+    checkboxColumn: null,
+    
+    // Initialize all components
+    init() {
+        this.cleanup(); // Clean up any existing instances
+        
+        // Initialize checkbox column component
+        this.checkboxColumn = new CheckboxColumn({
+            headerCheckboxId: 'select-all-checkbox',
+            rowCheckboxClass: 'row-checkbox',
+            headerCheckboxClass: 'select-all-checkbox'
+        });
+        
+        // Initialize bulk action bar
+        this.bulkActionBar = new BulkActionBar('bulk-action-container', {
+            onDelete: handleBulkDelete,
+            onClear: handleClearSelection
+        });
+        
+        // Initialize multi-select manager
+        this.manager = new MultiSelectManager({
+            checkboxSelector: window.APP_CONSTANTS?.SELECTORS?.ROW_CHECKBOX || '.row-checkbox',
+            selectAllSelector: window.APP_CONSTANTS?.SELECTORS?.SELECT_ALL_CHECKBOX || '.select-all-checkbox',
+            bulkActionBarSelector: window.APP_CONSTANTS?.SELECTORS?.BULK_ACTION_BAR || '.bulk-action-bar',
+            onSelectionChange: handleSelectionChange
+        });
+        
+        console.log('[MultiSelectComponents] Initialized for all view');
+    },
+    
+    // Clean up all components
+    cleanup() {
+        if (this.manager && typeof this.manager.destroy === 'function') {
+            this.manager.destroy();
+        }
+        if (this.bulkActionBar && typeof this.bulkActionBar.destroy === 'function') {
+            this.bulkActionBar.destroy();
+        }
+        if (this.checkboxColumn && typeof this.checkboxColumn.destroy === 'function') {
+            this.checkboxColumn.destroy();
+        }
+        
+        this.manager = null;
+        this.bulkActionBar = null;
+        this.checkboxColumn = null;
+        
+        console.log('[MultiSelectComponents] Cleaned up');
+    },
+    
+    // Check if components are initialized
+    isInitialized() {
+        return this.manager !== null && this.bulkActionBar !== null && this.checkboxColumn !== null;
+    }
+};
+
+// Legacy global variables for backward compatibility (will be deprecated)
 let multiSelectManager = null;
 let bulkActionBar = null;
 let checkboxColumn = null;
 
+// Update legacy variables when components are initialized
+function updateLegacyReferences() {
+    multiSelectManager = MultiSelectComponents.manager;
+    bulkActionBar = MultiSelectComponents.bulkActionBar;
+    checkboxColumn = MultiSelectComponents.checkboxColumn;
+}
+
 /**
  * Initialize multi-select components for the 'all' view
+ * Enhanced with proper lifecycle management and constants
  * Following Clean Code principles: Single responsibility, clear initialization
  */
 function initializeMultiSelectComponents() {
-    // Initialize checkbox column component
-    checkboxColumn = new CheckboxColumn({
-        headerCheckboxId: 'select-all-checkbox',
-        rowCheckboxClass: 'row-checkbox',
-        headerCheckboxClass: 'select-all-checkbox'
-    });
+    // Use the new component management system
+    MultiSelectComponents.init();
     
-    // Initialize bulk action bar
-    bulkActionBar = new BulkActionBar('bulk-action-container', {
-        onDelete: handleBulkDelete,
-        onClear: handleClearSelection
-    });
-    
-    // Initialize multi-select manager
-    multiSelectManager = new MultiSelectManager({
-        checkboxSelector: '.row-checkbox',
-        selectAllSelector: '.select-all-checkbox',
-        bulkActionBarSelector: '.bulk-action-bar',
-        onSelectionChange: handleSelectionChange
-    });
-    
-    console.log('[Multi-Select] Components initialized for all view');
+    // Update legacy references for backward compatibility
+    updateLegacyReferences();
 }
 
 /**
@@ -2979,40 +3036,70 @@ function handleSelectionChange(selectionState) {
  * Handle bulk delete operation
  */
 function handleBulkDelete() {
-    if (!multiSelectManager || !multiSelectManager.hasSelection()) {
+    // Enhanced edge case handling with user feedback
+    if (!multiSelectManager) {
+        console.error('[BulkDelete] MultiSelectManager not initialized');
+        if (window.NotificationManager) {
+            NotificationManager.handleEdgeCase('system_error');
+        }
+        return;
+    }
+    
+    if (!multiSelectManager.hasSelection()) {
+        // Provide user feedback for no selection
+        if (window.NotificationManager) {
+            NotificationManager.handleEdgeCase('no_selection');
+        } else {
+            alert('Please select videos to delete');
+        }
         return;
     }
     
     const selectedIds = multiSelectManager.getSelectedIds();
     const selectedCount = selectedIds.length;
     
-    console.log('Bulk delete called for IDs:', selectedIds);
+    console.log('[BulkDelete] Called for IDs:', selectedIds);
+    
+    // Use constants for messages with fallback
+    const constants = window.APP_CONSTANTS || {};
+    const confirmTitle = constants.MESSAGES?.BULK_DELETE?.CONFIRM_TITLE || 'Confirm Bulk Delete';
+    const confirmMessage = constants.MESSAGES?.BULK_DELETE?.CONFIRM_MESSAGE
+        ? constants.MESSAGES.BULK_DELETE.CONFIRM_MESSAGE(selectedCount)
+        : `Are you sure you want to delete ${selectedCount} selected video${selectedCount !== 1 ? 's' : ''}? This action cannot be undone.`;
     
     // Use the same showConfirmation pattern as the working deleteVideo function
     showConfirmation(
-        'Confirm Bulk Delete',
-        `Are you sure you want to delete ${selectedCount} selected video${selectedCount !== 1 ? 's' : ''}? This action cannot be undone.`,
+        confirmTitle,
+        confirmMessage,
         async () => {
             try {
-                console.log('Performing bulk delete for IDs:', selectedIds);
+                console.log('[BulkDelete] Performing bulk delete for IDs:', selectedIds);
                 
                 // Set loading state
                 if (bulkActionBar) {
                     bulkActionBar.setLoading(true);
                 }
                 
+                // Use constants for API endpoint with fallback
+                const apiEndpoint = constants.API?.VIDEOS_BULK || '/api/videos/bulk';
+                
                 // Perform bulk delete using the same API pattern as single delete
-                const result = await ApiService.request('/api/videos/bulk', {
+                const result = await ApiService.request(apiEndpoint, {
                     method: 'DELETE',
                     body: JSON.stringify({ ids: selectedIds })
                 });
                 
-                console.log('Bulk delete response:', result);
+                console.log('[BulkDelete] Response:', result);
                 
-                // Show success message using the same pattern as single delete
-                showSuccessNotification(
-                    `Successfully deleted ${result.deletedCount} video${result.deletedCount !== 1 ? 's' : ''}`
-                );
+                // Use NotificationManager for consistent success handling
+                if (window.NotificationManager) {
+                    NotificationManager.handleBulkDeleteResult(result, selectedCount);
+                } else {
+                    // Fallback to existing pattern
+                    showSuccessNotification(
+                        `Successfully deleted ${result.deletedCount} video${result.deletedCount !== 1 ? 's' : ''}`
+                    );
+                }
                 
                 // Reset selection and reload data
                 if (multiSelectManager) {
@@ -3024,8 +3111,15 @@ function handleBulkDelete() {
                 updateButtonCounts(); // Update counts after deletion
                 
             } catch (error) {
-                console.error('Failed to bulk delete videos:', error);
-                alert(`Error deleting videos: ${error.message || 'Unknown error'}`);
+                console.error('[BulkDelete] Failed:', error);
+                
+                // Use NotificationManager for consistent error handling
+                if (window.NotificationManager) {
+                    NotificationManager.handleApiError(error, 'bulk delete', false);
+                } else {
+                    // Fallback to existing pattern
+                    alert(`Error deleting videos: ${error.message || 'Unknown error'}`);
+                }
             } finally {
                 // Clear loading state
                 if (bulkActionBar) {
