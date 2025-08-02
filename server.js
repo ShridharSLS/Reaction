@@ -1443,32 +1443,67 @@ app.post('/api/schema/test', async (req, res) => {
 
 // ===== VIDEO DELETE ENDPOINT =====
 
-// Delete a video
+// Delete video by ID
 app.delete('/api/videos/:id', asyncHandler(async (req, res) => {
     const { id } = req.params;
     
-    // First, remove all tag associations
+    // First, delete associated tag relationships
     const { error: tagError } = await supabase
         .from('video_tags')
         .delete()
         .eq('video_id', id);
-        
-    if (tagError) throw tagError;
     
-    // Then delete the video itself
+    if (tagError) {
+        throw tagError;
+    }
+    
+    // Then delete the video
     const { data, error } = await supabase
         .from('videos')
         .delete()
         .eq('id', id)
-        .select();
+        .select()
+        .single();
         
-    if (error) throw error;
-    
-    if (!data || data.length === 0) {
-        return res.status(404).json({ error: 'Video not found' });
+    if (error) {
+        throw error;
     }
     
-    res.json({ message: 'Video deleted successfully', video: data[0] });
+    res.json({ message: 'Video deleted successfully', video: data });
+}));
+
+// Bulk delete videos by IDs
+app.delete('/api/videos/bulk', asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    
+    if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: 'IDs must be provided as a non-empty array' });
+    }
+    
+    // Validate that all IDs are numbers
+    const validIds = ids.filter(id => Number.isInteger(Number(id)));
+    if (validIds.length !== ids.length) {
+        return res.status(400).json({ error: 'All IDs must be valid integers' });
+    }
+    
+    // First, delete associated tag relationships for all videos
+    const { error: tagError } = await supabase
+        .from('video_tags')
+        .delete()
+        .in('video_id', validIds);
+    
+    if (tagError) {
+        throw tagError;
+    }
+    
+    // Then bulk delete the videos using QueryBuilder
+    const deletedVideos = await QueryBuilder.deleteByIds('videos', validIds);
+    
+    res.json({ 
+        message: `${deletedVideos.length} video${deletedVideos.length !== 1 ? 's' : ''} deleted successfully`,
+        deletedCount: deletedVideos.length,
+        deletedVideos: deletedVideos
+    });
 }));
 
 // ===== TAG MANAGEMENT API ENDPOINTS =====

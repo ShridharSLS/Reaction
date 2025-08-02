@@ -178,16 +178,20 @@
             <div class="view-header">
                 <h2>📈 All Database Entries <span id="all-count" class="view-count"></span></h2>
                 <div class="all-view-controls">
-                    <input type="text" id="all-search" placeholder="Search all columns..." class="search-input">
-                    <button class="btn btn-secondary" onclick="exportCSV('all')">📤 Export CSV</button>
-                </div>
+                <input type="text" id="all-search" placeholder="Search all columns..." class="search-input">
+                <button class="btn btn-secondary" onclick="exportCSV('all')">📤 Export CSV</button>
             </div>
-            <div class="table-container">
-                <table id="all-table" class="sortable-table">
-                    <thead id="all-table-header"></thead>
-                    <tbody id="all-table-body"></tbody>
-                </table>
-            </div>
+        </div>
+        
+        <!-- Bulk Action Bar Container -->
+        <div id="bulk-action-container"></div>
+        
+        <div class="table-container">
+            <table id="all-table" class="sortable-table table-with-checkboxes">
+                <thead id="all-table-header"></thead>
+                <tbody id="all-table-body"></tbody>
+            </table>
+        </div>
         </div>
 
         <!-- Manage People Tab -->
@@ -361,6 +365,11 @@
         </div>
     </div>
 
+    <!-- Multi-select components -->
+    <script src="utils/multi-select-manager.js"></script>
+    <script src="components/checkbox-column.js"></script>
+    <script src="components/bulk-action-bar.js"></script>
+    
     <script src="script.js?v=8"></script>
     <script>
         // Simple authentication protection for main app

@@ -2851,9 +2851,154 @@ let allEntriesData = [];
 let currentSortColumn = null;
 let currentSortDirection = 'asc';
 
+// Multi-select components for 'all' view
+let multiSelectManager = null;
+let bulkActionBar = null;
+let checkboxColumn = null;
+
+/**
+ * Initialize multi-select components for the 'all' view
+ * Following Clean Code principles: Single responsibility, clear initialization
+ */
+function initializeMultiSelectComponents() {
+    // Initialize checkbox column component
+    checkboxColumn = new CheckboxColumn({
+        headerCheckboxId: 'select-all-checkbox',
+        rowCheckboxClass: 'row-checkbox',
+        headerCheckboxClass: 'select-all-checkbox'
+    });
+    
+    // Initialize bulk action bar
+    bulkActionBar = new BulkActionBar('bulk-action-container', {
+        onDelete: handleBulkDelete,
+        onClear: handleClearSelection
+    });
+    
+    // Initialize multi-select manager
+    multiSelectManager = new MultiSelectManager({
+        checkboxSelector: '.row-checkbox',
+        selectAllSelector: '.select-all-checkbox',
+        bulkActionBarSelector: '.bulk-action-bar',
+        onSelectionChange: handleSelectionChange
+    });
+    
+    console.log('[Multi-Select] Components initialized for all view');
+}
+
+/**
+ * Handle selection change events
+ * @param {Object} selectionState - Current selection state
+ */
+function handleSelectionChange(selectionState) {
+    const { selectedCount, hasSelection } = selectionState;
+    
+    if (bulkActionBar) {
+        bulkActionBar.updateState(selectionState);
+    }
+    
+    // Update row visual state
+    updateRowSelectionVisuals(selectionState.selectedIds);
+    
+    console.log(`[Multi-Select] Selection changed: ${selectedCount} items selected`);
+}
+
+/**
+ * Handle bulk delete operation
+ */
+async function handleBulkDelete() {
+    if (!multiSelectManager || !multiSelectManager.hasSelection()) {
+        return;
+    }
+    
+    const selectedIds = multiSelectManager.getSelectedIds();
+    const selectedCount = selectedIds.length;
+    
+    // Show confirmation modal
+    const confirmed = await Modal.confirm(
+        'Confirm Bulk Delete',
+        `Are you sure you want to delete ${selectedCount} selected video${selectedCount !== 1 ? 's' : ''}? This action cannot be undone.`,
+        'Delete All',
+        'Cancel'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+        // Set loading state
+        if (bulkActionBar) {
+            bulkActionBar.setLoading(true);
+        }
+        
+        // Perform bulk delete
+        const result = await ApiService.request('/api/videos/bulk', {
+            method: 'DELETE',
+            body: JSON.stringify({ ids: selectedIds })
+        });
+        
+        // Show success message
+        showNotification(
+            `Successfully deleted ${result.deletedCount} video${result.deletedCount !== 1 ? 's' : ''}`,
+            'success'
+        );
+        
+        // Reset selection and reload data
+        if (multiSelectManager) {
+            multiSelectManager.reset();
+        }
+        
+        // Reload the table data
+        await loadAllEntries();
+        
+    } catch (error) {
+        console.error('Bulk delete failed:', error);
+        showNotification(
+            `Failed to delete videos: ${error.message}`,
+            'error'
+        );
+    } finally {
+        // Clear loading state
+        if (bulkActionBar) {
+            bulkActionBar.setLoading(false);
+        }
+    }
+}
+
+/**
+ * Handle clear selection operation
+ */
+function handleClearSelection() {
+    if (multiSelectManager) {
+        multiSelectManager.reset();
+    }
+    
+    console.log('[Multi-Select] Selection cleared');
+}
+
+/**
+ * Update visual state of selected rows
+ * @param {number[]} selectedIds - Array of selected row IDs
+ */
+function updateRowSelectionVisuals(selectedIds) {
+    // Remove selected class from all rows
+    const allRows = document.querySelectorAll('#all-table-body tr');
+    allRows.forEach(row => row.classList.remove('selected'));
+    
+    // Add selected class to selected rows
+    selectedIds.forEach(id => {
+        const checkbox = document.querySelector(`.row-checkbox[value="${id}"]`);
+        if (checkbox) {
+            const row = checkbox.closest('tr');
+            if (row) {
+                row.classList.add('selected');
+            }
+        }
+    });
+}
+
 async function loadAllEntries() {
     try {
         allEntriesData = await ApiService.request('/api/videos/all/entries');
+        initializeMultiSelectComponents();
         renderAllEntriesTable(allEntriesData);
         setupAllViewSearch();
     } catch (error) {
@@ -2872,11 +3017,15 @@ function renderAllEntriesTable(data) {
     if (data.length === 0) {
         headerContainer.innerHTML = '';
         bodyContainer.innerHTML = '<tr><td colspan="100%" class="empty-state">No entries found</td></tr>';
+        if (multiSelectManager) {
+            multiSelectManager.updateTotalItems(0);
+        }
         return;
     }
     
     // Define column order and display names - ALL database columns
     const columns = [
+        { key: 'checkbox', label: '', sortable: false, isCheckbox: true },
         { key: 'id', label: 'ID', sortable: true },
         { key: 'person_id', label: 'Person ID', sortable: true },
         { key: 'added_by_name', label: 'Person Name', sortable: true },
@@ -2897,38 +3046,55 @@ function renderAllEntriesTable(data) {
         { key: 'updated_at', label: 'Updated At', sortable: true }
     ];
     
-    // Render header
-    headerContainer.innerHTML = columns.map(col => `
-        <th class="${col.sortable ? 'sortable' : ''} ${currentSortColumn === col.key ? 'sort-' + currentSortDirection : ''}" 
-            ${col.sortable ? `onclick="sortAllEntries('${col.key}')"` : ''}>
-            ${col.label}
-        </th>
-    `).join('');
+    // Render header with checkbox support
+    headerContainer.innerHTML = columns.map(col => {
+        if (col.isCheckbox) {
+            return checkboxColumn ? checkboxColumn.renderHeader() : '<th class="checkbox-column-header"></th>';
+        }
+        return `
+            <th class="${col.sortable ? 'sortable' : ''} ${currentSortColumn === col.key ? 'sort-' + currentSortDirection : ''}" 
+                ${col.sortable ? `onclick="sortAllEntries('${col.key}')"` : ''}>
+                ${col.label}
+            </th>
+        `;
+    }).join('');
     
-    // Render body
-    bodyContainer.innerHTML = data.map(entry => `
-        <tr>
-            <td>${entry.id || ''}</td>
-            <td>${entry.person_id || ''}</td>
-            <td>${escapeHtml(entry.added_by_name || '')}</td>
-            <td class="link-cell">
-                ${entry.link ? `<a href="${escapeHtml(entry.link)}" target="_blank" title="${escapeHtml(entry.link)}">${escapeHtml(entry.link)}</a>` : ''}
-            </td>
-            <td class="type-cell">${entry.type || ''}</td>
-            <td class="status-cell">${entry.status_1 || ''}</td>
-            <td class="status-cell">${entry.status_2 || ''}</td>
-            <td>${entry.likes_count || 0}</td>
-            <td>${entry.relevance_rating !== null ? entry.relevance_rating : ''}</td>
-            <td>${entry.score !== null ? entry.score.toFixed(2) : ''}</td>
-            <td>${escapeHtml(entry.video_id_text || '')}</td>
-            <td>${escapeHtml(entry.video_id_text_2 || '')}</td>
-            <td>${escapeHtml(entry.video_code || '')}</td>
-            <td class="note-cell">${entry.note ? renderNoteDisplay(entry.note, entry.id) : ''}</td>
-            <td class="note-cell">${entry.note_2 ? renderNoteDisplay(entry.note_2, entry.id) : ''}</td>
-            <td>${entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}</td>
-            <td>${entry.updated_at ? new Date(entry.updated_at).toLocaleDateString() : ''}</td>
-        </tr>
-    `).join('');
+    // Render body with checkbox support
+    bodyContainer.innerHTML = data.map(entry => {
+        const checkboxCell = checkboxColumn ? checkboxColumn.renderRow(entry.id) : '<td class="checkbox-column-cell"></td>';
+        
+        return `
+            <tr>
+                ${checkboxCell}
+                <td>${entry.id || ''}</td>
+                <td>${entry.person_id || ''}</td>
+                <td>${escapeHtml(entry.added_by_name || '')}</td>
+                <td class="link-cell">
+                    ${entry.link ? `<a href="${escapeHtml(entry.link)}" target="_blank" title="${escapeHtml(entry.link)}">${escapeHtml(entry.link)}</a>` : ''}
+                </td>
+                <td class="type-cell">${entry.type || ''}</td>
+                <td class="status-cell">${entry.status_1 || ''}</td>
+                <td class="status-cell">${entry.status_2 || ''}</td>
+                <td>${entry.likes_count || 0}</td>
+                <td>${entry.relevance_rating !== null ? entry.relevance_rating : ''}</td>
+                <td>${entry.score !== null ? entry.score.toFixed(2) : ''}</td>
+                <td>${escapeHtml(entry.video_id_text || '')}</td>
+                <td>${escapeHtml(entry.video_id_text_2 || '')}</td>
+                <td>${escapeHtml(entry.video_code || '')}</td>
+                <td class="note-cell">${entry.note ? renderNoteDisplay(entry.note, entry.id) : ''}</td>
+                <td class="note-cell">${entry.note_2 ? renderNoteDisplay(entry.note_2, entry.id) : ''}</td>
+                <td>${entry.created_at ? new Date(entry.created_at).toLocaleDateString() : ''}</td>
+                <td>${entry.updated_at ? new Date(entry.updated_at).toLocaleDateString() : ''}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Update multi-select manager with new data
+    if (multiSelectManager) {
+        multiSelectManager.updateTotalItems(data.length);
+    }
+    
+    console.log(`[Multi-Select] Rendered table with ${data.length} entries and checkboxes`);
 }
 
 function sortAllEntries(column) {

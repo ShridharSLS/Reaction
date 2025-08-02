@@ -222,6 +222,33 @@ class QueryBuilder {
         return data || [];
     }
 
+    /**
+     * Bulk delete records by IDs
+     * @param {string} tableName - Table name
+     * @param {number[]} ids - Array of IDs to delete
+     * @returns {Promise<Array>} Deleted records
+     */
+    static async deleteByIds(tableName, ids) {
+        if (!Array.isArray(ids) || ids.length === 0) {
+            throw new Error('IDs must be a non-empty array');
+        }
+
+        // Validate that all IDs are numbers
+        const validIds = ids.filter(id => Number.isInteger(Number(id)));
+        if (validIds.length !== ids.length) {
+            throw new Error('All IDs must be valid integers');
+        }
+
+        const { data, error } = await supabase
+            .from(tableName)
+            .delete()
+            .in('id', validIds)
+            .select();
+            
+        if (error) throw error;
+        return data || [];
+    }
+
     // ===== SPECIALIZED OPERATIONS =====
     
     /**
