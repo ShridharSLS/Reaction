@@ -187,7 +187,7 @@ function generateButton(buttonTemplate, hostId, videoId, video) {
         case 'reject':
             // Use same approach as note icon - get note from video object and call showNoteModal directly
             const config = getHostConfig(hostId);
-            const currentNote = config && video[config.noteColumn] ? video[config.noteColumn] : '';
+            const currentNote = config && video[config.noteCol] ? video[config.noteCol] : '';
             const escapedNote = currentNote ? escapeHtml(currentNote).replace(/'/g, "\\'") : '';
             onclick = `showNoteModal(${videoId}, '${type}', '${escapedNote}')`;
             break;
