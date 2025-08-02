@@ -819,12 +819,42 @@ app.get('/api/videos/system/trash', async (req, res) => {
             return res.status(500).json({ error: 'Failed in trash query: ' + trashError.message });
         }
         
-        // Format response with proper person names from people map (unified with other endpoints)
+        // Fetch tags for videos (unified with Host endpoints)
+        const videoIds = trashVideos?.map(v => v.id) || [];
+        let videoTagsMap = {};
+        
+        if (videoIds.length > 0) {
+            const { data: videoTags, error: tagsError } = await supabase
+                .from('video_tags')
+                .select(`
+                    video_id,
+                    tags (
+                        id,
+                        name,
+                        color
+                    )
+                `)
+                .in('video_id', videoIds);
+            
+            if (!tagsError && videoTags) {
+                // Group tags by video_id
+                videoTags.forEach(vt => {
+                    if (!videoTagsMap[vt.video_id]) {
+                        videoTagsMap[vt.video_id] = [];
+                    }
+                    videoTagsMap[vt.video_id].push(vt.tags);
+                });
+            }
+        }
+        
+        // Format response with proper person names and tags (unified with other endpoints)
         const response = {
             videos: trashVideos.map(video => ({
                 ...video,
                 // Add person_name from people map (unified with other endpoints)
                 added_by_name: peopleMap[video.added_by] || 'Unknown',
+                // Add tags from videoTagsMap (unified with Host endpoints)
+                tags: videoTagsMap[video.id] || []
             })),
             status: 'trash',
             count: trashVideos.length,
@@ -895,12 +925,42 @@ app.get('/api/videos/system/relevance', async (req, res) => {
                 return res.status(500).json({ error: 'Failed in relevance query: ' + relevanceError.message });
             }
             
-            // Return results with proper person names from people map
+            // Fetch tags for videos (unified with Host endpoints)
+            const videoIds = relevanceVideos?.map(v => v.id) || [];
+            let videoTagsMap = {};
+            
+            if (videoIds.length > 0) {
+                const { data: videoTags, error: tagsError } = await supabase
+                    .from('video_tags')
+                    .select(`
+                        video_id,
+                        tags (
+                            id,
+                            name,
+                            color
+                        )
+                    `)
+                    .in('video_id', videoIds);
+                
+                if (!tagsError && videoTags) {
+                    // Group tags by video_id
+                    videoTags.forEach(vt => {
+                        if (!videoTagsMap[vt.video_id]) {
+                            videoTagsMap[vt.video_id] = [];
+                        }
+                        videoTagsMap[vt.video_id].push(vt.tags);
+                    });
+                }
+            }
+            
+            // Return results with proper person names and tags (unified with Host endpoints)
             const response = {
                 videos: relevanceVideos.map(video => ({
                     ...video,
                     // Add person_name from people map (unified with other endpoints)
                     added_by_name: peopleMap[video.added_by] || 'Unknown',
+                    // Add tags from videoTagsMap (unified with Host endpoints)
+                    tags: videoTagsMap[video.id] || []
                 })),
                 status: 'relevance',
                 count: relevanceVideos.length,
