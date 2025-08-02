@@ -2047,16 +2047,36 @@ async function hostAction(hostId, videoId, action, options = {}) {
 async function hostActionAccept(hostId, videoId) {
     const config = getHostConfig(hostId);
     
-    // Use unified modal system for all hosts (uses 'accept')
-    showNoteModal(videoId, 'accept');
+    try {
+        // Fetch current video data to get existing note
+        const videoData = await ApiService.request(`/api/videos/${videoId}`);
+        const currentNote = videoData[config.noteColumn] || '';
+        
+        // Use unified modal system for all hosts with existing note pre-filled
+        showNoteModal(videoId, 'accept', currentNote);
+    } catch (error) {
+        console.error('Failed to fetch video data for note:', error);
+        // Fallback to empty note if fetch fails
+        showNoteModal(videoId, 'accept', '');
+    }
 }
 
 // Helper function for reject action
 async function hostActionReject(hostId, videoId) {
     const config = getHostConfig(hostId);
     
-    // Use unified modal system for all hosts (uses 'reject')
-    showNoteModal(videoId, 'reject');
+    try {
+        // Fetch current video data to get existing note
+        const videoData = await ApiService.request(`/api/videos/${videoId}`);
+        const currentNote = videoData[config.noteColumn] || '';
+        
+        // Use unified modal system for all hosts with existing note pre-filled
+        showNoteModal(videoId, 'reject', currentNote);
+    } catch (error) {
+        console.error('Failed to fetch video data for note:', error);
+        // Fallback to empty note if fetch fails
+        showNoteModal(videoId, 'reject', '');
+    }
 }
 
 // Helper function for assign action
