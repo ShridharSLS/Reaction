@@ -185,13 +185,15 @@ function generateButton(buttonTemplate, hostId, videoId, video) {
     switch (type) {
         case 'accept':
         case 'reject':
-        case 'assign':
-        case 'pending':
-            // Get current note from video object for the specific host
+            // Use same approach as note icon - get note from video object and call showNoteModal directly
             const config = getHostConfig(hostId);
             const currentNote = config && video[config.noteColumn] ? video[config.noteColumn] : '';
-            const escapedNote = currentNote.replace(/'/g, "\\'").replace(/"/g, '\\"');
-            onclick = `hostAction(${hostId}, ${videoId}, '${type}', {currentNote: '${escapedNote}'})`;
+            const escapedNote = currentNote ? escapeHtml(currentNote).replace(/'/g, "\\'") : '';
+            onclick = `showNoteModal(${videoId}, '${type}', '${escapedNote}')`;
+            break;
+        case 'assign':
+        case 'pending':
+            onclick = `hostAction(${hostId}, ${videoId}, '${type}')`;
             break;
             
         case 'delete':
@@ -2025,10 +2027,10 @@ async function hostAction(hostId, videoId, action, options = {}) {
 
         switch(action) {
             case 'accept':
-                await hostActionAccept(hostId, videoId, options.currentNote || '');
+                await hostActionAccept(hostId, videoId);
                 break;
             case 'reject':
-                await hostActionReject(hostId, videoId, options.currentNote || '');
+                await hostActionReject(hostId, videoId);
                 break;
             case 'assign':
                 await hostActionAssign(hostId, videoId);
@@ -2048,19 +2050,19 @@ async function hostAction(hostId, videoId, action, options = {}) {
 }
 
 // Helper function for accept action
-async function hostActionAccept(hostId, videoId, currentNote = '') {
+async function hostActionAccept(hostId, videoId) {
     const config = getHostConfig(hostId);
     
-    // Use unified modal system for all hosts with existing note pre-filled
-    showNoteModal(videoId, 'accept', currentNote);
+    // Accept/Reject buttons now call showNoteModal directly - this function is for other uses
+    showNoteModal(videoId, 'accept');
 }
 
 // Helper function for reject action
-async function hostActionReject(hostId, videoId, currentNote = '') {
+async function hostActionReject(hostId, videoId) {
     const config = getHostConfig(hostId);
     
-    // Use unified modal system for all hosts with existing note pre-filled
-    showNoteModal(videoId, 'reject', currentNote);
+    // Accept/Reject buttons now call showNoteModal directly - this function is for other uses
+    showNoteModal(videoId, 'reject');
 }
 
 // Helper function for assign action
