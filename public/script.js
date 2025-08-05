@@ -221,11 +221,23 @@ function generateButton(buttonTemplate, hostId, videoId, video) {
             break;
             
         case 'copy':
-            // Get the correct note column for this host
+            // Use data attributes for robust copy functionality (DRY/KISS/SOLID)
             const noteCol = getHostConfig(hostId)?.noteCol || 'note';
             const note = video[noteCol] || '';
-            // Avoid template string escaping issues by using string concatenation
-            onclick = 'copyLinkAndNote("' + video.link.replace(/"/g, '\\"') + '", "' + (note || '').replace(/"/g, '\\"') + '")';
+            // Store data in attributes to avoid escaping issues
+            const copyData = {
+                link: video.link || '',
+                note: note || '',
+                hostId: hostId,
+                videoId: videoId
+            };
+            // Use event delegation instead of inline onclick
+            onclick = `handleCopyClick(this)`;
+            // Add data attributes for the copy handler
+            const dataAttrs = `data-copy-link="${escapeHtml(copyData.link)}" data-copy-note="${escapeHtml(copyData.note)}" data-host-id="${copyData.hostId}" data-video-id="${copyData.videoId}"`;
+            // Return early with custom button HTML including data attributes
+            const titleAttr = title ? ` title="${title}"` : '';
+            return `<button class="btn ${btnClass} copy-btn" onclick="${onclick}" ${dataAttrs}${titleAttr}>${label}</button>`;
             break;
             
         default:
@@ -3959,42 +3971,132 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Copy to clipboard functionality
+// ===== COPY TO CLIPBOARD FUNCTIONALITY =====
+// Robust copy functionality following DRY, KISS, and SOLID principles
+
+/**
+ * Handle copy button click using data attributes (modern approach)
+ * @param {HTMLElement} button - The copy button element
+ */
+function handleCopyClick(button) {
+    try {
+        // Extract data from button attributes
+        const copyData = {
+            link: button.dataset.copyLink || '',
+            note: button.dataset.copyNote || '',
+            hostId: button.dataset.hostId || '',
+            videoId: button.dataset.videoId || ''
+        };
+        
+        // Debug logging for troubleshooting
+        console.log('[Copy] Button clicked with data:', copyData);
+        
+        // Validate data
+        if (!copyData.link) {
+            console.warn('[Copy] No link data found in button attributes');
+            showNotification('No link to copy', 'error');
+            return;
+        }
+        
+        // Call the unified copy function
+        copyLinkAndNote(copyData.link, copyData.note);
+        
+    } catch (error) {
+        console.error('[Copy] Error in handleCopyClick:', error);
+        showNotification('Copy failed - please try again', 'error');
+    }
+}
+
+/**
+ * Copy link and note to clipboard (enhanced with better error handling)
+ * @param {string} videoLink - The video URL
+ * @param {string} videoNote - The video note
+ */
 async function copyLinkAndNote(videoLink, videoNote) {
     try {
-        // Create tab-separated format for Google Sheets (link + tab + note)
-        const textToCopy = `${videoLink || ''}\t${videoNote || ''}`;
+        // Sanitize inputs
+        const link = (videoLink || '').trim();
+        const note = (videoNote || '').trim();
         
-        // Use the modern Clipboard API
-        await navigator.clipboard.writeText(textToCopy);
+        // Create tab-separated format for Google Sheets (link + tab + note)
+        const textToCopy = `${link}\t${note}`;
+        
+        console.log('[Copy] Attempting to copy:', { link, note, textToCopy });
+        
+        // Check if clipboard API is available
+        if (navigator.clipboard && window.isSecureContext) {
+            // Use the modern Clipboard API
+            await navigator.clipboard.writeText(textToCopy);
+            console.log('[Copy] Successfully copied using Clipboard API');
+        } else {
+            // Fallback for older browsers or non-secure contexts
+            console.log('[Copy] Using fallback copy method');
+            await copyToClipboardFallback(textToCopy);
+        }
         
         // Show visual feedback
         showCopySuccess();
         showNotification('Link and note copied to clipboard!', 'success');
-    } catch (error) {
-        console.error('Failed to copy to clipboard:', error);
         
-        // Fallback for older browsers
+    } catch (error) {
+        console.error('[Copy] Failed to copy to clipboard:', error);
+        
+        // Try fallback method if main method failed
         try {
-            const textArea = document.createElement('textarea');
-            textArea.value = `${videoLink || ''}\t${videoNote || ''}`;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
+            const link = (videoLink || '').trim();
+            const note = (videoNote || '').trim();
+            const textToCopy = `${link}\t${note}`;
             
+            await copyToClipboardFallback(textToCopy);
             showCopySuccess();
             showNotification('Link and note copied to clipboard!', 'success');
+            
         } catch (fallbackError) {
-            console.error('Fallback copy failed:', fallbackError);
-            showNotification('Failed to copy to clipboard. Please copy manually.', 'error');
+            console.error('[Copy] Fallback copy also failed:', fallbackError);
+            showNotification(`Copy failed: ${fallbackError.message || 'Unknown error'}. Please copy manually.`, 'error');
         }
     }
 }
 
+/**
+ * Fallback copy method for older browsers
+ * @param {string} text - Text to copy
+ */
+function copyToClipboardFallback(text) {
+    return new Promise((resolve, reject) => {
+        try {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+                console.log('[Copy] Fallback copy successful');
+                resolve();
+            } else {
+                reject(new Error('execCommand copy returned false'));
+            }
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+/**
+ * Show visual feedback for successful copy operation
+ */
 function showCopySuccess() {
     // Find all copy buttons and briefly highlight them
     const copyBtns = document.querySelectorAll('.copy-btn');
+    console.log(`[Copy] Showing success feedback for ${copyBtns.length} copy buttons`);
+    
     copyBtns.forEach(btn => {
         btn.classList.add('copy-success');
         setTimeout(() => {
