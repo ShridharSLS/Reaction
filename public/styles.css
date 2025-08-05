@@ -2067,3 +2067,15 @@ header p {
   width: 20px;
   height: 20px;
 }
+
+/* Taken By counter styling */
+.taken-by-item .detail-value {
+  background-color: #f0f8ff;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #4a6fa5;
+  border: 1px solid #d0e3ff;
+  display: inline-block;
+}

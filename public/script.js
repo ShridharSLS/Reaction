@@ -1716,6 +1716,11 @@ function createVideoCard(video, status) {
                     </span>
                 </div>
                 
+                <div class="detail-item taken-by-item">
+                    <span class="detail-label">Taken By</span>
+                    <span class="detail-value">${video.taken_by || 0} host${video.taken_by === 1 ? '' : 's'}</span>
+                </div>
+                
                 ${getHostVideoIdValue(video, status) ? `
                     <div class="detail-item">
                         <span class="detail-label">Video ID</span>
