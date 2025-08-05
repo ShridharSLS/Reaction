@@ -847,16 +847,14 @@ app.put(
       throw error;
     }
 
-    // Update taken_by count after status change
-    const takenByUpdated = await updateTakenBy(parseInt(id));
-    console.log(`[Generic API] Taken_by update ${takenByUpdated ? 'successful' : 'failed'} for video ${id}`);
-
+    // Note: taken_by is now automatically updated by the database trigger
+    // Do not call updateTakenBy manually to avoid infinite recursion
+    
     res.json({
       message: `Host ${hostId} video status updated successfully`,
       hostId: hostId,
       columns: columns,
-      updateData: updateData,
-      takenByUpdated: takenByUpdated,
+      updateData: updateData
     });
   })
 );
