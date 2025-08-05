@@ -1420,6 +1420,47 @@ header p {
   justify-content: center;
 }
 
+/* ===== TAKEN_BY COLUMN STYLING ===== */
+
+/* Taken By column specific styling */
+.taken-by-cell {
+  text-align: center;
+  font-weight: 600;
+  color: #495057;
+  min-width: 80px;
+  padding: 8px 12px;
+}
+
+.taken-by-cell:empty::after {
+  content: '0';
+  color: #6c757d;
+  font-weight: 400;
+}
+
+/* Color coding for taken_by values */
+.taken-by-cell[data-count="0"] {
+  color: #6c757d;
+  background-color: #f8f9fa;
+}
+
+.taken-by-cell[data-count="1"] {
+  color: #28a745;
+  background-color: #d4edda;
+}
+
+.taken-by-cell[data-count="2"] {
+  color: #007bff;
+  background-color: #d1ecf1;
+}
+
+.taken-by-cell[data-count="3"], 
+.taken-by-cell[data-count="4"], 
+.taken-by-cell[data-count="5"] {
+  color: #dc3545;
+  background-color: #f8d7da;
+  font-weight: 700;
+}
+
 /* ===== MULTI-SELECT & BULK ACTIONS ===== */
 
 /* Bulk Action Bar */

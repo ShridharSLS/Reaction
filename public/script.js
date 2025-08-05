@@ -3212,6 +3212,7 @@ function renderAllEntriesTable(data) {
         { key: 'type', label: 'Type', sortable: true },
         { key: 'status_1', label: 'Status 1', sortable: true },
         { key: 'status_2', label: 'Status 2', sortable: true },
+        { key: 'taken_by', label: 'Taken By', sortable: true },
         { key: 'likes_count', label: 'Likes Count', sortable: true },
         { key: 'relevance_rating', label: 'Relevance Rating', sortable: true },
         { key: 'score', label: 'Score', sortable: true },
@@ -3364,6 +3365,7 @@ function filterAllEntries(searchTerm) {
         { key: 'link', label: 'Video Link', sortable: false },
         { key: 'type', label: 'Type', sortable: true },
         { key: 'status', label: 'Status', sortable: true },
+        { key: 'taken_by', label: 'Taken By', sortable: true },
         { key: 'likes_count', label: 'Likes', sortable: true },
         { key: 'relevance_rating', label: 'Relevance', sortable: true },
         { key: 'score', label: 'Score', sortable: true },
@@ -3390,6 +3392,7 @@ function filterAllEntries(searchTerm) {
             </td>
             <td class="type-cell">${entry.type || ''}</td>
             <td class="status-cell">${entry.status || ''}</td>
+            <td class="taken-by-cell">${entry.taken_by !== null && entry.taken_by !== undefined ? entry.taken_by : 0}</td>
             <td>${entry.likes_count || 0}</td>
             <td>${entry.relevance_rating !== null ? entry.relevance_rating : ''}</td>
             <td>${entry.score !== null ? entry.score.toFixed(2) : ''}</td>

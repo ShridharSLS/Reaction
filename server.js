@@ -108,6 +108,118 @@ function getCountKey(hostId, status) {
   return `host${hostNum}_${status}`; // e.g., 'host1_pending', 'host2_pending', 'host3_pending'
 }
 
+// ===== TAKEN_BY CALCULATION SYSTEM =====
+// Functions to calculate and update how many hosts have "taken on" a video
+
+/**
+ * Calculate taken_by count for a specific video
+ * A host has "taken on" a video if their status is 'accepted' or 'assigned'
+ * @param {number} videoId - The video ID
+ * @returns {Promise<number>} Count of hosts that have taken on this video
+ */
+async function calculateTakenBy(videoId) {
+  try {
+    // Get all active hosts
+    const { data: hosts, error: hostsError } = await supabase
+      .from('hosts')
+      .select('host_id, status_column')
+      .eq('active', true);
+    
+    if (hostsError) {
+      console.error('[TakenBy] Error fetching hosts:', hostsError);
+      return 0;
+    }
+    
+    // Get the video record
+    const { data: video, error: videoError } = await supabase
+      .from('videos')
+      .select('*')
+      .eq('id', videoId)
+      .single();
+    
+    if (videoError) {
+      console.error('[TakenBy] Error fetching video:', videoError);
+      return 0;
+    }
+    
+    let takenCount = 0;
+    
+    // Check each host's status for this video
+    for (const host of hosts) {
+      const statusValue = video[host.status_column];
+      if (statusValue === 'accepted' || statusValue === 'assigned') {
+        takenCount++;
+      }
+    }
+    
+    console.log(`[TakenBy] Video ${videoId} taken by ${takenCount} hosts`);
+    return takenCount;
+    
+  } catch (error) {
+    console.error('[TakenBy] Error calculating taken_by:', error);
+    return 0;
+  }
+}
+
+/**
+ * Update taken_by count for a specific video
+ * @param {number} videoId - The video ID to update
+ * @returns {Promise<boolean>} Success status
+ */
+async function updateTakenBy(videoId) {
+  try {
+    const takenCount = await calculateTakenBy(videoId);
+    
+    const { error } = await supabase
+      .from('videos')
+      .update({ taken_by: takenCount })
+      .eq('id', videoId);
+    
+    if (error) {
+      console.error('[TakenBy] Error updating taken_by:', error);
+      return false;
+    }
+    
+    console.log(`[TakenBy] Updated video ${videoId} taken_by to ${takenCount}`);
+    return true;
+    
+  } catch (error) {
+    console.error('[TakenBy] Error in updateTakenBy:', error);
+    return false;
+  }
+}
+
+/**
+ * Update taken_by counts for all videos (used for migration/maintenance)
+ * @returns {Promise<number>} Number of videos updated
+ */
+async function updateAllTakenBy() {
+  try {
+    const { data: videos, error } = await supabase
+      .from('videos')
+      .select('id');
+    
+    if (error) {
+      console.error('[TakenBy] Error fetching videos for bulk update:', error);
+      return 0;
+    }
+    
+    let updatedCount = 0;
+    
+    for (const video of videos) {
+      const success = await updateTakenBy(video.id);
+      if (success) updatedCount++;
+    }
+    
+    console.log(`[TakenBy] Bulk update completed: ${updatedCount}/${videos.length} videos updated`);
+    return updatedCount;
+    
+  } catch (error) {
+    console.error('[TakenBy] Error in updateAllTakenBy:', error);
+    return 0;
+  }
+}
+
 // Video code extraction function for duplicate detection
 function extractVideoCode(url) {
   if (!url || typeof url !== 'string') {
@@ -735,11 +847,16 @@ app.put(
       throw error;
     }
 
+    // Update taken_by count after status change
+    const takenByUpdated = await updateTakenBy(parseInt(id));
+    console.log(`[Generic API] Taken_by update ${takenByUpdated ? 'successful' : 'failed'} for video ${id}`);
+
     res.json({
       message: `Host ${hostId} video status updated successfully`,
       hostId: hostId,
       columns: columns,
       updateData: updateData,
+      takenByUpdated: takenByUpdated,
     });
   })
 );
@@ -1133,6 +1250,53 @@ app.patch(
     res.json(data);
   })
 );
+
+// ===== TAKEN_BY MANAGEMENT ENDPOINTS =====
+
+// Update taken_by counts for all videos (maintenance endpoint)
+app.post('/api/videos/update-taken-by', asyncHandler(async (req, res) => {
+  console.log('[TakenBy API] Starting bulk taken_by update...');
+  
+  const updatedCount = await updateAllTakenBy();
+  
+  res.json({
+    message: 'Taken_by counts updated successfully',
+    updatedVideos: updatedCount,
+    timestamp: new Date().toISOString()
+  });
+}));
+
+// Get taken_by statistics
+app.get('/api/videos/taken-by-stats', asyncHandler(async (req, res) => {
+  const { data: stats, error } = await supabase
+    .from('videos')
+    .select('taken_by')
+    .not('taken_by', 'is', null);
+  
+  if (error) {
+    throw error;
+  }
+  
+  // Calculate statistics
+  const takenByDistribution = {};
+  let totalVideos = 0;
+  let videosWithTaken = 0;
+  
+  stats.forEach(video => {
+    const count = video.taken_by || 0;
+    takenByDistribution[count] = (takenByDistribution[count] || 0) + 1;
+    totalVideos++;
+    if (count > 0) videosWithTaken++;
+  });
+  
+  res.json({
+    totalVideos,
+    videosWithTaken,
+    videosNotTaken: totalVideos - videosWithTaken,
+    distribution: takenByDistribution,
+    timestamp: new Date().toISOString()
+  });
+}));
 
 // Get all hosts
 app.get(
