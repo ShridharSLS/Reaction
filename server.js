@@ -123,7 +123,7 @@ async function calculateTakenBy(videoId) {
     const { data: hosts, error: hostsError } = await supabase
       .from('hosts')
       .select('host_id, status_column')
-      .eq('active', true);
+      .eq('is_active', true);
     
     if (hostsError) {
       console.error('[TakenBy] Error fetching hosts:', hostsError);

@@ -16,7 +16,7 @@ BEGIN
     FOR host_record IN 
         SELECT host_id, status_column 
         FROM hosts 
-        WHERE active = true
+        WHERE is_active = true
     LOOP
         -- Get the status value for this host and video
         EXECUTE format('SELECT %I FROM videos WHERE id = $1', host_record.status_column) 
