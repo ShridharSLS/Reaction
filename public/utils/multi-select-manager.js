@@ -15,60 +15,6 @@
  */
 
 class MultiSelectManager {
-<<<<<<< HEAD
-  constructor(options = {}) {
-    this.selectedIds = new Set();
-    this.totalItems = 0;
-    this.options = {
-      checkboxSelector: '.row-checkbox',
-      selectAllSelector: '.select-all-checkbox',
-      bulkActionBarSelector: '.bulk-action-bar',
-      onSelectionChange: null,
-      ...options,
-    };
-
-    this.init();
-  }
-
-  /**
-   * Initialize event listeners and UI elements
-   */
-  init() {
-    this.attachEventListeners();
-    this.updateUI();
-  }
-
-  /**
-   * Attach event listeners for checkboxes
-   */
-  attachEventListeners() {
-    // Individual checkbox change handler
-    document.addEventListener('change', e => {
-      if (e.target.matches(this.options.checkboxSelector)) {
-        this.handleIndividualCheckboxChange(e.target);
-      }
-    });
-
-    // Select all checkbox change handler
-    document.addEventListener('change', e => {
-      if (e.target.matches(this.options.selectAllSelector)) {
-        this.handleSelectAllChange(e.target);
-      }
-    });
-  }
-
-  /**
-   * Handle individual checkbox change
-   * @param {HTMLInputElement} checkbox - The checkbox element
-   */
-  handleIndividualCheckboxChange(checkbox) {
-    const id = parseInt(checkbox.value);
-
-    if (checkbox.checked) {
-      this.selectedIds.add(id);
-    } else {
-      this.selectedIds.delete(id);
-=======
     constructor(options = {}) {
         this.selectedIds = new Set();
         this.totalItems = 0;
@@ -86,189 +32,73 @@ class MultiSelectManager {
         };
         
         this.init();
->>>>>>> 27cece71a39bfe288b83b7d7b6808da8d4f44b01
     }
 
-    this.updateUI();
-    this.notifySelectionChange();
-  }
-
-  /**
-   * Handle select all checkbox change
-   * @param {HTMLInputElement} selectAllCheckbox - The select all checkbox
-   */
-  handleSelectAllChange(selectAllCheckbox) {
-    if (selectAllCheckbox.checked) {
-      this.selectAll();
-    } else {
-      this.deselectAll();
-    }
-<<<<<<< HEAD
-  }
-
-  /**
-   * Select all items
-   */
-  selectAll() {
-    const checkboxes = document.querySelectorAll(this.options.checkboxSelector);
-    checkboxes.forEach(checkbox => {
-      const id = parseInt(checkbox.value);
-      this.selectedIds.add(id);
-      checkbox.checked = true;
-    });
-
-    this.updateUI();
-    this.notifySelectionChange();
-  }
-
-  /**
-   * Deselect all items
-   */
-  deselectAll() {
-    this.selectedIds.clear();
-
-    const checkboxes = document.querySelectorAll(this.options.checkboxSelector);
-    checkboxes.forEach(checkbox => {
-      checkbox.checked = false;
-    });
-
-    this.updateUI();
-    this.notifySelectionChange();
-  }
-
-  /**
-   * Toggle selection for a specific ID
-   * @param {number} id - Item ID to toggle
-   */
-  toggleSelection(id) {
-    if (this.selectedIds.has(id)) {
-      this.selectedIds.delete(id);
-    } else {
-      this.selectedIds.add(id);
-    }
-
-    // Update corresponding checkbox
-    const checkbox = document.querySelector(`${this.options.checkboxSelector}[value="${id}"]`);
-    if (checkbox) {
-      checkbox.checked = this.selectedIds.has(id);
-    }
-
-    this.updateUI();
-    this.notifySelectionChange();
-  }
-
-  /**
-   * Get array of selected IDs
-   * @returns {number[]} Array of selected IDs
-   */
-  getSelectedIds() {
-    return Array.from(this.selectedIds);
-  }
-
-  /**
-   * Get count of selected items
-   * @returns {number} Number of selected items
-   */
-  getSelectedCount() {
-    return this.selectedIds.size;
-  }
-
-  /**
-   * Check if any items are selected
-   * @returns {boolean} True if any items are selected
-   */
-  hasSelection() {
-    return this.selectedIds.size > 0;
-  }
-
-  /**
-   * Check if all items are selected
-   * @returns {boolean} True if all items are selected
-   */
-  isAllSelected() {
-    return this.selectedIds.size === this.totalItems && this.totalItems > 0;
-  }
-
-  /**
-   * Update total items count (call when table data changes)
-   * @param {number} count - Total number of items
-   */
-  updateTotalItems(count) {
-    this.totalItems = count;
-    this.updateUI();
-  }
-
-  /**
-   * Update UI elements based on current selection state
-   */
-  updateUI() {
-    this.updateSelectAllCheckbox();
-    this.updateBulkActionBar();
-  }
-
-  /**
-   * Update select all checkbox state
-   */
-  updateSelectAllCheckbox() {
-    const selectAllCheckbox = document.querySelector(this.options.selectAllSelector);
-    if (!selectAllCheckbox) {
-      return;
-=======
-    
     /**
-     * Attach event listeners for checkboxes with proper cleanup tracking
+     * Initialize event listeners and UI elements
+     */
+    init() {
+        if (this.isDestroyed) {
+            console.warn('[MultiSelectManager] Cannot initialize destroyed instance');
+            return;
+        }
+        
+        this.attachEventListeners();
+        this.updateUI();
+    }
+
+    /**
+     * Attach event listeners for checkboxes with proper cleanup support
      */
     attachEventListeners() {
-        // Create bound event handlers for cleanup
-        const individualCheckboxHandler = (e) => {
-            if (this.isDestroyed) return;
+        // Individual checkbox change handler
+        const individualHandler = (e) => {
             if (e.target.matches(this.options.checkboxSelector)) {
                 this.handleIndividualCheckboxChange(e.target);
             }
         };
         
+        // Select all checkbox change handler
         const selectAllHandler = (e) => {
-            if (this.isDestroyed) return;
             if (e.target.matches(this.options.selectAllSelector)) {
                 this.handleSelectAllChange(e.target);
             }
         };
         
-        // Store handlers for cleanup
-        this.boundEventHandlers.set('individualCheckbox', individualCheckboxHandler);
-        this.boundEventHandlers.set('selectAll', selectAllHandler);
-        
-        // Attach event listeners
-        document.addEventListener('change', individualCheckboxHandler);
+        document.addEventListener('change', individualHandler);
         document.addEventListener('change', selectAllHandler);
+        
+        // Store handlers for cleanup
+        this.boundEventHandlers.set('individual', individualHandler);
+        this.boundEventHandlers.set('selectAll', selectAllHandler);
     }
-    
+
     /**
-     * Handle individual checkbox state change
-     * @param {HTMLElement} checkbox - The checkbox element that changed
+     * Handle individual checkbox change
+     * @param {HTMLInputElement} checkbox - The checkbox element
      */
     handleIndividualCheckboxChange(checkbox) {
         if (this.isDestroyed) return;
         
-        const videoId = checkbox.getAttribute('data-video-id');
-        if (!videoId) {
+        const id = checkbox.getAttribute('data-video-id');
+        if (!id) {
             console.warn('[MultiSelectManager] Checkbox missing data-video-id attribute');
             return;
         }
-        
+
         if (checkbox.checked) {
-            this.selectedIds.add(videoId);
+            this.selectedIds.add(id);
         } else {
-            this.selectedIds.delete(videoId);
+            this.selectedIds.delete(id);
         }
-        
+
         this.updateUI();
         this.notifySelectionChange();
     }
-    
+
     /**
-     * Handle select all checkbox state change
-     * @param {HTMLElement} selectAllCheckbox - The select all checkbox element
+     * Handle select all checkbox change
+     * @param {HTMLInputElement} selectAllCheckbox - The select all checkbox element
      */
     handleSelectAllChange(selectAllCheckbox) {
         if (this.isDestroyed) return;
@@ -279,248 +109,236 @@ class MultiSelectManager {
             console.warn('[MultiSelectManager] No checkboxes found for select all operation');
             return;
         }
-        
-        checkboxes.forEach(checkbox => {
-            const videoId = checkbox.getAttribute('data-video-id');
-            if (videoId) {
-                checkbox.checked = selectAllCheckbox.checked;
-                
-                if (selectAllCheckbox.checked) {
-                    this.selectedIds.add(videoId);
-                } else {
-                    this.selectedIds.delete(videoId);
+
+        if (selectAllCheckbox.checked) {
+            // Select all
+            checkboxes.forEach(checkbox => {
+                const id = checkbox.getAttribute('data-video-id');
+                if (id) {
+                    checkbox.checked = true;
+                    this.selectedIds.add(id);
                 }
-            }
-        });
-        
+            });
+        } else {
+            // Deselect all
+            checkboxes.forEach(checkbox => {
+                const id = checkbox.getAttribute('data-video-id');
+                if (id) {
+                    checkbox.checked = false;
+                    this.selectedIds.delete(id);
+                }
+            });
+        }
+
         this.updateUI();
         this.notifySelectionChange();
->>>>>>> 27cece71a39bfe288b83b7d7b6808da8d4f44b01
     }
 
-    if (this.selectedIds.size === 0) {
-      selectAllCheckbox.checked = false;
-      selectAllCheckbox.indeterminate = false;
-    } else if (this.isAllSelected()) {
-      selectAllCheckbox.checked = true;
-      selectAllCheckbox.indeterminate = false;
-    } else {
-      selectAllCheckbox.checked = false;
-      selectAllCheckbox.indeterminate = true;
-    }
-  }
-
-  /**
-   * Update bulk action bar visibility and content
-   */
-  updateBulkActionBar() {
-    const bulkActionBar = document.querySelector(this.options.bulkActionBarSelector);
-    if (!bulkActionBar) {
-      return;
-    }
-
-    if (this.hasSelection()) {
-      bulkActionBar.style.display = 'flex';
-      this.updateSelectionCounter();
-    } else {
-      bulkActionBar.style.display = 'none';
-    }
-  }
-
-  /**
-   * Update selection counter in bulk action bar
-   */
-  updateSelectionCounter() {
-    const counter = document.querySelector('.selection-counter');
-    if (counter) {
-      const count = this.getSelectedCount();
-      counter.textContent = `${count} item${count !== 1 ? 's' : ''} selected`;
-    }
-<<<<<<< HEAD
-  }
-
-  /**
-   * Notify selection change callback
-   */
-  notifySelectionChange() {
-    if (typeof this.options.onSelectionChange === 'function') {
-      this.options.onSelectionChange({
-        selectedIds: this.getSelectedIds(),
-        selectedCount: this.getSelectedCount(),
-        hasSelection: this.hasSelection(),
-        isAllSelected: this.isAllSelected(),
-      });
-=======
-    
     /**
-     * Get count of selected items
+     * Update UI elements based on current selection
+     */
+    updateUI() {
+        if (this.isDestroyed) return;
+        
+        const selectAllCheckbox = document.querySelector(this.options.selectAllSelector);
+        const bulkActionBar = document.querySelector(this.options.bulkActionBarSelector);
+        const checkboxes = document.querySelectorAll(this.options.checkboxSelector);
+        
+        this.totalItems = checkboxes.length;
+        const selectedCount = this.selectedIds.size;
+
+        // Update select all checkbox state
+        if (selectAllCheckbox) {
+            if (selectedCount === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (selectedCount === this.totalItems) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            }
+        }
+
+        // Show/hide bulk action bar
+        if (bulkActionBar) {
+            if (selectedCount > 0) {
+                bulkActionBar.style.display = 'flex';
+                
+                // Update selection count display
+                const countElement = bulkActionBar.querySelector('.selection-count');
+                if (countElement) {
+                    countElement.textContent = `${selectedCount} selected`;
+                }
+            } else {
+                bulkActionBar.style.display = 'none';
+            }
+        }
+    }
+
+    /**
+     * Notify about selection changes
+     */
+    notifySelectionChange() {
+        if (this.isDestroyed) return;
+        
+        if (typeof this.options.onSelectionChange === 'function') {
+            this.options.onSelectionChange({
+                selectedIds: Array.from(this.selectedIds),
+                selectedCount: this.selectedIds.size,
+                totalItems: this.totalItems
+            });
+        }
+    }
+
+    /**
+     * Programmatically select an item
+     * @param {string} id - The ID to select
+     */
+    selectItem(id) {
+        if (this.isDestroyed) return;
+        
+        this.selectedIds.add(id);
+        
+        // Update corresponding checkbox
+        const checkbox = document.querySelector(`${this.options.checkboxSelector}[data-video-id="${id}"]`);
+        if (checkbox) {
+            checkbox.checked = true;
+        }
+
+        this.updateUI();
+        this.notifySelectionChange();
+    }
+
+    /**
+     * Programmatically deselect an item
+     * @param {string} id - The ID to deselect
+     */
+    deselectItem(id) {
+        if (this.isDestroyed) return;
+        
+        this.selectedIds.delete(id);
+        
+        // Update corresponding checkbox
+        const checkbox = document.querySelector(`${this.options.checkboxSelector}[data-video-id="${id}"]`);
+        if (checkbox) {
+            checkbox.checked = false;
+        }
+
+        this.updateUI();
+        this.notifySelectionChange();
+    }
+
+    /**
+     * Get array of selected IDs
+     * @returns {string[]} Array of selected IDs
+     */
+    getSelectedIds() {
+        return Array.from(this.selectedIds);
+    }
+
+    /**
+     * Get selection count
      * @returns {number} Number of selected items
      */
     getSelectedCount() {
         return this.selectedIds.size;
     }
-    
+
     /**
-     * Check if any items are selected
-     * @returns {boolean} True if any items are selected
+     * Check if an item is selected
+     * @param {string} id - The ID to check
+     * @returns {boolean} True if selected
      */
-    hasSelection() {
-        return this.selectedIds.size > 0;
+    isSelected(id) {
+        return this.selectedIds.has(id);
     }
-    
+
     /**
-     * Check if all items are selected
-     * @returns {boolean} True if all items are selected
+     * Clear all selections
      */
-    isAllSelected() {
-        return this.selectedIds.size === this.totalItems && this.totalItems > 0;
-    }
-    
-    /**
-     * Update total items count (call when table data changes)
-     * @param {number} count - Total number of items
-     */
-    updateTotalItems(count) {
-        this.totalItems = count;
-        this.updateUI();
-    }
-    
-    /**
-     * Update UI elements based on current selection state
-     */
-    updateUI() {
-        this.updateSelectAllCheckbox();
-        this.updateBulkActionBar();
-    }
-    
-    /**
-     * Update select all checkbox state
-     */
-    updateSelectAllCheckbox() {
+    clearSelection() {
+        if (this.isDestroyed) return;
+        
+        this.selectedIds.clear();
+        
+        // Update all checkboxes
+        const checkboxes = document.querySelectorAll(this.options.checkboxSelector);
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        // Update select all checkbox
         const selectAllCheckbox = document.querySelector(this.options.selectAllSelector);
-        if (!selectAllCheckbox) return;
-        
-        if (this.selectedIds.size === 0) {
+        if (selectAllCheckbox) {
             selectAllCheckbox.checked = false;
             selectAllCheckbox.indeterminate = false;
-        } else if (this.isAllSelected()) {
-            selectAllCheckbox.checked = true;
-            selectAllCheckbox.indeterminate = false;
-        } else {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = true;
         }
+
+        this.updateUI();
+        this.notifySelectionChange();
     }
-    
+
     /**
-     * Update bulk action bar visibility and content
-     */
-    updateBulkActionBar() {
-        const bulkActionBar = document.querySelector(this.options.bulkActionBarSelector);
-        if (!bulkActionBar) return;
-        
-        if (this.hasSelection()) {
-            bulkActionBar.style.display = 'flex';
-            this.updateSelectionCounter();
-        } else {
-            bulkActionBar.style.display = 'none';
-        }
-    }
-    
-    /**
-     * Update selection counter in bulk action bar
-     */
-    updateSelectionCounter() {
-        const counter = document.querySelector('.selection-counter');
-        if (counter) {
-            const count = this.getSelectedCount();
-            counter.textContent = `${count} item${count !== 1 ? 's' : ''} selected`;
-        }
-    }
-    
-    /**
-     * Notify selection change callback
-     */
-    notifySelectionChange() {
-        if (typeof this.options.onSelectionChange === 'function') {
-            this.options.onSelectionChange({
-                selectedIds: this.getSelectedIds(),
-                selectedCount: this.getSelectedCount(),
-                hasSelection: this.hasSelection(),
-                isAllSelected: this.isAllSelected()
-            });
-        }
-    }
-    
-    /**
-     * Reset selection state (useful after bulk operations)
+     * Reset the manager state
      */
     reset() {
         if (this.isDestroyed) return;
         
-        this.selectedIds.clear();
-        this.updateUI();
-        this.notifySelectionChange();
+        this.clearSelection();
+        this.totalItems = 0;
     }
-    
+
     /**
-     * Destroy the manager and clean up all event listeners
-     * Call this when the component is no longer needed to prevent memory leaks
+     * Update the total items count (useful when table content changes)
+     * @param {number} count - New total items count
+     */
+    updateTotalItems(count) {
+        if (this.isDestroyed) return;
+        
+        this.totalItems = count;
+        this.updateUI();
+    }
+
+    /**
+     * Refresh the UI (useful after DOM changes)
+     */
+    refresh() {
+        if (this.isDestroyed) return;
+        
+        this.updateUI();
+    }
+
+    /**
+     * Destroy the manager and clean up event listeners
      */
     destroy() {
         if (this.isDestroyed) return;
         
-        // Remove all event listeners
+        // Remove event listeners
         this.boundEventHandlers.forEach((handler, key) => {
             document.removeEventListener('change', handler);
         });
-        
-        // Clear all references
         this.boundEventHandlers.clear();
+        
+        // Clear selections
         this.selectedIds.clear();
-        this.options.onSelectionChange = null;
         
         // Mark as destroyed
         this.isDestroyed = true;
         
         console.log('[MultiSelectManager] Destroyed and cleaned up');
     }
-    
+
     /**
-     * Check if the manager has been destroyed
-     * @returns {boolean} True if destroyed
+     * Legacy cleanup method for backward compatibility
      */
-    getIsDestroyed() {
-        return this.isDestroyed;
->>>>>>> 27cece71a39bfe288b83b7d7b6808da8d4f44b01
+    cleanup() {
+        // Note: Since we use event delegation, no explicit cleanup needed
+        // But we can reset state
+        this.reset();
     }
-  }
-
-  /**
-   * Reset selection state (useful after bulk operations)
-   */
-  reset() {
-    this.selectedIds.clear();
-    this.totalItems = 0;
-
-    // Clear all checkboxes
-    const checkboxes = document.querySelectorAll(this.options.checkboxSelector);
-    checkboxes.forEach(checkbox => {
-      checkbox.checked = false;
-    });
-
-    this.updateUI();
-    this.notifySelectionChange();
-  }
-
-  /**
-   * Destroy the manager and clean up event listeners
-   */
-  destroy() {
-    // Note: Since we use event delegation, no explicit cleanup needed
-    // But we can reset state
-    this.reset();
-  }
 }
 
 // Export for use in other modules
