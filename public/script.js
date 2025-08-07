@@ -4189,10 +4189,7 @@ async function addHost(hostName) {
         };
         
         // Send POST request to create host
-        const createdHost = await ApiService.post('/api/hosts', {
-            host_id: nextId,
-            name: hostName.trim()
-        });
+        const createdHost = await ApiService.post('/api/hosts', newHost);
         console.log('[Phase 4.3] Host created successfully:', createdHost);
         
         showNotification(`Host "${hostName}" added successfully!`, 'success');
