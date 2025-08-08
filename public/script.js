@@ -171,7 +171,7 @@ const BUTTON_TEMPLATES = {
         // Delete removed: hosts cannot delete videos
     ],
     accepted: [
-        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy link and note for Google Sheets' },
+        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy Video ID, link and note for Google Sheets' },
         { type: 'assign', label: 'ID given', class: 'btn-primary' },
         { type: 'reject', label: 'Reject', class: 'btn-reject' },
         { type: 'pending', label: 'Pending', class: 'btn-warning' }
@@ -183,7 +183,7 @@ const BUTTON_TEMPLATES = {
         // Delete removed: hosts cannot delete videos
     ],
     assigned: [
-        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy link and note for Google Sheets' }
+        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy Video ID, link and note for Google Sheets' }
         // Delete removed: hosts cannot delete videos
     ],
     relevance: [
@@ -4014,8 +4014,8 @@ function handleCopyClick(button) {
             return;
         }
         
-        // Call the unified copy function
-        copyLinkAndNote(copyData.link, copyData.note);
+        // Call the unified copy function with Video ID, link, and note
+        copyLinkAndNote(copyData.videoId, copyData.link, copyData.note);
         
     } catch (error) {
         console.error('[Copy] Error in handleCopyClick:', error);
@@ -4024,20 +4024,22 @@ function handleCopyClick(button) {
 }
 
 /**
- * Copy link and note to clipboard (enhanced with better error handling)
+ * Copy Video ID, link and note to clipboard (enhanced with better error handling)
+ * @param {string} videoId - The video ID
  * @param {string} videoLink - The video URL
  * @param {string} videoNote - The video note
  */
-async function copyLinkAndNote(videoLink, videoNote) {
+async function copyLinkAndNote(videoId, videoLink, videoNote) {
     try {
         // Sanitize inputs
+        const id = (videoId || '').toString().trim();
         const link = (videoLink || '').trim();
         const note = (videoNote || '').trim();
         
-        // Create tab-separated format for Google Sheets (link + tab + note)
-        const textToCopy = `${link}\t${note}`;
+        // Create tab-separated format for Google Sheets (Video ID + tab + link + tab + note)
+        const textToCopy = `${id}\t${link}\t${note}`;
         
-        console.log('[Copy] Attempting to copy:', { link, note, textToCopy });
+        console.log('[Copy] Attempting to copy:', { videoId: id, link, note, textToCopy });
         
         // Check if clipboard API is available
         if (navigator.clipboard && window.isSecureContext) {
@@ -4052,7 +4054,7 @@ async function copyLinkAndNote(videoLink, videoNote) {
         
         // Show visual feedback
         showCopySuccess();
-        showNotification('Link and note copied to clipboard!', 'success');
+        showNotification('Video ID, link and note copied to clipboard!', 'success');
         
     } catch (error) {
         console.error('[Copy] Failed to copy to clipboard:', error);
@@ -4065,7 +4067,7 @@ async function copyLinkAndNote(videoLink, videoNote) {
             
             await copyToClipboardFallback(textToCopy);
             showCopySuccess();
-            showNotification('Link and note copied to clipboard!', 'success');
+            showNotification('Video ID, link and note copied to clipboard!', 'success');
             
         } catch (fallbackError) {
             console.error('[Copy] Fallback copy also failed:', fallbackError);

@@ -1092,6 +1092,55 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
   }
 });
 
+// Update video type (Trending/General)
+app.put('/api/videos/:id/type', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type } = req.body;
+    
+    console.log(`🎬 Updating video ${id} type to: ${type}`);
+    
+    // Validate type
+    if (!type || !['Trending', 'General'].includes(type)) {
+      return res.status(400).json({ 
+        error: 'Invalid type. Must be either "Trending" or "General"' 
+      });
+    }
+    
+    // Update video type in database
+    const { data: updatedVideo, error } = await supabase
+      .from('videos')
+      .update({ type: type })
+      .eq('id', id)
+      .select('id, type')
+      .single();
+    
+    if (error) {
+      console.error('❌ Database error updating video type:', error);
+      throw error;
+    }
+    
+    if (!updatedVideo) {
+      console.log('❌ Video not found:', id);
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    console.log(`✅ Successfully updated video ${id} type to ${type}`);
+    res.json({
+      message: `Video type updated to ${type}`,
+      video: updatedVideo,
+      success: true
+    });
+    
+  } catch (error) {
+    console.error('❌ Error updating video type:', error);
+    res.status(500).json({ 
+      error: 'Failed to update video type',
+      details: error.message 
+    });
+  }
+});
+
 // Legacy Host 1 endpoint removed - now using unified /api/videos/:id/host/:hostId/:status endpoint
 // All host-specific video updates now use the dynamic host endpoint system
 
