@@ -255,10 +255,17 @@ async function migrateForNewHost(hostData) {
       throw new Error('Missing required host column information');
     }
 
-    // Step 1: Add the columns for this host
+    // Step 1: Add the basic columns for this host
     const columnResult = await addHostColumns(host_id, status_column, note_column, video_id_column);
 
-    // Step 2: Initialize the status column with values from Host 1
+    // Step 2: Add timestamp column for this host
+    const timestampColumn = `status_${host_id}_updated_at`;
+    const timestampResult = await addTimestampColumn(host_id, timestampColumn);
+
+    // Step 3: Update the trigger to handle this new host
+    const triggerResult = await updateStatusTimestampTrigger();
+
+    // Step 4: Initialize the status column with values from Host 1
     let initializationResult = null;
     try {
       initializationResult = await initializeHostStatusFromHost1(status_column);
@@ -273,9 +280,11 @@ async function migrateForNewHost(hostData) {
 
     return {
       success: true,
-      message: `Migration completed for host ${host_id}`,
+      message: `Migration completed for host ${host_id} with timestamp support`,
       details: {
         columns: columnResult,
+        timestamp: timestampResult,
+        trigger: triggerResult,
         initialization: initializationResult,
       },
     };
@@ -340,9 +349,178 @@ async function createColumnIndex(table, column) {
   }
 }
 
+/**
+ * Add timestamp column for a specific host
+ *
+ * @param {number} hostId - Host ID
+ * @param {string} timestampColumn - Timestamp column name (e.g., status_3_updated_at)
+ * @returns {Promise} - Result of operation
+ */
+async function addTimestampColumn(hostId, timestampColumn) {
+  try {
+    console.log(`Adding timestamp column: ${timestampColumn}`);
+
+    // Check if column already exists
+    const exists = await columnExists('videos', timestampColumn);
+    if (exists) {
+      console.log(`Timestamp column ${timestampColumn} already exists`);
+      return {
+        success: true,
+        message: `Timestamp column ${timestampColumn} already exists`,
+        existed: true
+      };
+    }
+
+    // Add the timestamp column
+    const addColumnSql = `
+      ALTER TABLE videos 
+      ADD COLUMN ${timestampColumn} TIMESTAMP WITH TIME ZONE;
+    `;
+    
+    await executeRawSql(addColumnSql);
+    console.log(`Successfully added timestamp column: ${timestampColumn}`);
+
+    // Initialize timestamp values for existing records
+    const initializeSql = `
+      UPDATE videos 
+      SET ${timestampColumn} = created_at
+      WHERE ${timestampColumn} IS NULL;
+    `;
+    
+    await executeRawSql(initializeSql);
+    console.log(`Initialized timestamp values for existing records`);
+
+    // Create index for performance
+    const indexName = `idx_videos_${timestampColumn}`;
+    const createIndexSql = `
+      CREATE INDEX IF NOT EXISTS ${indexName} ON videos(${timestampColumn});
+    `;
+    
+    await executeRawSql(createIndexSql);
+    console.log(`Created index: ${indexName}`);
+
+    return {
+      success: true,
+      message: `Successfully added timestamp column ${timestampColumn} with index`,
+      column: timestampColumn,
+      index: indexName
+    };
+
+  } catch (error) {
+    console.error(`Failed to add timestamp column ${timestampColumn}:`, error);
+    return {
+      success: false,
+      message: `Failed to add timestamp column: ${error.message}`,
+      error
+    };
+  }
+}
+
+/**
+ * Update the status timestamp trigger to handle all existing status columns dynamically
+ * This function recreates the trigger to automatically detect and handle all status_X columns
+ *
+ * @returns {Promise} - Result of operation
+ */
+async function updateStatusTimestampTrigger() {
+  try {
+    console.log('Updating status timestamp trigger for dynamic host support');
+
+    // Step 1: Get all status columns dynamically
+    const getStatusColumnsSql = `
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'videos' 
+        AND column_name LIKE 'status_%' 
+        AND column_name NOT LIKE '%_updated_at'
+      ORDER BY column_name;
+    `;
+    
+    const { data: statusColumns, error: columnsError } = await supabaseAdmin
+      .from('information_schema.columns')
+      .select('column_name')
+      .eq('table_name', 'videos')
+      .like('column_name', 'status_%')
+      .not('column_name', 'like', '%_updated_at')
+      .order('column_name');
+
+    if (columnsError) {
+      throw new Error(`Failed to get status columns: ${columnsError.message}`);
+    }
+
+    if (!statusColumns || statusColumns.length === 0) {
+      throw new Error('No status columns found');
+    }
+
+    console.log('Found status columns:', statusColumns.map(c => c.column_name));
+
+    // Step 2: Generate dynamic trigger function
+    const triggerConditions = statusColumns.map(col => {
+      const statusCol = col.column_name;
+      const timestampCol = `${statusCol}_updated_at`;
+      return `
+  -- Check if ${statusCol} changed
+  IF OLD.${statusCol} IS DISTINCT FROM NEW.${statusCol} THEN
+    NEW.${timestampCol} = NOW();
+  END IF;`;
+    }).join('\n');
+
+    const triggerFunction = `
+CREATE OR REPLACE FUNCTION update_status_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN${triggerConditions}
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+    `;
+
+    // Step 3: Drop existing trigger and function
+    const dropTriggerSql = `
+      DROP TRIGGER IF EXISTS videos_status_timestamp_trigger ON videos;
+      DROP FUNCTION IF EXISTS update_status_timestamp() CASCADE;
+    `;
+    
+    await executeRawSql(dropTriggerSql);
+    console.log('Dropped existing trigger and function');
+
+    // Step 4: Create new dynamic trigger function
+    await executeRawSql(triggerFunction);
+    console.log('Created dynamic trigger function');
+
+    // Step 5: Create new trigger
+    const createTriggerSql = `
+      CREATE TRIGGER videos_status_timestamp_trigger
+        BEFORE UPDATE ON videos
+        FOR EACH ROW
+        EXECUTE FUNCTION update_status_timestamp();
+    `;
+    
+    await executeRawSql(createTriggerSql);
+    console.log('Created new trigger');
+
+    return {
+      success: true,
+      message: 'Successfully updated status timestamp trigger for dynamic host support',
+      statusColumns: statusColumns.map(c => c.column_name),
+      triggerFunction: triggerFunction
+    };
+
+  } catch (error) {
+    console.error('Failed to update status timestamp trigger:', error);
+    return {
+      success: false,
+      message: `Failed to update trigger: ${error.message}`,
+      error
+    };
+  }
+}
+
 module.exports = {
   migrateForNewHost,
   addHostColumns,
+  addTimestampColumn,
+  updateStatusTimestampTrigger,
   columnExists,
   executeRawSql,
   createColumnIndex,

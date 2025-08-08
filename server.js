@@ -5,6 +5,7 @@ const path = require('path');
 const { supabase, initializeDatabase, updateScore } = require('./supabase');
 const QueryBuilder = require('./query-builder');
 const { migrateForNewHost } = require('./schema-utils');
+const StatusUpdateService = require('./services/StatusUpdateService');
 require('dotenv').config();
 
 const app = express();
@@ -825,27 +826,15 @@ app.put(
     const { id, hostId } = req.params;
     const { status, video_id_text, note } = req.body;
 
-    // Use centralized dynamic column mapping system
-    const columns = await getHostColumns(hostId);
-
-    // Build update data dynamically
-    const updateData = {};
-    updateData[columns.statusColumn] = status;
-
-    if (video_id_text !== undefined) {
-      updateData[columns.videoIdColumn] = video_id_text;
-    }
-    if (note !== undefined) {
-      updateData[columns.noteColumn] = note;
-    }
-
-    console.log(`[Generic API] Updating video ${id} for host ${hostId}:`, updateData);
-
-    const { error } = await supabase.from('videos').update(updateData).eq('id', id);
-
-    if (error) {
-      throw error;
-    }
+    // Use the centralized StatusUpdateService for consistent timestamp tracking
+    const result = await StatusUpdateService.updateVideoStatus(
+      id,
+      hostId,
+      status,
+      note,
+      video_id_text,
+      getHostColumns
+    );
 
     // Note: taken_by is now automatically updated by the database trigger
     // Do not call updateTakenBy manually to avoid infinite recursion
@@ -853,8 +842,53 @@ app.put(
     res.json({
       message: `Host ${hostId} video status updated successfully`,
       hostId: hostId,
-      columns: columns,
-      updateData: updateData
+      status: status,
+      timestamp: result.timestamp,
+      columns: result.columns,
+      success: result.success
+    });
+  })
+);
+
+// Get status history for a video (useful for audit trails)
+app.get(
+  '/api/videos/:id/status-history',
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    const history = await StatusUpdateService.getStatusHistory(id);
+    
+    res.json({
+      message: 'Status history retrieved successfully',
+      videoId: id,
+      history: history
+    });
+  })
+);
+
+// Bulk status update endpoint (useful for batch operations)
+app.put(
+  '/api/videos/bulk/status',
+  asyncHandler(async (req, res) => {
+    const { updates } = req.body;
+    
+    if (!Array.isArray(updates)) {
+      return res.status(400).json({ error: 'Updates must be an array' });
+    }
+    
+    const results = await StatusUpdateService.bulkUpdateStatus(updates, getHostColumns);
+    
+    const successCount = results.filter(r => r.success).length;
+    const errorCount = results.filter(r => !r.success).length;
+    
+    res.json({
+      message: `Bulk status update completed: ${successCount} successful, ${errorCount} failed`,
+      results: results,
+      summary: {
+        total: results.length,
+        successful: successCount,
+        failed: errorCount
+      }
     });
   })
 );
