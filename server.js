@@ -5,7 +5,31 @@ const path = require('path');
 const { supabase, initializeDatabase, updateScore } = require('./supabase');
 const QueryBuilder = require('./query-builder');
 const { migrateForNewHost } = require('./schema-utils');
-const StatusUpdateService = require('./services/StatusUpdateService');
+
+// Safe import of StatusUpdateService
+let StatusUpdateService;
+try {
+  StatusUpdateService = require('./services/StatusUpdateService');
+  console.log('StatusUpdateService loaded successfully');
+} catch (error) {
+  console.warn('StatusUpdateService not available:', error.message);
+  // Fallback implementation for basic functionality
+  StatusUpdateService = {
+    updateVideoStatus: async (videoId, hostId, status, note, videoIdText, getHostColumns) => {
+      const columns = await getHostColumns(hostId);
+      const updateData = {};
+      updateData[columns.statusColumn] = status;
+      if (note !== null && note !== undefined) updateData[columns.noteColumn] = note;
+      if (videoIdText !== null && videoIdText !== undefined) updateData[columns.videoIdColumn] = videoIdText;
+      
+      const { error } = await supabase.from('videos').update(updateData).eq('id', videoId);
+      if (error) throw error;
+      
+      return { success: true, videoId, hostId, status, columns };
+    }
+  };
+}
+
 require('dotenv').config();
 
 const app = express();
