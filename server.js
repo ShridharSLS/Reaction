@@ -9,7 +9,7 @@ const { migrateForNewHost } = require('./schema-utils');
 // Safe import of StatusUpdateService
 let StatusUpdateService;
 try {
-  StatusUpdateService = require('./services/StatusUpdateService');
+  StatusUpdateService = require('./StatusUpdateService');
   console.log('StatusUpdateService loaded successfully');
 } catch (error) {
   console.warn('StatusUpdateService not available:', error.message);
