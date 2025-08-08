@@ -315,26 +315,21 @@ initializeDatabase()
     process.exit(1);
   });
 
-// Catch-all route for debugging 404s
-app.use('*', (req, res) => {
-  console.log(`❌ 404 - Route not found: ${req.method} ${req.originalUrl}`);
-  console.log('📋 Available routes:');
-  app._router.stack.forEach((middleware) => {
-    if (middleware.route) {
-      console.log(`   ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
-    }
-  });
-  res.status(404).json({ 
-    error: 'Route not found', 
-    method: req.method, 
-    url: req.originalUrl,
-    timestamp: new Date().toISOString()
-  });
+// Public Routes
+app.get('/login', (req, res) => {
+  console.log('📝 Serving login page');
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// Public Routes
 app.get('/submit', (req, res) => {
+  console.log('📝 Serving submit page');
   res.sendFile(path.join(__dirname, 'public', 'submit.html'));
+});
+
+// Main dashboard route
+app.get('/', (req, res) => {
+  console.log('🏠 Serving main dashboard');
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // API Routes
@@ -1961,5 +1956,22 @@ app.delete(
     });
   })
 );
+
+// Catch-all route for debugging 404s (must be last)
+app.use('*', (req, res) => {
+  console.log(`❌ 404 - Route not found: ${req.method} ${req.originalUrl}`);
+  console.log('📋 Available routes:');
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+      console.log(`   ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+    }
+  });
+  res.status(404).json({ 
+    error: 'Route not found', 
+    method: req.method, 
+    url: req.originalUrl,
+    timestamp: new Date().toISOString()
+  });
+});
 
 module.exports = app;
