@@ -35,10 +35,23 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Debug logging
+console.log('🚀 Server starting...');
+console.log('📁 Current directory:', __dirname);
+console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
+console.log('🔧 Port:', PORT);
+console.log('📦 StatusUpdateService available:', !!StatusUpdateService);
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`📥 ${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 // Error handling middleware
 function asyncHandler(fn) {
@@ -286,14 +299,38 @@ function extractVideoCode(url) {
   return null;
 }
 
-// Initialize database
+// Debug: Log all registered routes
+app._router.stack.forEach((middleware) => {
+  if (middleware.route) {
+    console.log(`🛣️  Route: ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+  }
+});
+
 initializeDatabase()
   .then(() => {
-    console.log('Database initialized successfully');
+    console.log('✅ Database initialized successfully');
   })
-  .catch(err => {
-    console.error('Database initialization failed:', err);
+  .catch((error) => {
+    console.error('❌ Database initialization failed:', error);
+    process.exit(1);
   });
+
+// Catch-all route for debugging 404s
+app.use('*', (req, res) => {
+  console.log(`❌ 404 - Route not found: ${req.method} ${req.originalUrl}`);
+  console.log('📋 Available routes:');
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+      console.log(`   ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+    }
+  });
+  res.status(404).json({ 
+    error: 'Route not found', 
+    method: req.method, 
+    url: req.originalUrl,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Public Routes
 app.get('/submit', (req, res) => {
@@ -321,9 +358,11 @@ app.get(
     const { data, error } = await query.order('name');
 
     if (error) {
+      console.error('Error fetching people:', error);
       throw error;
     }
 
+    console.log(`Fetched ${data.length} people`);
     res.json(data || []);
   })
 );
@@ -335,6 +374,7 @@ app.post(
     const { name } = req.body;
 
     if (!name || name.trim() === '') {
+      console.error('Name is required');
       res.status(400).json({ error: 'Name is required' });
       return;
     }
@@ -343,12 +383,14 @@ app.post(
     const existingPerson = await QueryBuilder.findBy('people', 'name', name.trim(), 'id');
 
     if (existingPerson) {
+      console.error('A person with this name already exists');
       res.status(409).json({ error: 'A person with this name already exists' });
       return;
     }
 
     const data = await QueryBuilder.create('people', { name: name.trim() });
 
+    console.log(`Created new person: ${data.name}`);
     res.status(201).json(data);
   })
 );
@@ -361,8 +403,10 @@ app.put('/api/people/:id', async (req, res) => {
 
     await QueryBuilder.updateById('people', id, { name: name.trim() });
 
+    console.log(`Updated person ${id} name to ${name}`);
     res.json({ message: 'Person updated successfully' });
   } catch (err) {
+    console.error('Error updating person:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -376,12 +420,15 @@ app.delete('/api/people/:id', async (req, res) => {
     const { error } = await supabase.from('people').delete().eq('id', id);
 
     if (error) {
+      console.error('Error deleting person:', error);
       res.status(500).json({ error: error.message });
       return;
     }
 
+    console.log(`Deleted person ${id}`);
     res.json({ message: 'Person deleted successfully' });
   } catch (err) {
+    console.error('Error deleting person:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -393,8 +440,10 @@ app.put('/api/people/:id/archive', async (req, res) => {
 
     await QueryBuilder.updateById('people', id, { is_archived: true });
 
+    console.log(`Archived person ${id}`);
     res.json({ message: 'Person archived successfully' });
   } catch (err) {
+    console.error('Error archiving person:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -407,12 +456,15 @@ app.put('/api/people/:id/unarchive', async (req, res) => {
     const { data, error } = await supabase.from('people').update({ archived: false }).eq('id', id).select().single();
 
     if (error) {
+      console.error('Error unarchiving person:', error);
       res.status(500).json({ error: error.message });
       return;
     }
 
+    console.log(`Unarchived person ${id}`);
     res.json({ message: 'Person unarchived successfully', person: data });
   } catch (err) {
+    console.error('Error unarchiving person:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -451,6 +503,7 @@ app.get('/api/videos/all/entries', async (req, res) => {
       added_by_name: peopleMap[video.added_by] || 'Unknown',
     }));
 
+    console.log(`Fetched ${videosWithNames.length} videos`);
     res.json(videosWithNames);
   } catch (error) {
     console.error('Error in /api/videos/all/entries:', error);
@@ -529,17 +582,12 @@ app.get('/api/videos/counts', async (req, res) => {
     });
 
     console.log('[Dynamic Counts] Final counts:', counts);
-
     res.json(counts);
   } catch (error) {
     console.error('Error in /api/videos/counts:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
-// Legacy Host 1 endpoint removed - now uses unified generic endpoint /api/videos/host/:hostId/:status
-
-// Legacy Host 2 endpoint removed - now uses unified generic endpoint /api/videos/host/:hostId/:status
 
 // Add new video
 app.post('/api/videos', async (req, res) => {
@@ -565,6 +613,7 @@ app.post('/api/videos', async (req, res) => {
           .single();
 
         if (personError) {
+          console.error('Error creating person:', personError);
           res.status(500).json({ error: 'Failed to create person: ' + personError.message });
           return;
         }
@@ -575,6 +624,7 @@ app.post('/api/videos', async (req, res) => {
 
     // For public form submissions, added_by should be provided directly
     if (!personId) {
+      console.error('Person selection is required');
       res.status(400).json({ error: 'Person selection is required' });
       return;
     }
@@ -587,6 +637,7 @@ app.post('/api/videos', async (req, res) => {
       .single();
 
     if (personCheckError || !person) {
+      console.error('Selected person does not exist');
       res.status(400).json({ error: 'Selected person does not exist' });
       return;
     }
@@ -610,6 +661,7 @@ app.post('/api/videos', async (req, res) => {
       const errorMessage = videoCode
         ? `This video already exists in the system (found via video ID: ${videoCode}). Existing URL: ${existingVideo.link}`
         : 'A video with this URL already exists in the system';
+      console.error(errorMessage);
       res.status(409).json({ error: errorMessage });
       return;
     }
@@ -743,6 +795,7 @@ app.post('/api/videos', async (req, res) => {
 
     res.json({ id: data.id, message: 'Video added successfully' });
   } catch (err) {
+    console.error('Error adding video:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -760,6 +813,7 @@ app.get('/api/videos/check-duplicate', async (req, res) => {
       // Fallback to URL check for unsupported platforms
       duplicateCheckQuery = supabase.from('videos').select('id, link').eq('link', url).single();
     } else {
+      console.error('Either video_code or url parameter is required');
       res.status(400).json({ error: 'Either video_code or url parameter is required' });
       return;
     }
@@ -767,15 +821,16 @@ app.get('/api/videos/check-duplicate', async (req, res) => {
     const { data: existingVideo, error: _error } = await duplicateCheckQuery;
 
     if (existingVideo) {
-      res.json({
-        isDuplicate: true,
-        existingUrl: existingVideo.link,
-        videoId: existingVideo.id,
-      });
+      const errorMessage = video_code
+        ? `This video already exists in the system (found via video ID: ${video_code}). Existing URL: ${existingVideo.link}`
+        : 'A video with this URL already exists in the system';
+      console.error(errorMessage);
+      res.status(409).json({ error: errorMessage });
     } else {
       res.json({ isDuplicate: false });
     }
   } catch (err) {
+    console.error('Error checking for duplicate video:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -823,6 +878,7 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
     const { error } = await supabase.from('videos').update(updateData).eq('id', id);
 
     if (error) {
+      console.error('Error updating video relevance:', error);
       res.status(500).json({ error: error.message });
       return;
     }
@@ -830,8 +886,10 @@ app.put('/api/videos/:id/relevance', async (req, res) => {
     // Update score after relevance change
     await updateScore(id);
 
+    console.log(`Updated video ${id} relevance rating to ${relevance_rating}`);
     res.json({ message: 'Relevance rating updated successfully' });
   } catch (err) {
+    console.error('Error updating video relevance:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -863,6 +921,7 @@ app.put(
     // Note: taken_by is now automatically updated by the database trigger
     // Do not call updateTakenBy manually to avoid infinite recursion
     
+    console.log(`Updated video ${id} status for host ${hostId} to ${status}`);
     res.json({
       message: `Host ${hostId} video status updated successfully`,
       hostId: hostId,
@@ -882,6 +941,7 @@ app.get(
     
     const history = await StatusUpdateService.getStatusHistory(id);
     
+    console.log(`Fetched status history for video ${id}`);
     res.json({
       message: 'Status history retrieved successfully',
       videoId: id,
@@ -897,6 +957,7 @@ app.put(
     const { updates } = req.body;
     
     if (!Array.isArray(updates)) {
+      console.error('Updates must be an array');
       return res.status(400).json({ error: 'Updates must be an array' });
     }
     
@@ -905,6 +966,7 @@ app.put(
     const successCount = results.filter(r => r.success).length;
     const errorCount = results.filter(r => !r.success).length;
     
+    console.log(`Bulk status update completed: ${successCount} successful, ${errorCount} failed`);
     res.json({
       message: `Bulk status update completed: ${successCount} successful, ${errorCount} failed`,
       results: results,
@@ -1163,6 +1225,7 @@ app.get('/api/videos/system/trash', async (req, res) => {
       isSystemWide: true,
     };
 
+    console.log('Returning trash response with', response.count, 'videos');
     res.json(response);
   } catch (error) {
     console.error('Error in /api/videos/system/trash:', error);
@@ -1198,6 +1261,7 @@ app.get('/api/videos/host/:hostId/:status', async (req, res) => {
     const { data: people, error: peopleError } = await supabase.from('people').select('id, name');
 
     if (peopleError) {
+      console.error('Error fetching people:', peopleError);
       res.status(500).json({ error: peopleError.message });
       return;
     }
@@ -1273,9 +1337,11 @@ app.put(
       .eq('id', id);
 
     if (error) {
+      console.error('Error updating video note:', error);
       throw error;
     }
 
+    console.log(`Updated video ${id} note`);
     res.json({ message: 'Note updated successfully' });
   })
 );
@@ -1288,6 +1354,7 @@ app.patch(
     const { archived } = req.body;
 
     if (archived === undefined) {
+      console.error('Archived status is required');
       res.status(400).json({ error: 'Archived status is required' });
       return;
     }
@@ -1300,9 +1367,11 @@ app.patch(
       .single();
 
     if (error) {
+      console.error('Error updating person archived status:', error);
       throw error;
     }
 
+    console.log(`Updated person ${id} archived status to ${archived}`);
     res.json(data);
   })
 );
@@ -1315,6 +1384,7 @@ app.post('/api/videos/update-taken-by', asyncHandler(async (req, res) => {
   
   const updatedCount = await updateAllTakenBy();
   
+  console.log(`Updated ${updatedCount} videos`);
   res.json({
     message: 'Taken_by counts updated successfully',
     updatedVideos: updatedCount,
@@ -1330,6 +1400,7 @@ app.get('/api/videos/taken-by-stats', asyncHandler(async (req, res) => {
     .not('taken_by', 'is', null);
   
   if (error) {
+    console.error('Error fetching taken_by statistics:', error);
     throw error;
   }
   
@@ -1345,6 +1416,7 @@ app.get('/api/videos/taken-by-stats', asyncHandler(async (req, res) => {
     if (count > 0) videosWithTaken++;
   });
   
+  console.log('Taken_by statistics:', takenByDistribution);
   res.json({
     totalVideos,
     videosWithTaken,
@@ -1372,9 +1444,11 @@ app.get(
     const { data, error } = await query.order('host_id');
 
     if (error) {
+      console.error('Error fetching hosts:', error);
       throw error;
     }
 
+    console.log(`Fetched ${data.length} hosts`);
     res.json(data);
   })
 );
@@ -1396,6 +1470,7 @@ app.get('/api/hosts/:hostId', async (req, res) => {
       return res.status(404).json({ error: 'Host not found' });
     }
 
+    console.log(`Fetched host ${hostId}`);
     res.json(host);
   } catch (error) {
     console.error('Error in /api/hosts/:hostId:', error);
@@ -1410,6 +1485,7 @@ app.post('/api/hosts', async (req, res) => {
 
     // Validate required fields
     if (!host_id || !name || !status_column || !note_column || !video_id_column) {
+      console.error('Missing required fields');
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -1421,6 +1497,7 @@ app.post('/api/hosts', async (req, res) => {
       .single();
 
     if (existingHost) {
+      console.error('Host ID already exists');
       return res.status(400).json({ error: 'Host ID already exists' });
     }
 
@@ -1456,6 +1533,7 @@ app.post('/api/hosts', async (req, res) => {
       });
 
       // Return success with both host data and schema migration details
+      console.log(`Created new host ${host_id}`);
       res.status(201).json({
         host: newHost,
         schema: migrationResult,
@@ -1464,6 +1542,7 @@ app.post('/api/hosts', async (req, res) => {
       console.error('Schema migration failed:', schemaError);
 
       // The host was created but columns failed - still return 201 but with warning
+      console.log(`Created new host ${host_id} but schema migration failed`);
       res.status(201).json({
         host: newHost,
         schema: {
@@ -1487,6 +1566,7 @@ app.put('/api/hosts/:hostId', async (req, res) => {
 
     // Validate required fields
     if (!name || !status_column || !note_column || !video_id_column) {
+      console.error('Missing required fields');
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -1513,9 +1593,11 @@ app.put('/api/hosts/:hostId', async (req, res) => {
     }
 
     if (!updatedHost) {
+      console.error('Host not found');
       return res.status(404).json({ error: 'Host not found' });
     }
 
+    console.log(`Updated host ${hostId}`);
     res.json(updatedHost);
   } catch (error) {
     console.error('Error in PUT /api/hosts/:hostId:', error);
@@ -1548,9 +1630,11 @@ app.delete('/api/hosts/:hostId', async (req, res) => {
     }
 
     if (!deletedHost) {
+      console.error('Host not found');
       return res.status(404).json({ error: 'Host not found' });
     }
 
+    console.log(`Deleted host ${hostId}`);
     res.json({ message: 'Host deleted successfully', host: deletedHost });
   } catch (error) {
     console.error('Error in DELETE /api/hosts/:hostId:', error);
@@ -1559,13 +1643,20 @@ app.delete('/api/hosts/:hostId', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`🌟 Server running on http://localhost:${PORT}`);
+  console.log('📋 Available routes:');
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+      console.log(`   ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+    }
+  });
 });
 
 // Migration endpoint for existing hosts - can be used to add missing columns
 app.post('/api/hosts/:hostId/migrate', async (req, res) => {
   try {
     const { hostId } = req.params;
+    console.log(`Migration requested for host ${hostId}`);
 
     // Get the host details
     const { data: host, error } = await supabase.from('hosts').select('*').eq('host_id', parseInt(hostId)).single();
