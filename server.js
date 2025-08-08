@@ -334,6 +334,209 @@ app.get('/', (req, res) => {
 
 // API Routes
 
+// ===== AUTHENTICATION ENDPOINTS =====
+
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log(`🔐 Login attempt for email: ${email}`);
+
+    if (!email || !password) {
+      console.log('❌ Missing email or password');
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Check if admin exists with matching email and password
+    const { data: admin, error } = await supabase
+      .from('admins')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .eq('password', password)
+      .single();
+
+    if (error || !admin) {
+      console.log('❌ Invalid credentials for:', email);
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Update last login timestamp
+    await supabase
+      .from('admins')
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', admin.id);
+
+    console.log(`✅ Successful login for: ${email}`);
+    res.json({
+      success: true,
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        name: admin.name
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Verify admin endpoint
+app.post('/api/verify-admin', async (req, res) => {
+  try {
+    const { email } = req.body;
+    console.log(`🔍 Verifying admin: ${email}`);
+
+    const { data: admin, error } = await supabase
+      .from('admins')
+      .select('email, name')
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (error || !admin) {
+      console.log('❌ Admin not found:', email);
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+
+    console.log(`✅ Admin verified: ${email}`);
+    res.json({ success: true, admin });
+  } catch (error) {
+    console.error('Admin verification error:', error);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// Get all admins
+app.get('/api/admins', async (req, res) => {
+  try {
+    console.log('📋 Fetching all admins');
+    const { data: admins, error } = await supabase
+      .from('admins')
+      .select('id, email, name, created_at, last_login')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    console.log(`✅ Fetched ${admins.length} admins`);
+    res.json(admins);
+  } catch (error) {
+    console.error('Error fetching admins:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add new admin
+app.post('/api/admins', async (req, res) => {
+  try {
+    const { email, name, password } = req.body;
+    console.log(`➕ Adding new admin: ${email}`);
+
+    if (!email || !name || !password) {
+      return res.status(400).json({ error: 'Email, name, and password are required' });
+    }
+
+    // Check if admin already exists
+    const { data: existing } = await supabase
+      .from('admins')
+      .select('email')
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (existing) {
+      console.log('❌ Admin already exists:', email);
+      return res.status(409).json({ error: 'Admin with this email already exists' });
+    }
+
+    const { data: newAdmin, error } = await supabase
+      .from('admins')
+      .insert({
+        email: email.toLowerCase(),
+        name: name.trim(),
+        password: password,
+        created_at: new Date().toISOString()
+      })
+      .select('id, email, name, created_at')
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    console.log(`✅ Created new admin: ${email}`);
+    res.status(201).json(newAdmin);
+  } catch (error) {
+    console.error('Error creating admin:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update admin password
+app.put('/api/admins/:id/password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+    console.log(`🔑 Updating password for admin ID: ${id}`);
+
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required' });
+    }
+
+    const { data: updatedAdmin, error } = await supabase
+      .from('admins')
+      .update({ password })
+      .eq('id', id)
+      .select('id, email, name')
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!updatedAdmin) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+
+    console.log(`✅ Updated password for admin: ${updatedAdmin.email}`);
+    res.json({ message: 'Password updated successfully', admin: updatedAdmin });
+  } catch (error) {
+    console.error('Error updating admin password:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete admin
+app.delete('/api/admins/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`🗑️ Deleting admin ID: ${id}`);
+
+    const { data: deletedAdmin, error } = await supabase
+      .from('admins')
+      .delete()
+      .eq('id', id)
+      .select('email, name')
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!deletedAdmin) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+
+    console.log(`✅ Deleted admin: ${deletedAdmin.email}`);
+    res.json({ message: 'Admin deleted successfully', admin: deletedAdmin });
+  } catch (error) {
+    console.error('Error deleting admin:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===== PEOPLE MANAGEMENT ENDPOINTS =====
+
 // Get all people
 app.get(
   '/api/people',
