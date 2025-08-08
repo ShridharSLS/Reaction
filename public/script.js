@@ -1655,6 +1655,14 @@ function createVideoCard(video, status) {
                 </div>
             </div>
             
+            <!-- Video ID Column - First prominent column for all hosts -->
+            <div class="video-id-column">
+                <div class="video-id-display">
+                    <span class="video-id-label">ID</span>
+                    <span class="video-id-value">${video.id}</span>
+                </div>
+            </div>
+            
             <div class="video-type-column">
                 <div class="video-type-pill">
                     <button class="video-type-btn ${typeClass}" onclick="toggleTypePill(${video.id})">
