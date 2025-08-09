@@ -51,8 +51,10 @@ class StatusUpdateService {
       
       // Handle video ID text - allow null values to clear the field
       if (videoIdText !== undefined) {
-        updateData[columns.videoIdColumn] = videoIdText; // This can be null to clear the field
-        console.log(`[StatusUpdateService] Adding videoIdText to update: ${videoIdText} (column: ${columns.videoIdColumn})`);
+        // For Host 1, the video ID column is 'video_id_text' (not from host config)
+        const videoIdColumnName = hostId === 1 || hostId === '1' ? 'video_id_text' : columns.videoIdColumn;
+        updateData[videoIdColumnName] = videoIdText; // This can be null to clear the field
+        console.log(`[StatusUpdateService] Adding videoIdText to update: ${videoIdText} (column: ${videoIdColumnName})`);
       } else {
         console.log(`[StatusUpdateService] videoIdText is undefined, skipping video ID update`);
       }
