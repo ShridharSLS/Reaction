@@ -79,8 +79,8 @@ function getHostWithVideoId(video) {
     
     for (const hostId of hostIds) {
         const config = getHostConfig(hostId);
-        if (config && config.videoIdColumn) {
-            const videoIdColumn = config.videoIdColumn;
+        if (config && config.videoIdCol) {
+            const videoIdColumn = config.videoIdCol;
             if (video[videoIdColumn] && video[videoIdColumn].trim() !== '') {
                 console.log(`[getHostWithVideoId] Found video ID in ${videoIdColumn} for host ${hostId}:`, video[videoIdColumn]);
                 return hostId;
@@ -2321,8 +2321,26 @@ async function hostActionClearVideoId(hostId, videoId) {
     const config = getHostConfig(hostId);
     const endpoint = getHostApiEndpoint(hostId, videoId);
     
-    console.log(`[hostActionClearVideoId] Clearing video ID for host ${hostId}, video ${videoId}`);
-    console.log(`[hostActionClearVideoId] Using endpoint: ${endpoint}`);
+    console.log(`[hostActionClearVideoId] === COMPREHENSIVE DEBUGGING ===`);
+    console.log(`[hostActionClearVideoId] Host ID: ${hostId}`);
+    console.log(`[hostActionClearVideoId] Video ID: ${videoId}`);
+    console.log(`[hostActionClearVideoId] Host config:`, config);
+    console.log(`[hostActionClearVideoId] API endpoint: ${endpoint}`);
+    
+    // Get current video data to see what video ID columns have values
+    let currentVideoData = null;
+    try {
+        const currentResponse = await ApiService.request(`/api/videos/${videoId}`);
+        currentVideoData = currentResponse;
+        console.log(`[hostActionClearVideoId] Current video data BEFORE clearing:`, currentVideoData);
+        
+        // Check all video ID columns
+        if (config && config.videoIdCol) {
+            console.log(`[hostActionClearVideoId] Current value in ${config.videoIdCol}:`, currentVideoData[config.videoIdCol]);
+        }
+    } catch (error) {
+        console.error(`[hostActionClearVideoId] Error fetching current video data:`, error);
+    }
     
     try {
         const response = await ApiService.request(endpoint, {
@@ -2333,7 +2351,27 @@ async function hostActionClearVideoId(hostId, videoId) {
             })
         });
         
-        console.log(`[hostActionClearVideoId] Success response:`, response);
+        console.log(`[hostActionClearVideoId] API Success response:`, response);
+        
+        // Fetch video data again to verify the change
+        try {
+            const updatedResponse = await ApiService.request(`/api/videos/${videoId}`);
+            console.log(`[hostActionClearVideoId] Updated video data AFTER clearing:`, updatedResponse);
+            
+            // Check if the video ID was actually cleared
+            if (config && config.videoIdCol) {
+                const afterValue = updatedResponse[config.videoIdCol];
+                console.log(`[hostActionClearVideoId] Value in ${config.videoIdCol} AFTER clearing:`, afterValue);
+                
+                if (afterValue === null || afterValue === '' || afterValue === undefined) {
+                    console.log(`[hostActionClearVideoId] ✅ SUCCESS: Video ID was cleared in database`);
+                } else {
+                    console.log(`[hostActionClearVideoId] ❌ FAILED: Video ID was NOT cleared in database`);
+                }
+            }
+        } catch (error) {
+            console.error(`[hostActionClearVideoId] Error fetching updated video data:`, error);
+        }
         
         // Show success notification
         showSuccessNotification('Video ID cleared successfully!');
