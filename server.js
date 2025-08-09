@@ -1,3 +1,6 @@
+// Load environment variables FIRST before any other imports
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -29,8 +32,6 @@ try {
     }
   };
 }
-
-require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -667,7 +668,7 @@ app.put('/api/people/:id/unarchive', async (req, res) => {
   }
 });
 
-// Get all database entries for All view
+// Get all database entries for All view (legacy endpoint - kept for backward compatibility)
 app.get('/api/videos/all/entries', async (req, res) => {
   try {
     // Get all videos
@@ -706,6 +707,524 @@ app.get('/api/videos/all/entries', async (req, res) => {
   } catch (error) {
     console.error('Error in /api/videos/all/entries:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ===== UNIFIED DATABASE VIEW (USING SQL VIEW) =====
+// Simple endpoint that queries the unified_video_view SQL view
+app.get('/api/videos/unified-view', async (req, res) => {
+  try {
+    console.log('🔍 Fetching data from unified_video_view SQL view...');
+    
+    // Query the SQL view directly - much simpler and more efficient
+    const { data: unifiedData, error } = await supabase
+      .from('unified_video_view')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Error fetching unified view:', error);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Failed to fetch unified view',
+        details: error.message 
+      });
+    }
+
+    console.log(`✅ Unified view fetched: ${unifiedData.length} records from SQL view`);
+    
+    res.json({
+      success: true,
+      count: unifiedData.length,
+      data: unifiedData,
+      generated_at: new Date().toISOString(),
+      source: 'unified_video_view SQL view',
+      includes: {
+        video_data: 'All columns from videos table',
+        person_data: 'Person ID and name who added the video',
+        tags_data: 'Associated tags with names and colors',
+        host_data: 'All host-specific status, notes, and video IDs',
+        timestamps: 'Status update timestamps (if available)',
+        computed_fields: 'Relevance labels, host status summary, days since created, video platform'
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error in unified view endpoint:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch unified view',
+      details: error.message 
+    });
+  }
+});
+
+// ===== GOOGLE SHEETS SYNC SERVICE INTEGRATION =====
+// Import and initialize Google Sheets sync service
+const GoogleSheetsSync = require('./services/GoogleSheetsSync');
+let googleSheetsSync = null;
+
+// Initialize Google Sheets sync service
+try {
+  googleSheetsSync = new GoogleSheetsSync(supabase);
+  // Start periodic sync if enabled
+  googleSheetsSync.startPeriodicSync();
+  console.log('✅ Google Sheets sync service initialized');
+} catch (error) {
+  console.error('❌ Failed to initialize Google Sheets sync:', error);
+}
+
+// ===== CSV EXPORT FOR GOOGLE SHEETS SYNC =====
+// Export unified view as CSV for Google Sheets synchronization
+app.get('/api/videos/export/csv', async (req, res) => {
+  try {
+    console.log('📄 Generating CSV export for Google Sheets sync...');
+    
+    // Get unified data directly from SQL view (much more efficient)
+    const { data: unifiedData, error } = await supabase
+      .from('unified_video_view')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      throw new Error(`Failed to fetch unified data: ${error.message}`);
+    }
+    
+    const data = unifiedData;
+    
+    if (data.length === 0) {
+      return res.status(200).send('No data available for export');
+    }
+    
+    // Define CSV headers (all columns for comprehensive export)
+    const headers = [
+      'Video ID',
+      'Link',
+      'Video Code',
+      'Type',
+      'Likes Count',
+      'Pitch',
+      'Relevance Rating',
+      'Score',
+      'Taken By',
+      'Created At',
+      'Added By ID',
+      'Added By Name',
+      'Link Added On',
+      'Host 1 Status',
+      'Host 2 Status', 
+      'Host 3 Status',
+      'Host 1 Note',
+      'Host 2 Note',
+      'Host 3 Note',
+      'Host 1 Video ID',
+      'Host 2 Video ID',
+      'Host 3 Video ID',
+      'Host 1 Status Updated',
+      'Host 2 Status Updated',
+      'Host 3 Status Updated',
+      'Tags Count',
+      'Tags Names',
+      'Tags Colors'
+    ];
+    
+    // Helper function to escape CSV values
+    const escapeCsvValue = (value) => {
+      if (value === null || value === undefined) return '';
+      const stringValue = String(value);
+      // Escape quotes and wrap in quotes if contains comma, quote, or newline
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+    
+    // Helper function to format date
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      try {
+        return new Date(dateString).toISOString().split('T')[0]; // YYYY-MM-DD format
+      } catch {
+        return dateString;
+      }
+    };
+    
+    // Generate CSV content
+    let csvContent = headers.join(',') + '\n';
+    
+    data.forEach(video => {
+      const row = [
+        escapeCsvValue(video.id),
+        escapeCsvValue(video.link),
+        escapeCsvValue(video.video_code),
+        escapeCsvValue(video.type),
+        escapeCsvValue(video.likes_count),
+        escapeCsvValue(video.pitch),
+        escapeCsvValue(video.relevance_rating),
+        escapeCsvValue(video.score),
+        escapeCsvValue(video.taken_by),
+        escapeCsvValue(formatDate(video.created_at)),
+        escapeCsvValue(video.added_by_id),
+        escapeCsvValue(video.added_by_name),
+        escapeCsvValue(formatDate(video.link_added_on)),
+        escapeCsvValue(video.status_1),
+        escapeCsvValue(video.status_2),
+        escapeCsvValue(video.status_3),
+        escapeCsvValue(video.note_1),
+        escapeCsvValue(video.note_2),
+        escapeCsvValue(video.note_3),
+        escapeCsvValue(video.video_id_1),
+        escapeCsvValue(video.video_id_2),
+        escapeCsvValue(video.video_id_3),
+        escapeCsvValue(formatDate(video.status_1_updated_at)),
+        escapeCsvValue(formatDate(video.status_2_updated_at)),
+        escapeCsvValue(formatDate(video.status_3_updated_at)),
+        escapeCsvValue(video.tags_count),
+        escapeCsvValue(video.tags_names),
+        escapeCsvValue(video.tags_colors)
+      ];
+      
+      csvContent += row.join(',') + '\n';
+    });
+    
+    // Set appropriate headers for CSV download
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `video-database-export-${timestamp}.csv`;
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    console.log(`✅ CSV export generated: ${data.length} records, ${csvContent.length} characters`);
+    res.send(csvContent);
+    
+  } catch (error) {
+    console.error('❌ Error generating CSV export:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate CSV export',
+      details: error.message
+    });
+  }
+});
+
+// Get sync status and metadata for Google Sheets integration
+app.get('/api/videos/sync/status', async (req, res) => {
+  try {
+    // Get basic statistics for sync status
+    const { data: videos, error } = await supabase
+      .from('videos')
+      .select('id, created_at, link_added_on')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    
+    if (error) {
+      throw error;
+    }
+    
+    const { data: totalCount, error: countError } = await supabase
+      .from('videos')
+      .select('id', { count: 'exact' });
+    
+    if (countError) {
+      throw countError;
+    }
+    
+    const lastUpdated = videos.length > 0 ? videos[0].created_at : null;
+    
+    res.json({
+      success: true,
+      sync_status: {
+        total_records: totalCount.length,
+        last_updated: lastUpdated,
+        last_sync_check: new Date().toISOString(),
+        export_url: `/api/videos/export/csv`,
+        unified_view_url: `/api/videos/unified-view`
+      },
+      instructions: {
+        manual_sync: 'Download CSV from /api/videos/export/csv and import to Google Sheets',
+        automated_sync: 'Use Google Apps Script or Zapier to periodically fetch the CSV endpoint',
+        data_includes: 'All video data, person names, tags, host statuses, and timestamps'
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error getting sync status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get sync status',
+      details: error.message
+    });
+  }
+});
+
+// ===== GOOGLE SHEETS SYNC API ENDPOINTS =====
+// Manual trigger for Google Sheets sync
+app.post('/api/sync/google-sheets/trigger', async (req, res) => {
+  try {
+    if (!googleSheetsSync) {
+      return res.status(503).json({
+        success: false,
+        error: 'Google Sheets sync service not available',
+        details: 'Service not initialized or configured'
+      });
+    }
+
+    console.log('🔄 Manual Google Sheets sync triggered via API');
+    const result = await googleSheetsSync.triggerManualSync();
+    
+    res.json({
+      success: true,
+      message: 'Google Sheets sync completed successfully',
+      ...result
+    });
+    
+  } catch (error) {
+    console.error('❌ Manual Google Sheets sync failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Google Sheets sync failed',
+      details: error.message
+    });
+  }
+});
+
+// Get Google Sheets sync status and configuration
+app.get('/api/sync/google-sheets/status', async (req, res) => {
+  try {
+    if (!googleSheetsSync) {
+      return res.json({
+        success: false,
+        enabled: false,
+        error: 'Google Sheets sync service not available',
+        configuration: {
+          required_env_vars: [
+            'GOOGLE_SHEETS_ID',
+            'GOOGLE_SERVICE_ACCOUNT_KEY or (GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + GOOGLE_REFRESH_TOKEN)',
+            'GOOGLE_SHEETS_SYNC_ENABLED=true'
+          ]
+        }
+      });
+    }
+
+    const status = googleSheetsSync.getSyncStatus();
+    
+    // Get recent sync logs
+    const { data: recentLogs, error: logsError } = await supabase
+      .from('sync_logs')
+      .select('*')
+      .eq('sync_type', 'google_sheets')
+      .order('synced_at', { ascending: false })
+      .limit(10);
+
+    if (logsError) {
+      console.warn('Failed to fetch sync logs:', logsError);
+    }
+
+    res.json({
+      success: true,
+      ...status,
+      recent_syncs: recentLogs || [],
+      api_endpoints: {
+        trigger_sync: '/api/sync/google-sheets/trigger',
+        sync_status: '/api/sync/google-sheets/status',
+        unified_data: '/api/videos/unified-view',
+        csv_export: '/api/videos/export/csv'
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error getting sync status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get sync status',
+      details: error.message
+    });
+  }
+});
+
+// Get sync logs with filtering
+app.get('/api/sync/logs', async (req, res) => {
+  try {
+    const { type = 'google_sheets', status, limit = 50 } = req.query;
+    
+    let query = supabase
+      .from('sync_logs')
+      .select('*')
+      .eq('sync_type', type)
+      .order('synced_at', { ascending: false })
+      .limit(parseInt(limit));
+    
+    if (status) {
+      query = query.eq('status', status);
+    }
+    
+    const { data: logs, error } = await query;
+    
+    if (error) {
+      throw error;
+    }
+    
+    res.json({
+      success: true,
+      logs: logs,
+      count: logs.length,
+      filters: { type, status, limit }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching sync logs:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch sync logs',
+      details: error.message
+    });
+  }
+});
+
+// ===== OAUTH2 AUTHENTICATION ENDPOINTS FOR GOOGLE SHEETS =====
+// Generate OAuth2 authorization URL
+app.get('/auth/google/url', (req, res) => {
+  try {
+    if (!googleSheetsSync || !googleSheetsSync.auth) {
+      return res.status(503).json({
+        success: false,
+        error: 'Google Sheets sync not configured',
+        details: 'OAuth2 credentials not found in environment variables'
+      });
+    }
+
+    const authUrl = googleSheetsSync.auth.generateAuthUrl({
+      access_type: 'offline',
+      scope: ['https://www.googleapis.com/auth/spreadsheets'],
+      prompt: 'consent' // Force consent screen to get refresh token
+    });
+
+    res.json({
+      success: true,
+      auth_url: authUrl,
+      instructions: [
+        '1. Click the auth_url to authorize the application',
+        '2. Grant permissions to access Google Sheets',
+        '3. Copy the authorization code from the redirect URL',
+        '4. Use the code with /auth/google/callback endpoint'
+      ]
+    });
+  } catch (error) {
+    console.error('❌ Error generating OAuth URL:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate OAuth URL',
+      details: error.message
+    });
+  }
+});
+
+// Handle OAuth2 callback and exchange code for tokens
+app.post('/auth/google/callback', async (req, res) => {
+  try {
+    const { code } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        error: 'Authorization code is required',
+        details: 'Please provide the code parameter from the OAuth callback'
+      });
+    }
+
+    // Direct HTTP request to Google OAuth2 token endpoint (bypasses googleapis compatibility issues)
+    const tokenUrl = 'https://oauth2.googleapis.com/token';
+    const tokenData = {
+      code: code,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/auth/google/callback',
+      grant_type: 'authorization_code'
+    };
+
+    // Use Node.js built-in https module to avoid googleapis compatibility issues
+    const https = require('https');
+    const querystring = require('querystring');
+    
+    const postData = querystring.stringify(tokenData);
+    
+    const tokenResponse = await new Promise((resolve, reject) => {
+      const req = https.request(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(postData)
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            if (res.statusCode === 200) {
+              resolve(parsed);
+            } else {
+              reject(new Error(`Token exchange failed: ${parsed.error_description || parsed.error}`));
+            }
+          } catch (e) {
+            reject(new Error(`Failed to parse token response: ${data}`));
+          }
+        });
+      });
+      
+      req.on('error', (error) => {
+        reject(error);
+      });
+      
+      req.write(postData);
+      req.end();
+    });
+
+    console.log('✅ OAuth2 tokens obtained successfully');
+    console.log('🔑 Refresh token:', tokenResponse.refresh_token ? 'Present' : 'Missing');
+    
+    // Save refresh token to environment (you'll need to add this to your .env file)
+    if (tokenResponse.refresh_token) {
+      console.log('\n📝 IMPORTANT: Add this to your .env file:');
+      console.log(`GOOGLE_REFRESH_TOKEN=${tokenResponse.refresh_token}`);
+    }
+
+    // Update the GoogleSheetsSync service with the new tokens
+    if (googleSheetsSync && googleSheetsSync.auth) {
+      googleSheetsSync.auth.setCredentials({
+        access_token: tokenResponse.access_token,
+        refresh_token: tokenResponse.refresh_token,
+        expiry_date: tokenResponse.expires_in ? Date.now() + (tokenResponse.expires_in * 1000) : null
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'OAuth2 authentication successful',
+      tokens_received: {
+        access_token: tokenResponse.access_token ? 'Present' : 'Missing',
+        refresh_token: tokenResponse.refresh_token ? 'Present' : 'Missing',
+        expires_in: tokenResponse.expires_in
+      },
+      refresh_token: tokenResponse.refresh_token, // Include the actual token for easy copying
+      next_steps: [
+        tokenResponse.refresh_token ? 
+          `Add GOOGLE_REFRESH_TOKEN=${tokenResponse.refresh_token} to your .env file` :
+          'Refresh token not received - you may need to revoke and re-authorize',
+        'Restart your server after updating .env',
+        'Test the sync with /api/sync/google-sheets/trigger'
+      ]
+    });
+  } catch (error) {
+    console.error('❌ OAuth2 callback error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'OAuth2 authentication failed',
+      details: error.message
+    });
   }
 });
 

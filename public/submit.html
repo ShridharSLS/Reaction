@@ -160,6 +160,143 @@
           font-size: 1.5rem;
         }
       }
+
+      /* Bulk Import Styles */
+      .bulk-data-textarea {
+        width: 100%;
+        min-height: 150px;
+        padding: 12px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 14px;
+        resize: vertical;
+        transition: border-color 0.3s ease;
+      }
+
+      .bulk-data-textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .bulk-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+        flex-wrap: wrap;
+      }
+
+      .bulk-actions .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .bulk-actions .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+
+      .bulk-actions .btn-secondary:hover {
+        background: #5a6268;
+        transform: translateY(-1px);
+      }
+
+      .bulk-actions .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .bulk-actions .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      }
+
+      .bulk-actions .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .bulk-preview {
+        margin-top: 20px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+      }
+
+      .bulk-preview h3 {
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .bulk-preview-table table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+        background: white;
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      .bulk-preview-table th,
+      .bulk-preview-table td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+      }
+
+      .bulk-preview-table th {
+        background: #667eea;
+        color: white;
+        font-weight: 600;
+      }
+
+      .bulk-validation-errors .error-item {
+        padding: 8px 12px;
+        margin: 5px 0;
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+      }
+
+      .bulk-results {
+        margin-top: 20px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+      }
+
+      .bulk-results h3 {
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .success-item {
+        padding: 8px 12px;
+        margin: 5px 0;
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        border-radius: 4px;
+      }
+
+      .skipped-item {
+        padding: 8px 12px;
+        margin: 5px 0;
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeaa7;
+        border-radius: 4px;
+      }
     </style>
   </head>
   <body>
@@ -226,8 +363,19 @@
         <button type="submit" class="submit-btn" id="submitBtn">Submit Video Topic</button>
       </form>
 
+      <!-- Bulk Import Section -->
+      <div class="bulk-import-section" style="margin-top: 40px; padding-top: 30px; border-top: 2px solid #eee;">
+        <div class="header" style="margin-bottom: 20px;">
+          <h2 style="color: #333; font-size: 1.5rem; margin-bottom: 10px;">📋 Bulk Import Multiple Topics</h2>
+          <p style="color: #666; font-size: 1rem;">Submit multiple video topics at once from Google Sheets</p>
+        </div>
+        
+        <!-- Bulk import UI will be dynamically rendered here -->
+        <div id="submit-bulk-import-container"></div>
+      </div>
+
       <div class="footer">
-        <p>Your submission will be reviewed by our team</p>
+        <p>Your submissions will be reviewed by our team</p>
       </div>
     </div>
 
@@ -392,6 +540,354 @@
 
       // Clear error messages when user starts typing
       form.addEventListener('input', hideMessage);
+    </script>
+    
+    <!-- Bulk Import Components -->
+    <script>
+      // Inline the configurations to avoid path issues
+      const BULK_IMPORT_CONFIGS = {
+        submit: {
+          hasRelevance: false,
+          minColumns: 4,
+          maxColumns: 5,
+          columnNames: "Name, Link, Type, Likes, Pitch",
+          instructions: {
+            title: "📋 Bulk Import Video Topics",
+            description: `
+              <p><strong>Format:</strong> Copy and paste data from Google Sheets with columns:
+              <code>Name | Link | Type | Likes count (in thousands) | Pitch (optional)</code>
+              <br /><strong>Auto-Review:</strong> All imported videos will be sent to the relevance review section for evaluation.
+              <br /><strong>Pitch Column:</strong> Optional note explaining why this video topic would be valuable.
+              <br /><strong>Auto-Create People:</strong> New names will be automatically added to the people database - no need to pre-create them!</p>
+            `,
+            placeholder: `Paste your copied data here...\nExample:\nJohn Doe\thttps://youtube.com/watch?v=123\tTrending\t500\tGreat educational content\nJane Smith\thttps://youtube.com/watch?v=456\tGeneral\t200\tFunny and engaging\nBob Wilson\thttps://youtube.com/watch?v=789\tTrending\t300\tInteresting tech topic`
+          },
+          ui: {
+            previewButtonText: "👁️ Preview Data",
+            submitButtonText: "📤 Submit All Topics",
+            successMessage: "Import Complete - All videos sent for relevance review"
+          }
+        }
+      };
+      
+      // Simple bulk import handler
+      class SimpleBulkImportHandler {
+        constructor(config) {
+          this.config = config;
+          this.parsedData = [];
+        }
+        
+        parseData(bulkData) {
+          const lines = bulkData.split('\n').filter(line => line.trim());
+          this.parsedData = [];
+          const errors = [];
+          
+          lines.forEach((line, index) => {
+            const columns = line.split('\t');
+            const rowNum = index + 1;
+            
+            if (columns.length < this.config.minColumns) {
+              errors.push(`Row ${rowNum}: Expected ${this.config.minColumns}-${this.config.maxColumns} columns, found ${columns.length}`);
+              return;
+            }
+            
+            const [name, link, type, likes, pitch] = columns.map(col => col.trim());
+            
+            if (!name) errors.push(`Row ${rowNum}: Name is required`);
+            if (!link) errors.push(`Row ${rowNum}: Link is required`);
+            else {
+              try { new URL(link); } catch { errors.push(`Row ${rowNum}: Invalid URL format`); }
+            }
+            if (!type || !['Trending', 'General'].includes(type)) {
+              errors.push(`Row ${rowNum}: Type must be 'Trending' or 'General'`);
+            }
+            if (likes && isNaN(parseInt(likes))) {
+              errors.push(`Row ${rowNum}: Likes count must be a number`);
+            }
+            
+            this.parsedData.push({
+              name, link, type,
+              likes: likes ? parseInt(likes) : 0,
+              pitch: pitch || null,
+              rowNum
+            });
+          });
+          
+          return errors;
+        }
+        
+        generatePreviewTable() {
+          let html = `<table><thead><tr><th>Row</th><th>Name</th><th>Link</th><th>Type</th><th>Likes</th><th>Pitch</th><th>Destination</th></tr></thead><tbody>`;
+          
+          this.parsedData.forEach(row => {
+            const pitchDisplay = row.pitch ? (row.pitch.length > 30 ? row.pitch.substring(0, 30) + '...' : row.pitch) : '-';
+            html += `<tr><td>${row.rowNum}</td><td>${this.escapeHtml(row.name)}</td><td><a href="${this.escapeHtml(row.link)}" target="_blank">${this.truncateUrl(row.link, 40)}</a></td><td>${this.escapeHtml(row.type)}</td><td>${row.likes}</td><td title="${this.escapeHtml(row.pitch || '')}">${this.escapeHtml(pitchDisplay)}</td><td>🎯 Relevance Review</td></tr>`;
+          });
+          
+          return html + '</tbody></table>';
+        }
+        
+        async submitData(apiService, people, options = {}) {
+          if (this.parsedData.length === 0) {
+            throw new Error('No data to submit. Please preview the data first.');
+          }
+          
+          const results = [];
+          let successCount = 0, errorCount = 0, skippedCount = 0;
+          
+          // Progress callback
+          if (options.onProgress) {
+            options.onProgress(0, this.parsedData.length);
+          }
+          
+          // Submit each video
+          for (let i = 0; i < this.parsedData.length; i++) {
+            const row = this.parsedData[i];
+            
+            try {
+              // Find person by name or create if doesn't exist
+              let person = people.find(p => p.name.toLowerCase() === row.name.toLowerCase());
+              
+              if (!person) {
+                // Create new person automatically
+                try {
+                  const newPerson = await apiService.createPerson({ name: row.name });
+                  person = { id: newPerson.id, name: row.name };
+                  people.push(person); // Add to local people array for subsequent rows
+                } catch (createError) {
+                  results.push({
+                    row: row.rowNum,
+                    status: 'error',
+                    message: `Failed to create person '${row.name}': ${createError.message}`
+                  });
+                  errorCount++;
+                  continue;
+                }
+              }
+              
+              // Prepare video data
+              const videoData = {
+                added_by: person.id,
+                link: row.link,
+                type: row.type,
+                likes_count: row.likes,
+                relevance_rating: -1, // Always goes to relevance review for submit page
+                pitch: row.pitch || null
+              };
+              
+              // Submit video
+              await apiService.createVideo(videoData);
+              results.push({
+                row: row.rowNum,
+                status: 'success',
+                message: `Successfully added video for ${row.name}`
+              });
+              successCount++;
+              
+            } catch (error) {
+              // Handle duplicate URLs as "skipped" rather than "error" with detailed message
+              if (error.status === 409 && error.message && error.message.includes('already exists')) {
+                results.push({
+                  row: row.rowNum,
+                  status: 'skipped',
+                  message: `Skipped: URL already exists in system`
+                });
+                skippedCount++;
+              } else {
+                results.push({
+                  row: row.rowNum,
+                  status: 'error',
+                  message: error.message || 'Failed to add video'
+                });
+                errorCount++;
+              }
+            }
+            
+            // Progress callback
+            if (options.onProgress) {
+              options.onProgress(i + 1, this.parsedData.length);
+            }
+          }
+          
+          return {
+            results,
+            successCount,
+            errorCount,
+            skippedCount,
+            totalCount: this.parsedData.length
+          };
+        }
+        
+        getCount() { return this.parsedData.length; }
+        clear() { this.parsedData = []; }
+        
+        escapeHtml(text) {
+          if (!text) return '';
+          const div = document.createElement('div');
+          div.textContent = text;
+          return div.innerHTML;
+        }
+        
+        truncateUrl(url, maxLength) {
+          return url.length > maxLength ? url.substring(0, maxLength) + '...' : url;
+        }
+      }
+      
+      // Simple API service for submit page
+      const ApiService = {
+        async request(endpoint, options = {}) {
+          const response = await fetch(endpoint, {
+            headers: { 'Content-Type': 'application/json', ...options.headers },
+            ...options
+          });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'Request failed' }));
+            throw error;
+          }
+          return response.json();
+        },
+        async createVideo(videoData) {
+          return this.request('/api/videos', { method: 'POST', body: JSON.stringify(videoData) });
+        },
+        async createPerson(personData) {
+          return this.request('/api/people', { method: 'POST', body: JSON.stringify(personData) });
+        }
+      };
+      
+      // Initialize bulk import
+      let submitPagePeople = [];
+      let bulkHandler = null;
+      
+      function initializeSubmitBulkImport() {
+        const container = document.getElementById('submit-bulk-import-container');
+        if (!container) return;
+        
+        const config = BULK_IMPORT_CONFIGS.submit;
+        bulkHandler = new SimpleBulkImportHandler(config);
+        
+        container.innerHTML = `
+          <div class="bulk-import-instructions">
+            ${config.instructions.description}
+          </div>
+          <div class="form-group">
+            <label for="submit-bulk-data">Paste Data from Google Sheets:</label>
+            <textarea id="submit-bulk-data" class="bulk-data-textarea" placeholder="${config.instructions.placeholder}" rows="8"></textarea>
+          </div>
+          <div class="bulk-actions">
+            <button type="button" class="btn btn-secondary" onclick="previewSubmitBulkData()">${config.ui.previewButtonText}</button>
+            <button type="button" class="btn btn-primary" onclick="submitBulkData()" id="submit-bulk-submit-btn" disabled>${config.ui.submitButtonText}</button>
+          </div>
+          <div id="submit-bulk-preview" class="bulk-preview" style="display: none">
+            <h3>Preview of Parsed Data:</h3>
+            <div id="submit-bulk-preview-table" class="bulk-preview-table"></div>
+            <div id="submit-bulk-validation-errors" class="bulk-validation-errors"></div>
+          </div>
+          <div id="submit-bulk-results" class="bulk-results" style="display: none">
+            <h3>Import Results:</h3>
+            <div id="submit-bulk-results-content"></div>
+          </div>
+        `;
+      }
+      
+      window.previewSubmitBulkData = function() {
+        const textarea = document.getElementById('submit-bulk-data');
+        const bulkData = textarea.value.trim();
+        if (!bulkData) { alert('Please paste some data first'); return; }
+        
+        const errors = bulkHandler.parseData(bulkData);
+        const previewDiv = document.getElementById('submit-bulk-preview');
+        const tableDiv = document.getElementById('submit-bulk-preview-table');
+        const errorsDiv = document.getElementById('submit-bulk-validation-errors');
+        const submitBtn = document.getElementById('submit-bulk-submit-btn');
+        
+        if (bulkHandler.getCount() > 0) {
+          tableDiv.innerHTML = bulkHandler.generatePreviewTable();
+        }
+        
+        if (errors.length > 0) {
+          errorsDiv.innerHTML = '<h4>Validation Errors:</h4>' + errors.map(error => `<div class="error-item">${error}</div>`).join('');
+          submitBtn.disabled = true;
+        } else {
+          errorsDiv.innerHTML = '<div style="color: #28a745; font-weight: 600;">✅ All data looks good!</div>';
+          submitBtn.disabled = false;
+        }
+        
+        previewDiv.style.display = 'block';
+      };
+      
+      window.submitBulkData = async function() {
+        if (bulkHandler.getCount() === 0) { alert('Please preview the data first'); return; }
+        
+        const submitBtn = document.getElementById('submit-bulk-submit-btn');
+        const resultsDiv = document.getElementById('submit-bulk-results');
+        const resultsContent = document.getElementById('submit-bulk-results-content');
+        
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+        
+        try {
+          const result = await bulkHandler.submitData(ApiService, submitPagePeople, {
+            onProgress: (current, total) => { submitBtn.textContent = `Submitting... (${current}/${total})`; }
+          });
+          
+          let resultsHTML = `<div style="margin-bottom: 15px;"><strong>Import Complete:</strong> ${result.successCount} successful, ${result.skippedCount} skipped, ${result.errorCount} errors</div>`;
+          result.results.forEach(item => {
+            const className = item.status === 'success' ? 'success-item' : item.status === 'skipped' ? 'skipped-item' : 'error-item';
+            resultsHTML += `<div class="${className}">Row ${item.row}: ${item.message}</div>`;
+          });
+          
+          resultsContent.innerHTML = resultsHTML;
+          resultsDiv.style.display = 'block';
+          
+          if (result.errorCount === 0) {
+            document.getElementById('submit-bulk-data').value = '';
+            document.getElementById('submit-bulk-preview').style.display = 'none';
+            bulkHandler.clear();
+            showMessage(`✅ Bulk import complete! ${result.successCount} topics submitted successfully.`, 'success');
+          }
+        } catch (error) {
+          resultsContent.innerHTML = `<div class="error-item"><strong>Import Failed:</strong> ${error.message}</div>`;
+          resultsDiv.style.display = 'block';
+          showMessage(`❌ Bulk import failed: ${error.message}`, 'error');
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '📤 Submit All Topics';
+        }
+      };
+      
+      // Initialize bulk import immediately when page loads
+      document.addEventListener('DOMContentLoaded', function() {
+        // Render the bulk import UI immediately
+        initializeSubmitBulkImport();
+        
+        // Load people data
+        fetch('/api/people')
+          .then(response => response.json())
+          .then(people => {
+            submitPagePeople = people;
+            console.log('People loaded for bulk import:', submitPagePeople.length);
+          })
+          .catch(error => {
+            console.error('Failed to load people for bulk import:', error);
+          });
+      });
+      
+      // Also hook into the existing loadPeople function
+      const originalLoadPeople = loadPeople;
+      loadPeople = async function() {
+        await originalLoadPeople();
+        try {
+          const response = await fetch('/api/people');
+          submitPagePeople = await response.json();
+          // Re-initialize if container exists but is empty
+          const container = document.getElementById('submit-bulk-import-container');
+          if (container && !container.innerHTML.trim()) {
+            initializeSubmitBulkImport();
+          }
+        } catch (error) {
+          console.error('Failed to load people for bulk import:', error);
+        }
+      };
     </script>
   </body>
 </html>

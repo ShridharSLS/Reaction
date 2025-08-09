@@ -171,7 +171,7 @@ const BUTTON_TEMPLATES = {
         // Delete removed: hosts cannot delete videos
     ],
     accepted: [
-        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy Video ID, link and note for Google Sheets' },
+        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy Video ID, person name, link and note for Google Sheets' },
         { type: 'assign', label: 'ID given', class: 'btn-primary' },
         { type: 'reject', label: 'Reject', class: 'btn-reject' },
         { type: 'pending', label: 'Pending', class: 'btn-warning' }
@@ -183,7 +183,7 @@ const BUTTON_TEMPLATES = {
         // Delete removed: hosts cannot delete videos
     ],
     assigned: [
-        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy Video ID, link and note for Google Sheets' }
+        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy Video ID, person name, link and note for Google Sheets' }
         // Delete removed: hosts cannot delete videos
     ],
     relevance: [
@@ -228,13 +228,14 @@ function generateButton(buttonTemplate, hostId, videoId, video) {
             const copyData = {
                 link: video.link || '',
                 note: note || '',
+                personName: video.added_by_name || '',
                 hostId: hostId,
                 videoId: videoId
             };
             // Use event delegation instead of inline onclick
             onclick = `handleCopyClick(this)`;
             // Add data attributes for the copy handler
-            const dataAttrs = `data-copy-link="${escapeHtml(copyData.link)}" data-copy-note="${escapeHtml(copyData.note)}" data-host-id="${copyData.hostId}" data-video-id="${copyData.videoId}"`;
+            const dataAttrs = `data-copy-link="${escapeHtml(copyData.link)}" data-copy-note="${escapeHtml(copyData.note)}" data-copy-person="${escapeHtml(copyData.personName)}" data-host-id="${copyData.hostId}" data-video-id="${copyData.videoId}"`;
             // Return early with custom button HTML including data attributes
             const titleAttr = title ? ` title="${title}"` : '';
             return `<button class="btn ${btnClass} copy-btn" onclick="${onclick}" ${dataAttrs}${titleAttr}>${label}</button>`;
@@ -357,6 +358,15 @@ const NAVIGATION_TEMPLATES = {
             id: 'all',
             label: '📈 All',
             showCount: true
+        },
+        {
+            type: 'dropdown',
+            id: 'database',
+            label: '🗄️ Database',
+            items: [
+                { id: 'unified-view', label: '🔗 Unified View' },
+                { id: 'google-sheets-sync', label: '📊 Google Sheets Sync' }
+            ]
         }
     ]
 };
@@ -1452,6 +1462,9 @@ async function loadPeople() {
         updatePersonSelect();
         updatePeopleList();
         
+        // Initialize bulk import after people are loaded
+        initializeBulkImport();
+        
         // Also load archived people if we're on the archived tab
         const currentPeopleTab = document.querySelector('.people-tab-btn.active')?.dataset.peopleTab;
         if (currentPeopleTab === 'archived') {
@@ -2421,248 +2434,50 @@ function truncateUrl(url, maxLength = 50) {
     return url.substring(0, maxLength) + '...';
 }
 
-// Bulk Import Functions
-let parsedBulkData = [];
+// ===== BULK IMPORT FUNCTIONS - REFACTORED TO USE REUSABLE COMPONENTS =====
+// Global bulk import UI instance for main page
+let mainPageBulkImport = null;
 
-function previewBulkData() {
-    const bulkData = document.getElementById('bulk-data').value.trim();
-    const previewDiv = document.getElementById('bulk-preview');
-    const tableDiv = document.getElementById('bulk-preview-table');
-    const errorsDiv = document.getElementById('bulk-validation-errors');
-    const submitBtn = document.getElementById('bulk-submit-btn');
-    
-    if (!bulkData) {
-        alert('Please paste some data first');
+// Initialize bulk import for main page (called after people are loaded)
+function initializeBulkImport() {
+    if (mainPageBulkImport) {
+        // Update people array if bulk import already exists
+        mainPageBulkImport.updatePeople(people);
         return;
     }
     
-    // Parse the data (tab-separated values from Google Sheets)
-    const lines = bulkData.split('\n').filter(line => line.trim());
-    parsedBulkData = [];
-    const errors = [];
-    
-    lines.forEach((line, index) => {
-        const columns = line.split('\t');
-        const rowNum = index + 1;
-        
-        if (columns.length < 4) {
-            errors.push(`Row ${rowNum}: Expected 4-6 columns (Name, Link, Type, Likes, Pitch, Relevance), found ${columns.length}`);
-            return;
-        }
-        
-        const [name, link, type, likes, pitch, relevance] = columns.map(col => col.trim());
-        
-        // Validation
-        if (!name) {
-            errors.push(`Row ${rowNum}: Name is required`);
-        }
-        if (!link) {
-            errors.push(`Row ${rowNum}: Link is required`);
-        } else {
-            try {
-                new URL(link);
-            } catch {
-                errors.push(`Row ${rowNum}: Invalid URL format`);
+    // Create new bulk import UI instance with full configuration
+    mainPageBulkImport = new BulkImportUI('bulk-import-container', 'full', {
+        apiService: ApiService,
+        people: people,
+        onSuccess: (result) => {
+            console.log('Bulk import successful:', result);
+            // Refresh the pending videos view if currently active
+            if (currentTab === 'pending') {
+                loadVideos('pending');
             }
+        },
+        onError: (error) => {
+            console.error('Bulk import failed:', error);
         }
-        if (!type || !['Trending', 'General'].includes(type)) {
-            errors.push(`Row ${rowNum}: Type must be 'Trending' or 'General'`);
-        }
-        if (likes && isNaN(parseInt(likes))) {
-            errors.push(`Row ${rowNum}: Likes count must be a number`);
-        }
-        if (relevance && relevance !== '' && (isNaN(parseInt(relevance)) || parseInt(relevance) < 0 || parseInt(relevance) > 3)) {
-            errors.push(`Row ${rowNum}: Relevance must be empty or a number between 0-3`);
-        }
-        
-        parsedBulkData.push({
-            name,
-            link,
-            type,
-            likes: likes ? parseInt(likes) : 0,
-            relevance: relevance && relevance !== '' ? parseInt(relevance) : null,
-            pitch: pitch || null,
-            rowNum
-        });
     });
-    
-    // Display preview table
-    if (parsedBulkData.length > 0) {
-        let tableHTML = `
-            <table>
-                <thead>
-                    <tr>
-                        <th>Row</th>
-                        <th>Name</th>
-                        <th>Link</th>
-                        <th>Type</th>
-                        <th>Likes</th>
-                        <th>Pitch</th>
-                        <th>Relevance</th>
-                        <th>Destination</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        
-        parsedBulkData.forEach(row => {
-            const relevanceDisplay = row.relevance !== null ? row.relevance : '-';
-            const destination = row.relevance !== null ? '🟡 Pending' : '🎯 Relevance';
-            const pitchDisplay = row.pitch ? (row.pitch.length > 30 ? row.pitch.substring(0, 30) + '...' : row.pitch) : '-';
-            tableHTML += `
-                <tr>
-                    <td>${row.rowNum}</td>
-                    <td>${escapeHtml(row.name)}</td>
-                    <td><a href="${escapeHtml(row.link)}" target="_blank">${truncateUrl(row.link, 40)}</a></td>
-                    <td>${escapeHtml(row.type)}</td>
-                    <td>${row.likes}</td>
-                    <td title="${escapeHtml(row.pitch || '')}">${escapeHtml(pitchDisplay)}</td>
-                    <td>${relevanceDisplay}</td>
-                    <td>${destination}</td>
-                </tr>
-            `;
-        });
-        
-        tableHTML += '</tbody></table>';
-        tableDiv.innerHTML = tableHTML;
-    }
-    
-    // Display errors
-    if (errors.length > 0) {
-        errorsDiv.innerHTML = '<h4>Validation Errors:</h4>' + 
-            errors.map(error => `<div class="error-item">${escapeHtml(error)}</div>`).join('');
-        submitBtn.disabled = true;
+}
+
+// Legacy function wrappers for backward compatibility
+function previewBulkData() {
+    if (mainPageBulkImport) {
+        mainPageBulkImport.previewData();
     } else {
-        errorsDiv.innerHTML = '<div style="color: #28a745; font-weight: 600;">✅ All data looks good!</div>';
-        submitBtn.disabled = false;
+        console.error('Bulk import not initialized. Call initializeBulkImport() first.');
     }
-    
-    previewDiv.style.display = 'block';
 }
 
 async function submitBulkData() {
-    if (parsedBulkData.length === 0) {
-        alert('Please preview the data first');
-        return;
+    if (mainPageBulkImport) {
+        await mainPageBulkImport.submitData();
+    } else {
+        console.error('Bulk import not initialized. Call initializeBulkImport() first.');
     }
-    
-    const submitBtn = document.getElementById('bulk-submit-btn');
-    const resultsDiv = document.getElementById('bulk-results');
-    const resultsContent = document.getElementById('bulk-results-content');
-    
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Submitting...';
-    
-    const results = [];
-    let successCount = 0;
-    let errorCount = 0;
-    let skippedCount = 0;
-    
-    // Submit each video
-    for (const row of parsedBulkData) {
-        try {
-            // Find person by name or create if doesn't exist
-            let person = people.find(p => p.name.toLowerCase() === row.name.toLowerCase());
-            
-            if (!person) {
-                // Create new person automatically
-                try {
-                    const newPerson = await ApiService.createPerson({ name: row.name });
-                    person = { id: newPerson.id, name: row.name };
-                    people.push(person); // Add to local people array for subsequent rows
-                } catch (createError) {
-                    results.push({
-                        row: row.rowNum,
-                        status: 'error',
-                        message: `Failed to create person '${row.name}': ${createError.message}`
-                    });
-                    errorCount++;
-                    continue;
-                }
-            }
-            
-            const videoData = {
-                added_by: person.id,
-                link: row.link,
-                type: row.type,
-                likes_count: row.likes,
-                relevance_rating: row.relevance !== null ? row.relevance : -1,
-                pitch: row.pitch || null
-                // Note: Removed 'status' parameter - let backend handle status based on relevance_rating
-                // relevance_rating = -1 -> relevance_status = 'relevance', host columns = null
-                // relevance_rating 0-3 -> relevance_status = null, host columns = 'pending'
-            };
-            
-            try {
-                await ApiService.createVideo(videoData);
-                results.push({
-                    row: row.rowNum,
-                    status: 'success',
-                    message: `Successfully added video for ${row.name}`
-                });
-                successCount++;
-            } catch (error) {
-                // Handle duplicate URLs as "skipped" rather than "error"
-                if (error.status === 409 && error.message && error.message.includes('already exists')) {
-                    results.push({
-                        row: row.rowNum,
-                        status: 'skipped',
-                        message: `Skipped: URL already exists in system`
-                    });
-                    skippedCount++;
-                } else {
-                    results.push({
-                        row: row.rowNum,
-                        status: 'error',
-                        message: error.message || 'Failed to add video'
-                    });
-                    errorCount++;
-                }
-            }
-        } catch (error) {
-            results.push({
-                row: row.rowNum,
-                status: 'error',
-                message: `Network error: ${error.message}`
-            });
-            errorCount++;
-        }
-    }
-    
-    // Display results
-    let resultsHTML = `
-        <div style="margin-bottom: 15px;">
-            <strong>Import Complete:</strong> ${successCount} successful, ${skippedCount} skipped, ${errorCount} errors
-        </div>
-    `;
-    
-    results.forEach(result => {
-        let className = 'error-item'; // default
-        if (result.status === 'success') {
-            className = 'success-item';
-        } else if (result.status === 'skipped') {
-            className = 'skipped-item';
-        }
-        resultsHTML += `<div class="${className}">Row ${result.row}: ${escapeHtml(result.message)}</div>`;
-    });
-    
-    resultsContent.innerHTML = resultsHTML;
-    resultsDiv.style.display = 'block';
-    
-    // Reset form if all successful
-    if (errorCount === 0) {
-        document.getElementById('bulk-data').value = '';
-        document.getElementById('bulk-preview').style.display = 'none';
-        parsedBulkData = [];
-        
-        // Refresh the pending videos view
-        if (currentTab === 'pending') {
-            loadVideos('pending');
-        }
-    }
-    
-    submitBtn.disabled = false;
-    submitBtn.textContent = '📤 Submit All Topics';
 }
 
 // Admin Management Functions
@@ -4000,6 +3815,7 @@ function handleCopyClick(button) {
         const copyData = {
             link: button.dataset.copyLink || '',
             note: button.dataset.copyNote || '',
+            personName: button.dataset.copyPerson || '',
             hostId: button.dataset.hostId || '',
             videoId: button.dataset.videoId || ''
         };
@@ -4014,8 +3830,8 @@ function handleCopyClick(button) {
             return;
         }
         
-        // Call the unified copy function with Video ID, link, and note
-        copyLinkAndNote(copyData.videoId, copyData.link, copyData.note);
+        // Call the unified copy function with Video ID, person name, link, and note
+        copyLinkAndNote(copyData.videoId, copyData.personName, copyData.link, copyData.note);
         
     } catch (error) {
         console.error('[Copy] Error in handleCopyClick:', error);
@@ -4024,22 +3840,24 @@ function handleCopyClick(button) {
 }
 
 /**
- * Copy Video ID, link and note to clipboard (enhanced with better error handling)
+ * Copy Video ID, person name, link and note to clipboard (enhanced with better error handling)
  * @param {string} videoId - The video ID
+ * @param {string} personName - The person who added the video
  * @param {string} videoLink - The video URL
  * @param {string} videoNote - The video note
  */
-async function copyLinkAndNote(videoId, videoLink, videoNote) {
+async function copyLinkAndNote(videoId, personName, videoLink, videoNote) {
     try {
         // Sanitize inputs
         const id = (videoId || '').toString().trim();
+        const person = (personName || '').trim();
         const link = (videoLink || '').trim();
         const note = (videoNote || '').trim();
         
-        // Create tab-separated format for Google Sheets (Video ID + tab + link + tab + note)
-        const textToCopy = `${id}\t${link}\t${note}`;
+        // Create tab-separated format for Google Sheets (Video ID + tab + person name + tab + link + tab + note)
+        const textToCopy = `${id}\t${person}\t${link}\t${note}`;
         
-        console.log('[Copy] Attempting to copy:', { videoId: id, link, note, textToCopy });
+        console.log('[Copy] Attempting to copy:', { videoId: id, personName: person, link, note, textToCopy });
         
         // Check if clipboard API is available
         if (navigator.clipboard && window.isSecureContext) {
@@ -4054,7 +3872,7 @@ async function copyLinkAndNote(videoId, videoLink, videoNote) {
         
         // Show visual feedback
         showCopySuccess();
-        showNotification('Video ID, link and note copied to clipboard!', 'success');
+        showNotification('Video ID, person name, link and note copied to clipboard!', 'success');
         
     } catch (error) {
         console.error('[Copy] Failed to copy to clipboard:', error);
@@ -4067,7 +3885,7 @@ async function copyLinkAndNote(videoId, videoLink, videoNote) {
             
             await copyToClipboardFallback(textToCopy);
             showCopySuccess();
-            showNotification('Video ID, link and note copied to clipboard!', 'success');
+            showNotification('Video ID, person name, link and note copied to clipboard!', 'success');
             
         } catch (fallbackError) {
             console.error('[Copy] Fallback copy also failed:', fallbackError);

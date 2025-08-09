@@ -85,43 +85,8 @@
       <!-- Bulk Import Tab -->
       <div id="bulk-import" class="tab-content">
         <div class="form-container">
-          <h2>📋 Bulk Import Video Topics</h2>
-          <p class="bulk-import-instructions"></p>
-          <p>
-            <strong>Format:</strong> Copy and paste data from Google Sheets with columns:
-            <code>Name | Link | Type | Likes count (in thousands) | Pitch (optional) | Relevance (optional)</code>
-            <br /><strong>Relevance Logic:</strong> If relevance column is empty → goes to Relevance section (-1). If
-            relevance has value (0-3) → goes directly to Pending. <br /><strong>Pitch Column:</strong> Optional user
-            note explaining why this video topic would be valuable. <br /><strong>Auto-Create People:</strong> New names
-            will be automatically added to the people database - no need to pre-create them!
-          </p>
-
-          <div class="form-group">
-            <label for="bulk-data">Paste Data from Google Sheets:</label>
-            <textarea
-              id="bulk-data"
-              placeholder="Paste your copied data here...\nExample:\nJohn Doe\thttps://youtube.com/watch?v=123\tTrending\t500\tGreat educational content\t2\nJane Smith\thttps://youtube.com/watch?v=456\tGeneral\t200\tFunny and engaging\t\nBob Wilson\thttps://youtube.com/watch?v=789\tTrending\t300\t\t1"
-              rows="10"
-            ></textarea>
-          </div>
-
-          <div class="bulk-actions">
-            <button type="button" class="btn btn-secondary" onclick="previewBulkData()">👁️ Preview Data</button>
-            <button type="button" class="btn btn-primary" onclick="submitBulkData()" id="bulk-submit-btn" disabled>
-              📤 Submit All Topics
-            </button>
-          </div>
-
-          <div id="bulk-preview" class="bulk-preview" style="display: none">
-            <h3>Preview of Parsed Data:</h3>
-            <div id="bulk-preview-table"></div>
-            <div id="bulk-validation-errors"></div>
-          </div>
-
-          <div id="bulk-results" class="bulk-results" style="display: none">
-            <h3>Import Results:</h3>
-            <div id="bulk-results-content"></div>
-          </div>
+          <!-- Bulk import UI will be dynamically rendered here by BulkImportUI component -->
+          <div id="bulk-import-container"></div>
         </div>
       </div>
 
@@ -331,6 +296,117 @@
           </div>
         </div>
       </div>
+
+      <!-- Unified Database View Tab -->
+      <div id="unified-view" class="tab-content">
+        <div class="form-container">
+          <h2>🔗 Unified Database View</h2>
+          <p class="unified-view-instructions">
+            Complete database view showing all video data with person names and tags in one comprehensive table.
+            Perfect for analysis, reporting, and data export.
+          </p>
+
+          <div class="unified-view-controls">
+            <div class="control-row">
+              <button id="load-unified-data" class="btn btn-primary">🔄 Load Unified Data</button>
+              <button id="refresh-unified-data" class="btn btn-secondary" style="display: none;">♾️ Refresh</button>
+              <input type="text" id="unified-search" placeholder="Search all columns..." class="search-input" style="display: none;" />
+            </div>
+            <div class="unified-stats" id="unified-stats" style="display: none;">
+              <!-- Stats will be populated here -->
+            </div>
+          </div>
+
+          <div id="unified-data-container" class="unified-data-container">
+            <div class="unified-loading" id="unified-loading" style="display: none;">
+              <div class="loading"></div>
+              <span>Loading unified database view...</span>
+            </div>
+            <div id="unified-data-table" class="unified-data-table" style="display: none;">
+              <!-- Unified data table will be populated here -->
+            </div>
+            <div class="unified-placeholder" id="unified-placeholder">
+              <p>📄 Click "Load Unified Data" to view the complete database with all video information, person names, and tags.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Sheets Sync Tab -->
+      <div id="google-sheets-sync" class="tab-content">
+        <div class="form-container">
+          <h2>📊 Google Sheets Sync</h2>
+          <p class="sync-instructions">
+            Export and synchronize your video database with Google Sheets for advanced analysis, 
+            reporting, and collaboration.
+          </p>
+
+          <!-- Sync Status Card -->
+          <div class="sync-status-card" id="sync-status-card">
+            <h3>📈 Sync Status</h3>
+            <div id="sync-status-content">
+              <button id="check-sync-status" class="btn btn-secondary">🔍 Check Status</button>
+            </div>
+          </div>
+
+          <!-- Export Options -->
+          <div class="export-options">
+            <h3>📤 Export Options</h3>
+            
+            <div class="export-option">
+              <h4>📄 CSV Export (Recommended)</h4>
+              <p>Download a CSV file with all video data, person names, and tags. Perfect for importing into Google Sheets.</p>
+              <div class="export-actions">
+                <button id="download-csv" class="btn btn-primary">💾 Download CSV</button>
+                <button id="preview-csv" class="btn btn-secondary">👁️ Preview Data</button>
+              </div>
+            </div>
+
+            <div class="export-option">
+              <h4>🔗 Direct Link Access</h4>
+              <p>Use these API endpoints for automated sync with Google Apps Script or Zapier:</p>
+              <div class="api-links">
+                <div class="api-link">
+                  <label>Unified View (JSON):</label>
+                  <input type="text" id="unified-api-url" readonly class="api-url-input" />
+                  <button class="btn btn-small" onclick="copyToClipboard('unified-api-url')">📋 Copy</button>
+                </div>
+                <div class="api-link">
+                  <label>CSV Export:</label>
+                  <input type="text" id="csv-api-url" readonly class="api-url-input" />
+                  <button class="btn btn-small" onclick="copyToClipboard('csv-api-url')">📋 Copy</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sync Instructions -->
+          <div class="sync-instructions-detailed">
+            <h3>📝 How to Sync with Google Sheets</h3>
+            <div class="instruction-steps">
+              <div class="step">
+                <h4>Method 1: Manual Import (Easiest)</h4>
+                <ol>
+                  <li>Click "Download CSV" above</li>
+                  <li>Open Google Sheets and create a new spreadsheet</li>
+                  <li>Go to File → Import → Upload → Select your CSV file</li>
+                  <li>Choose "Replace spreadsheet" and click "Import data"</li>
+                </ol>
+              </div>
+              
+              <div class="step">
+                <h4>Method 2: Automated Sync (Advanced)</h4>
+                <ol>
+                  <li>Copy the CSV Export API URL above</li>
+                  <li>In Google Sheets, go to Extensions → Apps Script</li>
+                  <li>Create a script that fetches data from the API URL</li>
+                  <li>Set up a time-based trigger for automatic updates</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Custom Confirmation Modal -->
@@ -402,7 +478,11 @@
     <script src="utils/multi-select-manager.js?v=8"></script>
     <script src="components/checkbox-column.js?v=8"></script>
     <script src="components/bulk-action-bar.js?v=8"></script>
-
+    <!-- Bulk Import Components -->
+    <script src="components/BulkImportConfigs.js?v=1"></script>
+    <script src="components/BulkImportHandler.js?v=1"></script>
+    <script src="components/BulkImportUI.js?v=1"></script>
+    <!-- Main Script -->
     <script src="script.js?v=8"></script>
     <script>
       // Simple authentication protection for main app
