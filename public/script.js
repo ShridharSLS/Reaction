@@ -2300,8 +2300,11 @@ async function hostActionClearVideoId(hostId, videoId) {
     const config = getHostConfig(hostId);
     const endpoint = getHostApiEndpoint(hostId, videoId);
     
+    console.log(`[hostActionClearVideoId] Clearing video ID for host ${hostId}, video ${videoId}`);
+    console.log(`[hostActionClearVideoId] Using endpoint: ${endpoint}`);
+    
     try {
-        await ApiService.request(endpoint, {
+        const response = await ApiService.request(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ 
                 status: 'accepted',
@@ -2309,10 +2312,24 @@ async function hostActionClearVideoId(hostId, videoId) {
             })
         });
         
+        console.log(`[hostActionClearVideoId] Success response:`, response);
+        
+        // Show success notification
+        showSuccessNotification('Video ID cleared successfully!');
+        
+        // Refresh the current view to show updated data
         loadVideos(currentTab);
         updateButtonCounts();
+        
+        // Also refresh the accepted view since video moved back there
+        if (currentTab !== 'accepted') {
+            // Force refresh accepted count in background
+            setTimeout(() => updateButtonCounts(), 500);
+        }
+        
     } catch (error) {
         console.error(`[hostActionClearVideoId] Error for host ${hostId}:`, error);
+        alert(`Failed to clear video ID: ${error.message || 'Unknown error'}`);
     }
 }
 
