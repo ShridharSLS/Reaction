@@ -58,6 +58,7 @@ class StatusUpdateService {
       }
       
       console.log(`[StatusUpdateService] Final update data for video ${videoId}:`, updateData);
+      console.log(`[StatusUpdateService] About to execute Supabase update for video ${videoId}`);
       
       // Perform the database update
       const { data, error } = await supabase
@@ -66,6 +67,10 @@ class StatusUpdateService {
         .eq('id', videoId)
         .select(`id, ${columns.statusColumn}, ${timestampColumn}`)
         .single();
+        
+      console.log(`[StatusUpdateService] Supabase update completed:`);
+      console.log(`[StatusUpdateService] - data:`, data);
+      console.log(`[StatusUpdateService] - error:`, error);
       
       if (error) {
         throw new Error(`Failed to update video status: ${error.message}`);
