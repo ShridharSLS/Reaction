@@ -2343,6 +2343,10 @@ async function hostActionClearVideoId(hostId, videoId) {
     }
     
     try {
+        console.log(`[hostActionClearVideoId] Making API request to: ${endpoint}`);
+        console.log(`[hostActionClearVideoId] Request method: PUT`);
+        console.log(`[hostActionClearVideoId] Request body: { status: "accepted", video_id_text: null }`);
+        
         const response = await ApiService.request(endpoint, {
             method: 'PUT',
             body: JSON.stringify({ 
@@ -2352,6 +2356,8 @@ async function hostActionClearVideoId(hostId, videoId) {
         });
         
         console.log(`[hostActionClearVideoId] API Success response:`, response);
+        console.log(`[hostActionClearVideoId] Response type:`, typeof response);
+        console.log(`[hostActionClearVideoId] Response keys:`, Object.keys(response || {}));
         
         // Fetch video data again to verify the change
         try {
