@@ -71,6 +71,23 @@ function getHostFromStatus(status) {
     return 1; // Default to Shridhar (Host 1)
 }
 
+// Helper function to detect which host has a video ID assigned for a given video
+function getHostWithVideoId(video) {
+    // Check each host's video ID column to see which one has a value
+    const hostConfigs = getHostConfigs();
+    
+    for (const config of hostConfigs) {
+        const videoIdColumn = config.videoIdColumn;
+        if (video[videoIdColumn] && video[videoIdColumn].trim() !== '') {
+            console.log(`[getHostWithVideoId] Found video ID in ${videoIdColumn} for host ${config.hostId}:`, video[videoIdColumn]);
+            return config.hostId;
+        }
+    }
+    
+    console.log(`[getHostWithVideoId] No video ID found for any host in video ${video.id}`);
+    return 1; // Default to Host 1 if no video ID found
+}
+
 // ===== HOST UTILITIES MODULE =====
 // Consolidated host helper functions following DRY, KISS, and SOLID principles
 const HostUtils = {
@@ -1749,7 +1766,7 @@ function createVideoCard(video, status) {
                             <input type="text" value="${escapeHtml(getHostVideoIdValue(video, status))}" 
                                    onchange="updateVideoId(${video.id}, this.value)" 
                                    style="width: 60px; padding: 2px 4px; font-size: 12px; border: 1px solid #ddd; border-radius: 4px;">
-                            <button onclick="hostAction(${getHostFromStatus(status)}, ${video.id}, 'clearVideoId')" 
+                            <button onclick="hostAction(${getHostWithVideoId(video)}, ${video.id}, 'clearVideoId')" 
                                     style="margin-left: 4px; padding: 1px 4px; font-size: 10px; background: #dc3545; color: white; border: none; border-radius: 2px; cursor: pointer;" 
                                     title="Clear Video ID">×</button>
                         </span>
