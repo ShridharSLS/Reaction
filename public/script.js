@@ -74,13 +74,17 @@ function getHostFromStatus(status) {
 // Helper function to detect which host has a video ID assigned for a given video
 function getHostWithVideoId(video) {
     // Check each host's video ID column to see which one has a value
-    const hostConfigs = getHostConfigs();
+    // We'll check hosts 1, 2, 3 (can be extended if more hosts are added)
+    const hostIds = [1, 2, 3];
     
-    for (const config of hostConfigs) {
-        const videoIdColumn = config.videoIdColumn;
-        if (video[videoIdColumn] && video[videoIdColumn].trim() !== '') {
-            console.log(`[getHostWithVideoId] Found video ID in ${videoIdColumn} for host ${config.hostId}:`, video[videoIdColumn]);
-            return config.hostId;
+    for (const hostId of hostIds) {
+        const config = getHostConfig(hostId);
+        if (config && config.videoIdColumn) {
+            const videoIdColumn = config.videoIdColumn;
+            if (video[videoIdColumn] && video[videoIdColumn].trim() !== '') {
+                console.log(`[getHostWithVideoId] Found video ID in ${videoIdColumn} for host ${hostId}:`, video[videoIdColumn]);
+                return hostId;
+            }
         }
     }
     
