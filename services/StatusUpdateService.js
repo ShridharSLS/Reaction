@@ -19,20 +19,25 @@ class StatusUpdateService {
    * @returns {Promise<Object>} Update result with timestamp information
    */
   static async updateVideoStatus(videoId, hostId, newStatus, note = null, videoIdText = null, getHostColumns = null) {
-    try {
-      console.log(`[StatusUpdateService] === DEBUGGING VIDEO ID CLEAR ===`);
-      console.log(`[StatusUpdateService] Input parameters:`);
-      console.log(`  - videoId: ${videoId}`);
-      console.log(`  - hostId: ${hostId}`);
-      console.log(`  - newStatus: ${newStatus}`);
-      console.log(`  - note: ${note}`);
-      console.log(`  - videoIdText: ${videoIdText} (type: ${typeof videoIdText})`);
+  try {
+    console.log(`[StatusUpdateService] === COMPREHENSIVE VIDEO ID DEBUG ===`);
+    console.log(`[StatusUpdateService] Function called with ${arguments.length} arguments`);
+    console.log(`[StatusUpdateService] All arguments:`, Array.from(arguments));
+    console.log(`[StatusUpdateService] Input parameters:`);
+    console.log(`  - videoId: ${videoId} (type: ${typeof videoId})`);
+    console.log(`  - hostId: ${hostId} (type: ${typeof hostId})`);
+    console.log(`  - newStatus: ${newStatus} (type: ${typeof newStatus})`);
+    console.log(`  - note: ${note} (type: ${typeof note})`);
+    console.log(`  - videoIdText: ${videoIdText} (type: ${typeof videoIdText})`);
+    console.log(`  - videoIdText === null: ${videoIdText === null}`);
+    console.log(`  - videoIdText === undefined: ${videoIdText === undefined}`);
+    console.log(`  - videoIdText !== undefined: ${videoIdText !== undefined}`);
       
       // Get dynamic column mappings for the host
       // Use actual schema if getHostColumns is not provided
       const columns = getHostColumns ? await getHostColumns(hostId) : this.getActualHostColumns(hostId);
       
-      console.log(`[StatusUpdateService] Column mappings for host ${hostId}:`, columns);
+    console.log(`[StatusUpdateService] Column mappings for host ${hostId}:`, columns);
       
       // Build update data dynamically
       const updateData = {};
@@ -50,11 +55,14 @@ class StatusUpdateService {
       }
       
       // Handle video ID text - allow null values to clear the field
+      // CRITICAL FIX: Check if videoIdText parameter was explicitly passed (even if null)
       if (videoIdText !== undefined) {
         updateData[columns.videoIdColumn] = videoIdText; // This can be null to clear the field
         console.log(`[StatusUpdateService] Adding videoIdText to update: ${videoIdText} (column: ${columns.videoIdColumn})`);
+        console.log(`[StatusUpdateService] Video ID will be ${videoIdText === null ? 'CLEARED (set to null)' : 'SET to: ' + videoIdText}`);
       } else {
         console.log(`[StatusUpdateService] videoIdText is undefined, skipping video ID update`);
+        console.log(`[StatusUpdateService] This means the API didn't pass the video_id_text parameter`);
       }
       
       console.log(`[StatusUpdateService] Final update data for video ${videoId}:`, updateData);

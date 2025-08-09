@@ -38,8 +38,11 @@ class StatusUpdateService {
         updateData[columns.noteColumn] = note;
       }
       
-      if (videoIdText !== null && videoIdText !== undefined) {
-        updateData[columns.videoIdColumn] = videoIdText;
+      // CRITICAL FIX: Allow null values to clear the video ID field
+      if (videoIdText !== undefined) {
+        updateData[columns.videoIdColumn] = videoIdText; // Can be null to clear
+        console.log(`[StatusUpdateService] ✅ Adding videoIdText to update: ${videoIdText} (column: ${columns.videoIdColumn})`);
+        console.log(`[StatusUpdateService] ✅ Video ID will be ${videoIdText === null ? 'CLEARED (set to null)' : 'SET to: ' + videoIdText}`);
       }
       
       console.log(`[StatusUpdateService] Updating video ${videoId} for host ${hostId}:`, updateData);
