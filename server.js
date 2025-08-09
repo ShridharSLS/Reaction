@@ -1674,6 +1674,14 @@ app.put(
     const { id, hostId } = req.params;
     const { status, video_id_text, note } = req.body;
 
+    console.log(`[API] === DEBUGGING VIDEO ID CLEAR API ===`);
+    console.log(`[API] Request params: id=${id}, hostId=${hostId}`);
+    console.log(`[API] Request body:`, req.body);
+    console.log(`[API] Extracted values:`);
+    console.log(`  - status: ${status}`);
+    console.log(`  - video_id_text: ${video_id_text} (type: ${typeof video_id_text})`);
+    console.log(`  - note: ${note}`);
+
     // Use the centralized StatusUpdateService for consistent timestamp tracking
     const result = await StatusUpdateService.updateVideoStatus(
       id,

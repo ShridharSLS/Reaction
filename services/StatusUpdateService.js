@@ -20,9 +20,19 @@ class StatusUpdateService {
    */
   static async updateVideoStatus(videoId, hostId, newStatus, note = null, videoIdText = null, getHostColumns = null) {
     try {
+      console.log(`[StatusUpdateService] === DEBUGGING VIDEO ID CLEAR ===`);
+      console.log(`[StatusUpdateService] Input parameters:`);
+      console.log(`  - videoId: ${videoId}`);
+      console.log(`  - hostId: ${hostId}`);
+      console.log(`  - newStatus: ${newStatus}`);
+      console.log(`  - note: ${note}`);
+      console.log(`  - videoIdText: ${videoIdText} (type: ${typeof videoIdText})`);
+      
       // Get dynamic column mappings for the host
       // Use actual schema if getHostColumns is not provided
       const columns = getHostColumns ? await getHostColumns(hostId) : this.getActualHostColumns(hostId);
+      
+      console.log(`[StatusUpdateService] Column mappings for host ${hostId}:`, columns);
       
       // Build update data dynamically
       const updateData = {};
@@ -36,14 +46,18 @@ class StatusUpdateService {
       // Add optional fields if provided
       if (note !== null && note !== undefined) {
         updateData[columns.noteColumn] = note;
+        console.log(`[StatusUpdateService] Adding note to update: ${note}`);
       }
       
       // Handle video ID text - allow null values to clear the field
       if (videoIdText !== undefined) {
         updateData[columns.videoIdColumn] = videoIdText; // This can be null to clear the field
+        console.log(`[StatusUpdateService] Adding videoIdText to update: ${videoIdText} (column: ${columns.videoIdColumn})`);
+      } else {
+        console.log(`[StatusUpdateService] videoIdText is undefined, skipping video ID update`);
       }
       
-      console.log(`[StatusUpdateService] Updating video ${videoId} for host ${hostId}:`, updateData);
+      console.log(`[StatusUpdateService] Final update data for video ${videoId}:`, updateData);
       
       // Perform the database update
       const { data, error } = await supabase
