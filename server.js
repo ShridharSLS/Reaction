@@ -538,6 +538,27 @@ app.delete('/api/admins/:id', async (req, res) => {
 
 // ===== PEOPLE MANAGEMENT ENDPOINTS =====
 
+// Get individual video by ID
+app.get('/api/videos/:id', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  console.log(`[API] Fetching individual video with ID: ${id}`);
+  
+  const { data: video, error } = await supabase
+    .from('videos')
+    .select('*')
+    .eq('id', id)
+    .single();
+    
+  if (error) {
+    console.error(`[API] Error fetching video ${id}:`, error);
+    return res.status(404).json({ error: 'Video not found' });
+  }
+  
+  console.log(`[API] Successfully fetched video ${id}`);
+  res.json(video);
+}));
+
 // Get all people
 app.get(
   '/api/people',
