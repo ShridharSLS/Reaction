@@ -1692,6 +1692,9 @@ app.put('/api/videos/:id/type', async (req, res) => {
 app.put(
   '/api/videos/:id/host/:hostId/status',
   asyncHandler(async (req, res) => {
+    console.log('🚨🚨🚨 ENDPOINT HIT! /api/videos/:id/host/:hostId/status 🚨🚨🚨');
+    console.log('🚨 Request received at:', new Date().toISOString());
+    
     const { id, hostId } = req.params;
     const { status, video_id_text, note } = req.body;
 
