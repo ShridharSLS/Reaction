@@ -1703,28 +1703,62 @@ app.put(
     console.log(`  - video_id_text: ${video_id_text} (type: ${typeof video_id_text})`);
     console.log(`  - note: ${note}`);
 
-    // Use the centralized StatusUpdateService for consistent timestamp tracking
-    const result = await StatusUpdateService.updateVideoStatus(
-      id,
-      hostId,
-      status,
-      note,
-      video_id_text,
-      getHostColumns
-    );
+    try {
+      console.log(`[API] About to call StatusUpdateService.updateVideoStatus`);
+      console.log(`[API] Parameters: id=${id}, hostId=${hostId}, status=${status}, note=${note}, video_id_text=${video_id_text}`);
+      
+      // Use the centralized StatusUpdateService for consistent timestamp tracking
+      const result = await StatusUpdateService.updateVideoStatus(
+        id,
+        hostId,
+        status,
+        note,
+        video_id_text,
+        getHostColumns
+      );
+      
+      console.log(`[API] StatusUpdateService.updateVideoStatus completed successfully`);
+      console.log(`[API] Result:`, result);
 
-    // Note: taken_by is now automatically updated by the database trigger
-    // Do not call updateTakenBy manually to avoid infinite recursion
-    
-    console.log(`Updated video ${id} status for host ${hostId} to ${status}`);
-    res.json({
-      message: `Host ${hostId} video status updated successfully`,
-      hostId: hostId,
-      status: status,
-      timestamp: result.timestamp,
-      columns: result.columns,
-      success: result.success
-    });
+      // Note: taken_by is now automatically updated by the database trigger
+      // Do not call updateTakenBy manually to avoid infinite recursion
+      
+      console.log(`[API] Updated video ${id} status for host ${hostId} to ${status}`);
+      
+      // CRITICAL: Verify the update actually worked
+      console.log(`[API] Verifying update by fetching video ${id}...`);
+      const { data: verifyVideo, error: verifyError } = await supabase
+        .from('videos')
+        .select('id, status_1, video_id_text_1, status_2, video_id_text_2')
+        .eq('id', id)
+        .single();
+        
+      if (verifyError) {
+        console.log(`[API] ❌ Error verifying update:`, verifyError);
+      } else {
+        console.log(`[API] ✅ Verification result:`, verifyVideo);
+      }
+      
+      res.json({
+        message: `Host ${hostId} video status updated successfully`,
+        hostId: hostId,
+        status: status,
+        timestamp: result.timestamp,
+        columns: result.columns,
+        success: result.success,
+        verification: verifyVideo
+      });
+      
+    } catch (error) {
+      console.error(`[API] ❌ Error in StatusUpdateService:`, error);
+      console.error(`[API] Error stack:`, error.stack);
+      res.status(500).json({
+        error: 'Failed to update video status',
+        details: error.message,
+        hostId: hostId,
+        videoId: id
+      });
+    }
   })
 );
 
