@@ -298,10 +298,15 @@ class GoogleSheetsSync {
     // Convert data to Google Sheets format
     formatDataForSheets(data) {
         if (!data || data.length === 0) {
-            return [['No data available']];
+            // Row 1: Last sync timestamp in A1, empty cells for the rest
+            const timestampRow = [`Last Sync: ${new Date().toLocaleString()}`, ...Array(31).fill('')];
+            return [timestampRow, ['No data available']];
         }
 
-        // Define headers based on the unified view structure
+        // Row 1: Last sync timestamp in A1, empty cells for the rest
+        const timestampRow = [`Last Sync: ${new Date().toLocaleString()}`, ...Array(31).fill('')];
+
+        // Row 2: Headers based on the unified view structure
         const headers = [
             'Video ID',
             'Link',
@@ -337,7 +342,7 @@ class GoogleSheetsSync {
             'Video Platform'
         ];
 
-        // Convert data rows
+        // Row 3+: Convert data rows
         const rows = data.map(item => [
             item.id || '',
             item.link || '',
@@ -373,7 +378,8 @@ class GoogleSheetsSync {
             item.video_platform || ''
         ]);
 
-        return [headers, ...rows];
+        // Return: Row 1 (timestamp), Row 2 (headers), Row 3+ (data)
+        return [timestampRow, headers, ...rows];
     }
 
     // Format date for Google Sheets

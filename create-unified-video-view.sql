@@ -22,26 +22,31 @@ SELECT
     v.created_at,
     v.link_added_on,
     
+    -- Additional core columns from videos table
+    v.is_team,
+    v.shridhar_id,
+    v.team_id,
+    
     -- Person information
     v.added_by as added_by_id,
     COALESCE(p.name, 'Unknown') as added_by_name,
     
-    -- Host-specific status columns (dynamic for all hosts)
+    -- Host-specific status columns (all hosts)
     v.status_1,
     v.status_2,
     v.status_3,
     
-    -- Host-specific note columns (based on actual schema)
-    v.note as note_1,  -- Original note column mapped to note_1
+    -- Host-specific note columns (all hosts - updated to match actual schema)
+    v.note_1,
     v.note_2,
-    NULL as note_3,    -- Host 3 doesn't have a note column yet
+    v.note_3,
     
-    -- Host-specific video ID columns (based on actual schema)
-    NULL as video_id_1,           -- Host 1 doesn't have a video_id column yet
-    v.video_id_text_2 as video_id_2,  -- Host 2 video ID column
-    NULL as video_id_3,           -- Host 3 doesn't have a video_id column yet
+    -- Host-specific video ID columns (all hosts - updated to match actual schema)
+    v.video_id_text_1 as video_id_1,
+    v.video_id_text_2 as video_id_2,
+    v.video_id_text_3 as video_id_3,
     
-    -- Status timestamp columns (if they exist)
+    -- Status timestamp columns (all hosts)
     v.status_1_updated_at,
     v.status_2_updated_at,
     v.status_3_updated_at,
@@ -87,10 +92,11 @@ LEFT JOIN tags t ON vt.tag_id = t.id
 GROUP BY 
     v.id, v.link, v.video_code, v.type, v.likes_count, v.pitch, 
     v.relevance_rating, v.score, v.taken_by, v.created_at, v.link_added_on,
+    v.is_team, v.shridhar_id, v.team_id,
     v.added_by, p.name,
     v.status_1, v.status_2, v.status_3,
-    v.note, v.note_2,  -- Fixed to match actual schema
-    v.video_id_text_2,  -- Fixed to match actual schema
+    v.note_1, v.note_2, v.note_3,
+    v.video_id_text_1, v.video_id_text_2, v.video_id_text_3,
     v.status_1_updated_at, v.status_2_updated_at, v.status_3_updated_at
 ORDER BY v.created_at DESC;
 
