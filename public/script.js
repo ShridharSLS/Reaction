@@ -2291,11 +2291,49 @@ async function hostActionAssign(hostId, videoId) {
                 body: JSON.stringify(updateData)
             });
             
+            // Auto-copy to clipboard after successful ID assignment
+            await autoCopyAfterIdAssignment(videoId, hostId);
+            
             loadVideos(currentTab);
             updateButtonCounts();
         }
     } catch (error) {
         console.error(`[hostActionAssign] Error for host ${hostId}:`, error);
+    }
+}
+
+/**
+ * Auto-copy video data to clipboard after ID assignment
+ * Uses the same logic as the copy button for consistency
+ */
+async function autoCopyAfterIdAssignment(videoId, hostId) {
+    try {
+        console.log(`[AutoCopy] Fetching video data for auto-copy after ID assignment - Video ID: ${videoId}, Host ID: ${hostId}`);
+        
+        // Fetch the updated video data from the API
+        const response = await ApiService.request(`/api/videos/${videoId}`);
+        const video = response;
+        
+        // Extract the data needed for copying (same format as copy button)
+        const copyData = {
+            videoId: video.id || videoId,
+            personName: video.added_by_name || '',
+            link: video.link || '',
+            note: video[`${getHostConfig(hostId).statusColumn.replace('_status', '_note')}`] || ''
+        };
+        
+        console.log(`[AutoCopy] Video data extracted:`, copyData);
+        
+        // Use the same copy function as the copy button
+        await copyLinkAndNote(copyData.videoId, copyData.personName, copyData.link, copyData.note);
+        
+        // Show success notification
+        showNotification('✅ Video ID assigned and data copied to clipboard!', 'success');
+        
+    } catch (error) {
+        console.error('[AutoCopy] Error during auto-copy after ID assignment:', error);
+        // Don't show error notification to avoid disrupting the main workflow
+        // The ID assignment was successful, auto-copy is just a convenience feature
     }
 }
 
