@@ -544,7 +544,6 @@
     
     <!-- Bulk Import Components -->
     <script>
-      // Inline the configurations to avoid path issues
       const BULK_IMPORT_CONFIGS = {
         submit: {
           hasRelevance: false,
@@ -631,36 +630,44 @@
           if (this.parsedData.length === 0) {
             throw new Error('No data to submit. Please preview the data first.');
           }
+          console.log('=== SimpleBulkImportHandler.submitData START ===');
+          console.log('API Service:', apiService);
+          console.log('People array:', people);
+          console.log('Options:', options);
+          console.log('Parsed data count:', this.parsedData.length);
+          console.log('Parsed data sample:', this.parsedData.slice(0, 2));
           
           const results = [];
           let successCount = 0, errorCount = 0, skippedCount = 0;
           
-          // Progress callback
-          if (options.onProgress) {
-            options.onProgress(0, this.parsedData.length);
-          }
-          
-          // Submit each video
           for (let i = 0; i < this.parsedData.length; i++) {
             const row = this.parsedData[i];
+            console.log(`\n--- Processing Row ${row.rowNum} (${i + 1}/${this.parsedData.length}) ---`);
+            console.log('Row data:', row);
             
             try {
-              // Find person by name or create if doesn't exist
+              // Find or create person
               let person = people.find(p => p.name.toLowerCase() === row.name.toLowerCase());
+              console.log('Person lookup result:', person);
               
               if (!person) {
+                console.log(`Creating new person: ${row.name}`);
                 // Create new person automatically
                 try {
                   const newPerson = await apiService.createPerson({ name: row.name });
+                  console.log('New person created:', newPerson);
                   person = { id: newPerson.id, name: row.name };
                   people.push(person); // Add to local people array for subsequent rows
+                  console.log('Person added to local array. New count:', people.length);
                 } catch (createError) {
+                  console.error('Failed to create person:', createError);
                   results.push({
                     row: row.rowNum,
                     status: 'error',
                     message: `Failed to create person '${row.name}': ${createError.message}`
                   });
                   errorCount++;
+                  console.log('Error count incremented to:', errorCount);
                   continue;
                 }
               }
@@ -674,48 +681,93 @@
                 relevance_rating: -1, // Always goes to relevance review for submit page
                 pitch: row.pitch || null
               };
+              console.log('Video data prepared:', videoData);
               
               // Submit video
-              await apiService.createVideo(videoData);
+              console.log('Calling apiService.createVideo...');
+              const videoResult = await apiService.createVideo(videoData);
+              console.log('Video created successfully:', videoResult);
+              
               results.push({
                 row: row.rowNum,
                 status: 'success',
                 message: `Successfully added video for ${row.name}`
               });
               successCount++;
+              console.log('Success count incremented to:', successCount);
               
             } catch (error) {
-              // Handle duplicate URLs as "skipped" rather than "error" with detailed message
-              if (error.status === 409 && error.message && error.message.includes('already exists')) {
+              console.error('Error processing row:', error);
+              console.error('Error details:', {
+                status: error.status,
+                message: error.message,
+                stack: error.stack,
+                response: error.response,
+                name: error.name
+              });
+              
+              // Enhanced duplicate detection - check multiple error indicators
+              const isDuplicate = (
+                error.status === 409 || 
+                (error.response && error.response.status === 409) ||
+                (error.message && (
+                  error.message.includes('already exists') || 
+                  error.message.includes('duplicate') ||
+                  error.message.includes('Conflict') ||
+                  error.message.includes('409')
+                )) ||
+                (error.name === 'ConflictError')
+              );
+              
+              if (isDuplicate) {
+                console.log('✅ DUPLICATE DETECTED - Handling as skipped:', {
+                  errorStatus: error.status,
+                  responseStatus: error.response?.status,
+                  errorMessage: error.message,
+                  errorName: error.name
+                });
                 results.push({
                   row: row.rowNum,
                   status: 'skipped',
                   message: `Skipped: URL already exists in system`
                 });
                 skippedCount++;
+                console.log('Skipped count incremented to:', skippedCount);
               } else {
+                console.log('❌ ACTUAL ERROR - Handling as error:', {
+                  errorStatus: error.status,
+                  responseStatus: error.response?.status,
+                  errorMessage: error.message,
+                  errorName: error.name
+                });
                 results.push({
                   row: row.rowNum,
                   status: 'error',
                   message: error.message || 'Failed to add video'
                 });
                 errorCount++;
+                console.log('Error count incremented to:', errorCount);
               }
             }
             
             // Progress callback
             if (options.onProgress) {
+              console.log(`Calling progress callback: ${i + 1}/${this.parsedData.length}`);
               options.onProgress(i + 1, this.parsedData.length);
             }
           }
           
-          return {
+          const finalResult = {
             results,
             successCount,
             errorCount,
             skippedCount,
             totalCount: this.parsedData.length
           };
+          
+          console.log('=== SimpleBulkImportHandler.submitData END ===');
+          console.log('Final result:', finalResult);
+          return finalResult;
         }
         
         getCount() { return this.parsedData.length; }
@@ -742,6 +794,10 @@
           });
           if (!response.ok) {
             const error = await response.json().catch(() => ({ message: 'Request failed' }));
+            // CRITICAL FIX: Add status property to error object for proper duplicate detection
+            error.status = response.status;
+            error.response = { status: response.status, statusText: response.statusText };
+            console.log('API Error created with status:', error.status, 'for endpoint:', endpoint);
             throw error;
           }
           return response.json();
@@ -790,50 +846,111 @@
       }
       
       window.previewSubmitBulkData = function() {
-        const textarea = document.getElementById('submit-bulk-data');
-        const bulkData = textarea.value.trim();
-        if (!bulkData) { alert('Please paste some data first'); return; }
+        console.log('=== SUBMIT PAGE BULK PREVIEW START ===');
         
-        const errors = bulkHandler.parseData(bulkData);
+        const textarea = document.getElementById('submit-bulk-data');
         const previewDiv = document.getElementById('submit-bulk-preview');
         const tableDiv = document.getElementById('submit-bulk-preview-table');
         const errorsDiv = document.getElementById('submit-bulk-validation-errors');
         const submitBtn = document.getElementById('submit-bulk-submit-btn');
         
+        console.log('Preview UI elements found:', { 
+          textarea: !!textarea, 
+          previewDiv: !!previewDiv, 
+          tableDiv: !!tableDiv, 
+          errorsDiv: !!errorsDiv, 
+          submitBtn: !!submitBtn 
+        });
+        
+        const bulkData = textarea.value.trim();
+        console.log('Raw bulk data length:', bulkData.length);
+        console.log('Raw bulk data preview:', bulkData.substring(0, 200) + (bulkData.length > 200 ? '...' : ''));
+        
+        if (!bulkData) { 
+          console.log('ERROR: No bulk data provided');
+          alert('Please paste some data first'); 
+          return; 
+        }
+        
+        console.log('Parsing bulk data...');
+        const errors = bulkHandler.parseData(bulkData);
+        console.log('Parse errors:', errors);
+        console.log('Parsed data count:', bulkHandler.getCount());
+        
         if (bulkHandler.getCount() > 0) {
-          tableDiv.innerHTML = bulkHandler.generatePreviewTable();
+          console.log('Generating preview table...');
+          const previewTable = bulkHandler.generatePreviewTable();
+          console.log('Preview table HTML length:', previewTable.length);
+          tableDiv.innerHTML = previewTable;
         }
         
         if (errors.length > 0) {
-          errorsDiv.innerHTML = '<h4>Validation Errors:</h4>' + errors.map(error => `<div class="error-item">${error}</div>`).join('');
+          console.log('VALIDATION ERRORS FOUND:', errors.length);
+          errorsDiv.innerHTML = '<h4>Validation Errors:</h4>' + 
+            errors.map(error => {
+              console.log('Validation error:', error);
+              return `<div class="error-item">${bulkHandler.escapeHtml(error)}</div>`;
+            }).join('');
           submitBtn.disabled = true;
+          console.log('Submit button disabled due to validation errors');
         } else {
+          console.log('VALIDATION SUCCESS: All data looks good');
           errorsDiv.innerHTML = '<div style="color: #28a745; font-weight: 600;">✅ All data looks good!</div>';
           submitBtn.disabled = false;
+          console.log('Submit button enabled');
         }
         
         previewDiv.style.display = 'block';
+        console.log('=== SUBMIT PAGE BULK PREVIEW END ===');
       };
       
       window.submitBulkData = async function() {
-        if (bulkHandler.getCount() === 0) { alert('Please preview the data first'); return; }
+        console.log('=== SUBMIT PAGE BULK IMPORT START ===');
+        console.log('Handler count:', bulkHandler.getCount());
+        console.log('Submit page people:', submitPagePeople);
+        
+        if (bulkHandler.getCount() === 0) { 
+          console.log('ERROR: No data to submit');
+          alert('Please preview the data first'); 
+          return; 
+        }
         
         const submitBtn = document.getElementById('submit-bulk-submit-btn');
         const resultsDiv = document.getElementById('submit-bulk-results');
         const resultsContent = document.getElementById('submit-bulk-results-content');
         
+        console.log('UI elements found:', { submitBtn: !!submitBtn, resultsDiv: !!resultsDiv, resultsContent: !!resultsContent });
+        
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting...';
         
         try {
-          const result = await bulkHandler.submitData(ApiService, submitPagePeople, {
-            onProgress: (current, total) => { submitBtn.textContent = `Submitting... (${current}/${total})`; }
+          console.log('Calling bulkHandler.submitData with:', {
+            apiService: 'ApiService',
+            peopleCount: submitPagePeople.length,
+            hasProgressCallback: true
           });
           
+          const result = await bulkHandler.submitData(ApiService, submitPagePeople, {
+            onProgress: (current, total) => { 
+              console.log(`Progress: ${current}/${total}`);
+              submitBtn.textContent = `Submitting... (${current}/${total})`; 
+            }
+          });
+          
+          console.log('=== SUBMIT RESULT ===');
+          console.log('Full result object:', result);
+          console.log('Success count:', result.successCount);
+          console.log('Skipped count:', result.skippedCount);
+          console.log('Error count:', result.errorCount);
+          console.log('Results array:', result.results);
+          
+          // Use unified notification system like internal bulk import
           let resultsHTML = `<div style="margin-bottom: 15px;"><strong>Import Complete:</strong> ${result.successCount} successful, ${result.skippedCount} skipped, ${result.errorCount} errors</div>`;
           result.results.forEach(item => {
             const className = item.status === 'success' ? 'success-item' : item.status === 'skipped' ? 'skipped-item' : 'error-item';
             resultsHTML += `<div class="${className}">Row ${item.row}: ${item.message}</div>`;
+            console.log(`Result item - Row ${item.row}: ${item.status} - ${item.message}`);
           });
           
           resultsContent.innerHTML = resultsHTML;
@@ -843,15 +960,31 @@
             document.getElementById('submit-bulk-data').value = '';
             document.getElementById('submit-bulk-preview').style.display = 'none';
             bulkHandler.clear();
+            
+            // Unified success notification matching internal bulk import style
             showMessage(`✅ Bulk import complete! ${result.successCount} topics submitted successfully.`, 'success');
+            console.log('SUCCESS NOTIFICATION: Bulk import complete!');
+          } else {
+            // Partial success - use warning notification like internal system  
+            showMessage(`⚠️ Bulk import completed with ${result.errorCount} errors. ${result.successCount} topics submitted successfully.`, 'warning');
+            console.log('PARTIAL SUCCESS NOTIFICATION: Bulk import with errors');
           }
         } catch (error) {
+          console.log('=== SUBMIT ERROR ===');
+          console.error('Full error object:', error);
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+          
           resultsContent.innerHTML = `<div class="error-item"><strong>Import Failed:</strong> ${error.message}</div>`;
           resultsDiv.style.display = 'block';
+          
+          // Unified error notification
           showMessage(`❌ Bulk import failed: ${error.message}`, 'error');
+          console.log('ERROR NOTIFICATION: Bulk import failed');
         } finally {
           submitBtn.disabled = false;
           submitBtn.textContent = '📤 Submit All Topics';
+          console.log('=== SUBMIT PAGE BULK IMPORT END ===');
         }
       };
       

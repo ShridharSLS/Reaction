@@ -186,6 +186,7 @@ function getHostFromTab(tabId) {
 // Hosts can only reject videos, not delete them
 const BUTTON_TEMPLATES = {
     pending: [
+        { type: 'copy', label: '📋', class: 'copy-btn', title: 'Copy Video ID, person name, link and note for Google Sheets' },
         { type: 'accept', label: 'Accept', class: 'btn-success' },
         { type: 'assign', label: 'ID given', class: 'btn-primary' },
         { type: 'reject', label: 'Reject', class: 'btn-reject' }
